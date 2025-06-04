@@ -1,0 +1,12 @@
+name = "CumulantAnalysis"
+uuid = "d62e69c9-3f2a-4699-bf0d-85fb75dc8589"
+authors = ["Ethan Meitz <emeitz@andrew.cmu.edu>", "Alois Castellano"]
+version = "0.0.1"
+
+[deps]
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+
+[compat]
+DataFrames="~1.7.0"
+Statistics = "1.11.1"
