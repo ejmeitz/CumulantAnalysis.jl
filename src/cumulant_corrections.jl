@@ -18,7 +18,7 @@ function Cumulants(V, ΔV, kB, T)
     # ∂(⟨A⟩⟨B⟩)/∂T = <A>∂<B>∂T + <B>∂<A>∂T
     ∂AB_∂T(A, B; dA = ∂A_∂T(A), dB =  ∂A_∂T(B)) = (mean(A) * dB) + (mean(B) * dA)
     # ∂²<A>/∂T²
-    ∂²A_∂T²(A; dA = ∂A_∂T(A)) = (-2*dA/(kB*T*T*T)) + ((1/(kB*T*T)) * (∂A_∂T(A.*B) - ∂AB_∂T(A, V; dA = dA)))
+    ∂²A_∂T²(A; dA = ∂A_∂T(A)) = (-2*dA/(kB*T*T*T)) + ((1/(kB*T*T)) * (∂A_∂T(A.*V) - ∂AB_∂T(A, V; dA = dA)))
 
     κ₁ = mean(ΔV)
     ∂κ₁_∂T = ∂A_∂T(ΔV)
@@ -68,22 +68,23 @@ function thermo_prop_checks(lammps_dump_path, order, dump_fields)
 
     @info "Parsing LAMMPS dump file at $(lammps_dump_path)"
     ld = LammpsDump(lammps_dump_path)
-    @info "Found $(n_samples(ld)) samples and $(n_atoms(ld))"
+    @info "Found $(n_samples(ld)) samples and $(n_atoms(ld)) atoms"
 
-    required_fields = keys(dump_fields)
     actual_fields = fields(ld)
-    @assert issubset(required_fields, actual_fields) "Dump file needs $(required_fields) fields, got $(actual_fields). Can re-name with dump_fields kwarg"
+    @assert issubset(dump_fields, actual_fields) "Dump file needs $(dump_fields) fields, got $(actual_fields). Can re-name with dump_fields kwarg"
 
     return ld
 end
 
 function parse_files(lammps_eq_dump_path, stat_file_path, T)
 
+    @info "Parsing Equilibrium Positions"
     eq = LammpsDump(lammps_eq_dump_path)
 
     parse_timestep!(eq, 1)
     atom_masses = get_col(eq, "mass")
-    initial_positions = Matrix(nma.eq.data_storage[!, ["xu","yu","zu"]])
+    #* HARDCODED COL NAMES!!
+    initial_positions = Matrix(eq.data_storage[!, ["xu", "yu", "zu"]])
 
     bulk_properties = readdlm(stat_file_path, comments = true)
 
@@ -91,7 +92,7 @@ function parse_files(lammps_eq_dump_path, stat_file_path, T)
     V = bulk_properties[:, 4]
     T_sim = bulk_properties[:, 6]
 
-    if mean(T_sim) - temperature > 1e-1
+    if mean(T_sim) - T > 1e-1
         @warn "Simulation temperature $(mean(T_sim)) different from target temperature $(T). Results may be inaccurate."
     end
 
@@ -111,7 +112,7 @@ Parameters:
 - `stat_file_path::String`: Path to the TDEP infile.stat file.
 - `kB`: Boltzmann constant.
 - `temperature::T`: Temperature.
-- `limit::Limit` = Quantum(): Either `Quantum()` or `Classical()`.
+- `limit::Limit` = Classical(): Either `Quantum()` or `Classical()`.
 - `order::Int` = 2: Order of the cumulant expansion (1 or 2).
 - `dump_x_unrolled_names = ["xu", "yu", "zu"]` = header_dict: Name of dump columns corresponding to unrolled displacements. In x,y,z order!!
 
@@ -125,18 +126,19 @@ function estimate_thermo_properties(
     stat_file_path::String,
     ifc2::AbstractMatrix,
     ω, kB, ħ, temperature; 
-    limit::Limit = Quantum(), order::Int = 2, 
-    dump_x_unrolled_names::AbstractVector{String} = ["ux", "uy", "uz"],
+    limit::Limit = Classical(), order::Int = 2, 
+    dump_x_unrolled_names::AbstractVector{String} = ["xu", "yu", "zu"],
     stochastic::Bool = false
 )
 
-    D = length(dump_fields)
+    D = length(dump_x_unrolled_names)
 
-    ld = thermo_prop_checks(lammps_dump_path, order, dump_fields)
+    ld = thermo_prop_checks(lammps_dump_path, order, dump_x_unrolled_names)
 
     initial_positions, atom_masses, E_total, V =
         parse_files(lammps_eq_dump_path, stat_file_path, temperature)
 
+    @info "Parsing Displacements"
     u = load_displacements(ld, initial_positions, 
                             dump_x_unrolled_names = dump_x_unrolled_names, D = D)
     V₂ = V_harmonic.(Ref(ifc2), eachcol(u))

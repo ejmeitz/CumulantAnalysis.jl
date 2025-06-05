@@ -136,7 +136,7 @@ end
 function load_displacements(ld::LammpsDump, initial_positions::AbstractMatrix;
                              dump_x_unrolled_names = ["xu", "yu", "zu"], D = 3)
     
-    unrolled_cols = [nma.ld.col_idxs[f] for f in dump_x_unrolled_names]
+    unrolled_cols = [ld.col_idxs[f] for f in dump_x_unrolled_names]
 
     current_positions = zeros(size(initial_positions))
 

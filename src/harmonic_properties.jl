@@ -26,8 +26,8 @@ function F_harmonic(ω, ħ, kB, T, limit::Quantum)
     return sum(mode_free_energies)
 end
 
-function F_harmonic(ω, kB, T, limit::Classical)
-
+function F_harmonic(ω, ħ, kB, T, limit::Classical)
+    return 0.0 #*TODO
 end
 
 function S_harmonic(ω, ħ, kB, T, limit::Quantum)
@@ -36,8 +36,8 @@ function S_harmonic(ω, ħ, kB, T, limit::Quantum)
     return kB * sum(mode_entropies)
 end
 
-function S_harmonic(ω, kB, T, limit::Classical)
-
+function S_harmonic(ω, ħ, kB, T, limit::Classical)
+    return 0.0 #*TODO
 end
 
 function Cᵥ_harmonic(ω, kB, T, limit::Quantum)
