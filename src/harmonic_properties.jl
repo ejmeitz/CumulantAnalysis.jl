@@ -1,4 +1,10 @@
-function V_harmonic(ifc2::Matrix{T}, u::AbstractVector{U})
+export Quantum, Classical
+
+abstract type Limit end
+struct Quantum <: Limit end
+struct Classical <: Limit end
+
+function V_harmonic(ifc2::AbstractMatrix, u::AbstractVector)
     return 0.5 * ((transpose(u) * ifc2) * u)
 end
 

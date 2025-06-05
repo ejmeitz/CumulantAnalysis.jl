@@ -1,4 +1,4 @@
-export estimate_thermo_properties, Quantum, Classical, Cumulants
+export estimate_thermo_properties, Cumulants
 
 struct Cumulants{A,B,C,D,E,F}
     κ₁::A
@@ -32,7 +32,7 @@ function Cumulants(V, ΔV, kB, T)
     return Cumulants(κ₁, ∂κ₁_∂T, ∂²κ₁_∂T², κ₂, ∂κ₂_∂T, ∂²κ₂_∂T²)
 end
 
-function first_order(cd::CumulantData, T)
+function first_order(cd::Cumulants, T)
    
     F_correction = cd.κ₁
     S_correction = -cd.∂κ₁_∂T
@@ -42,7 +42,7 @@ function first_order(cd::CumulantData, T)
     return F_correction, S_correction, U_correction, Cv_correction
 end
 
-function second_order(cd::CumulantData, kB, T, stochastic::Bool)
+function second_order(cd::Cumulants, kB, T, stochastic::Bool)
 
     pref = stochastic ? -1.0 : 1.0
 
@@ -99,8 +99,8 @@ Returns:
 -----------
 - A tuple containing the free energy, entropy, internal energy, and heat capacity corrections.
 """
-function estimate_thermo_properties(lammps_dump_path::String, stat_file_path::String, ifc2::Matrix{T},
-                                     ω, kB, ħ, temperature::T; limit::Limit = Quantum(), order::Int = 2, 
+function estimate_thermo_properties(lammps_dump_path::String, stat_file_path::String, ifc2::AbstractMatrix,
+                                     ω, kB, ħ, temperature; limit::Limit = Quantum(), order::Int = 2, 
                                      dump_disp_names::AbstractVector{String} = ["ux", "uy", "uz"], stochastic::Bool = false)
 
     D = length(dump_fields)

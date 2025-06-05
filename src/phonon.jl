@@ -4,7 +4,7 @@ function load_tdep_ifc2()
 
 end
 
-function get_modes(ifc2::Matrix{T}, masses::AbstractVector{M}; D::Int = 3)
+function get_modes(ifc2::AbstractMatrix, masses::AbstractVector; D::Int = 3)
 
     dynmat = zeros(size(ifc2))
     N_atoms = Int(size(ifc2,1) / D)
@@ -27,7 +27,7 @@ function get_modes(ifc2::Matrix{T}, masses::AbstractVector{M}; D::Int = 3)
 
 end
 
-function get_modes(dynmat::Matrix{T}, D::Int = 3)
+function get_modes(dynmat::AbstractMatrix, D::Int = 3)
 
     dynmat_unit = unit(dynmat[1,1])
     dynmat_unitless = ustrip(dynmat)
