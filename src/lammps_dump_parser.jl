@@ -1,8 +1,8 @@
-export LammpsDump, parse_timestep!, parse_next_timestep!, get_col
+export parse_timestep!, parse_next_timestep!
 
 struct LammpsDump{HD,DD}
     header_length::UInt32
-    header_data::HD #TODO: Make NamedTuple
+    header_data::HD
     col_idxs::Dict{String,Integer}
     n_lines::UInt32
     n_samples::UInt32
@@ -29,6 +29,9 @@ Base.length(ld::LammpsDump) = ld.n_samples
 # Base.iterate(ld::LammpsDump, state = 1) = state > length(ld) ? nothing : (parse_timestep!(ld, state), state + 1)
 haskey(ld::LammpsDump, x::String) = x ∈ names(ld.data_storage)
 get_col(ld::LammpsDump, x::String) = getproperty(ld.data_storage, Symbol(x))
+n_atoms(ld::LammpsDump) = ld.header_data["N_atoms"]
+fields(ld::LammpsDump) = ld.header_data["fields"]
+n_samples(ld::LammpsDump) = ld.n_samples
 
 function skiplines(path::String, num_lines)
     io = open(path, "r")
@@ -55,8 +58,14 @@ function parse_dump_header(dump_path, dump_header_len)
     file = open(dump_path, "r")
 
     #parse first header for useful data
-    header_data = Dict("N_atoms" => 0.0, "L_x" => [0.0,0.0], "L_y" => [0.0,0.0],
-         "L_z" => [0.0,0.0], "fields" => nothing)
+    header_data = Dict(
+        "N_atoms" => 0.0,
+        "L_x" => [0.0,0.0], 
+        "L_y" => [0.0,0.0],
+        "L_z" => [0.0,0.0],
+        "fields" => nothing
+    )
+    
     for i in range(1, dump_header_len)
         line = readline(file)
         if i == 4
@@ -124,3 +133,19 @@ function parse_next_timestep!(out::Matrix{T}, ld::LammpsDump, io::IOStream, cols
     return out, ld, io
 end
 
+function load_displacements(ld::LammpsDump, dump_disp_names; D = 3)
+    
+    dump_file = open(nma.ld.path, "r")
+    disp_cols = [nma.ld.col_idxs[f] for f in dump_disp_names]
+
+    u = zeros(Float64, D*n_atoms(ld), ld.n_samples)
+    u_tmp = zeros(Float64, n_atoms(ld), D)
+
+    for i in 1:ld.n_samples
+        parse_next_timestep!(u_tmp, ld, dump_file, disp_cols)
+        u[:,i] .= reduce(vcat, eachrow(u_tmp))
+    end
+
+    return u
+
+end
