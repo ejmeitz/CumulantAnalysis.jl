@@ -133,17 +133,22 @@ function parse_next_timestep!(out::Matrix{T}, ld::LammpsDump, io::IOStream, cols
     return out, ld, io
 end
 
-function load_displacements(ld::LammpsDump, dump_disp_names; D = 3)
+function load_displacements(ld::LammpsDump, initial_positions::AbstractMatrix;
+                             dump_x_unrolled_names = ["xu", "yu", "zu"], D = 3)
     
-    dump_file = open(nma.ld.path, "r")
-    disp_cols = [nma.ld.col_idxs[f] for f in dump_disp_names]
+    unrolled_cols = [nma.ld.col_idxs[f] for f in dump_x_unrolled_names]
+
+    current_positions = zeros(size(initial_positions))
 
     u = zeros(Float64, D*n_atoms(ld), ld.n_samples)
     u_tmp = zeros(Float64, n_atoms(ld), D)
 
-    for i in 1:ld.n_samples
-        parse_next_timestep!(u_tmp, ld, dump_file, disp_cols)
-        u[:,i] .= reduce(vcat, eachrow(u_tmp))
+    open(ld.path, "r") do file
+        for i in 1:ld.n_samples
+            parse_next_timestep!(current_positions, ld, file, unrolled_cols)
+            u_tmp .= current_positions .- initial_positions
+            u[:,i] .= reduce(vcat, eachrow(u_tmp))
+        end
     end
 
     return u

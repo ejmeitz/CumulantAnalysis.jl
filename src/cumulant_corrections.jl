@@ -56,9 +56,9 @@ end
 
 # name in lammps dump ==> name used in program
 const header_dict = Dict(
-    "DisplacementX" => "ux",
-    "DisplacementY" => "uy",
-    "DisplacementZ" => "uz",
+    "DisplacementX" => "xu",
+    "DisplacementY" => "yu",
+    "DisplacementZ" => "zu",
 )
 
 function thermo_prop_checks(lammps_dump_path, order, dump_fields)
@@ -77,6 +77,26 @@ function thermo_prop_checks(lammps_dump_path, order, dump_fields)
     return ld
 end
 
+function parse_files(lammps_eq_dump_path, stat_file_path, T)
+
+    eq = LammpsDump(lammps_eq_dump_path)
+
+    parse_timestep!(eq, 1)
+    atom_masses = get_col(eq, "mass")
+    initial_positions = Matrix(nma.eq.data_storage[!, ["xu","yu","zu"]])
+
+    bulk_properties = readdlm(stat_file_path, comments = true)
+
+    E_total = bulk_properties[:, 3]
+    V = bulk_properties[:, 4]
+    T_sim = bulk_properties[:, 6]
+
+    if mean(T_sim) - temperature > 1e-1
+        @warn "Simulation temperature $(mean(T_sim)) different from target temperature $(T). Results may be inaccurate."
+    end
+
+    return initial_positions, atom_masses, E_total, V
+end
 
 """
 estimate_thermo_properties(lammps_dump_path::String, stat_file_path::String,
@@ -93,30 +113,32 @@ Parameters:
 - `temperature::T`: Temperature.
 - `limit::Limit` = Quantum(): Either `Quantum()` or `Classical()`.
 - `order::Int` = 2: Order of the cumulant expansion (1 or 2).
-- `dump_disp_names = ["ux", "uy", "uz"]` = header_dict: Name of dump columns corresponding to displacements. In x,y,z order!!
+- `dump_x_unrolled_names = ["xu", "yu", "zu"]` = header_dict: Name of dump columns corresponding to unrolled displacements. In x,y,z order!!
 
 Returns:
 -----------
 - A tuple containing the free energy, entropy, internal energy, and heat capacity corrections.
 """
-function estimate_thermo_properties(lammps_dump_path::String, stat_file_path::String, ifc2::AbstractMatrix,
-                                     ω, kB, ħ, temperature; limit::Limit = Quantum(), order::Int = 2, 
-                                     dump_disp_names::AbstractVector{String} = ["ux", "uy", "uz"], stochastic::Bool = false)
+function estimate_thermo_properties(
+    lammps_dump_path::String,
+    lammps_eq_dump_path::String,
+    stat_file_path::String,
+    ifc2::AbstractMatrix,
+    ω, kB, ħ, temperature; 
+    limit::Limit = Quantum(), order::Int = 2, 
+    dump_x_unrolled_names::AbstractVector{String} = ["ux", "uy", "uz"],
+    stochastic::Bool = false
+)
 
     D = length(dump_fields)
 
     ld = thermo_prop_checks(lammps_dump_path, order, dump_fields)
-    bulk_properties = readdlm(stat_file_path, comments = true)
 
-    E_total = bulk_properties[:, 3]
-    V = bulk_properties[:, 4]
-    T_sim = bulk_properties[:, 6]
+    initial_positions, atom_masses, E_total, V =
+        parse_files(lammps_eq_dump_path, stat_file_path, temperature)
 
-    if mean(T_sim) - temperature > 1e-1
-        @warn "Simulation temperature $(mean(T_sim)) different from target temperature $(temperature). Results may be inaccurate."
-    end
-
-    u = load_displacements(ld, dump_disp_names; D = D)
+    u = load_displacements(ld, initial_positions, 
+                            dump_x_unrolled_names = dump_x_unrolled_names, D = D)
     V₂ = V_harmonic.(Ref(ifc2), eachcol(u))
     ΔV = V .- V₂
 
