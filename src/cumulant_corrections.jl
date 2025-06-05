@@ -12,13 +12,11 @@ end
 function Cumulants(V, ΔV, kB, T)
 
     ΔV² = ΔV .^ 2
-      
-    # ∂⟨A⟩/∂T = cov(A, V)/(kB*T*T)
+    
+    # Various derivatives of ⟨O⟩
     ∂A_∂T(A) = cov(A, V) / (kB * T * T)
-    # ∂(⟨A⟩⟨B⟩)/∂T = <A>∂<B>∂T + <B>∂<A>∂T
     ∂AB_∂T(A, B; dA = ∂A_∂T(A), dB =  ∂A_∂T(B)) = (mean(A) * dB) + (mean(B) * dA)
-    # ∂²<A>/∂T²
-    ∂²A_∂T²(A; dA = ∂A_∂T(A)) = (-2*dA/(kB*T*T*T)) + ((1/(kB*T*T)) * (∂A_∂T(A.*V) - ∂AB_∂T(A, V; dA = dA)))
+    ∂²A_∂T²(A; dA = ∂A_∂T(A)) = (-2*dA/T) + ((1/(kB*T*T)) * (∂A_∂T(A.*V) - ∂AB_∂T(A, V; dA = dA)))
 
     κ₁ = mean(ΔV)
     ∂κ₁_∂T = ∂A_∂T(ΔV)
@@ -149,12 +147,12 @@ function estimate_thermo_properties(
     U₀ = U_harmonic(ω, ħ, kB, temperature, limit)
     Cᵥ₀ = Cᵥ_harmonic(ω, kB, temperature, limit)
 
-    cd = Cumulants(V, ΔV, kB, temperature)
-    ΔF₁, ΔS₁, ΔU₁, ΔCᵥ₁ = first_order(cd, temperature) 
+    c = Cumulants(V, ΔV, kB, temperature)
+    ΔF₁, ΔS₁, ΔU₁, ΔCᵥ₁ = first_order(c, temperature) 
     ΔF₂, ΔS₂, ΔU₂, ΔCᵥ₂ = 0.0, 0.0, 0.0, 0.0
 
     if order >= 2
-        ΔF₂, ΔS₂, ΔU₂, ΔCᵥ₂ = second_order(cd, kB, temperature, stochastic)
+        ΔF₂, ΔS₂, ΔU₂, ΔCᵥ₂ = second_order(c, kB, temperature, stochastic)
     end
 
     df = DataFrame(
