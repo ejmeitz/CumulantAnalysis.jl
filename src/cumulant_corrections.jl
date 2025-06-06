@@ -1,17 +1,22 @@
 export estimate_thermo_properties, Cumulants
 
-struct Cumulants{A,B,C,D,E,F}
+struct Cumulants{A,B,C,D,E,F,G,H,I}
     κ₁::A
     ∂κ₁_∂T::B
     ∂²κ₁_∂T²::C
     κ₂::D
     ∂κ₂_∂T::E
     ∂²κ₂_∂T²::F
+    κ₃::G
+    ∂κ₃_∂T::H
+    ∂²κ₃_∂T²::I
 end
+
 
 function Cumulants(V, ΔV, kB, T)
 
     ΔV² = ΔV .^ 2
+    ΔV³ = ΔV² .* ΔV
     
     # Various derivatives of ⟨O⟩
     ∂A_∂T(A) = cov(A, V) / (kB * T * T)
@@ -24,30 +29,51 @@ function Cumulants(V, ΔV, kB, T)
 
     κ₂ = var(ΔV)
     ∂ΔV²_∂T = ∂A_∂T(ΔV²)
+    ∂²ΔV²_∂T² = ∂²A_∂T²(ΔV²; dA = ∂ΔV²_∂T)
     ∂κ₂_∂T = ∂ΔV²_∂T - (2*κ₁*∂κ₁_∂T)
-    ∂²κ₂_∂T² = ∂²A_∂T²(ΔV²; dA = ∂ΔV²_∂T) - 2*((∂κ₁_∂T^2) + (κ₁*∂²κ₁_∂T²))
+    ∂²κ₂_∂T² = ∂²ΔV²_∂T² - 2*((∂κ₁_∂T^2) + (κ₁*∂²κ₁_∂T²))
 
-    return Cumulants(κ₁, ∂κ₁_∂T, ∂²κ₁_∂T², κ₂, ∂κ₂_∂T, ∂²κ₂_∂T²)
+    κ₃ = mean((ΔV .- κ₁).^3)
+    ∂ΔV³_∂T = ∂A_∂T(ΔV³)
+    μ_ΔV² = mean(ΔV²)
+    ∂κ₃_∂T = ∂ΔV³_∂T - 3*κ₁*∂ΔV²_∂T + 3*μ_ΔV²*∂κ₁_∂T
+    ∂²κ₃_∂T² = ∂²A_∂T²(ΔV³, dA = ∂ΔV³_∂T) - 3*(∂κ₁_∂T*∂ΔV²_∂T + κ₁*∂²ΔV²_∂T²) + 3*(∂ΔV²_∂T*∂κ₁_∂T + μ_ΔV²*∂²κ₁_∂T²)
+
+    return Cumulants(κ₁, ∂κ₁_∂T, ∂²κ₁_∂T², κ₂, ∂κ₂_∂T, ∂²κ₂_∂T², κ₃, ∂κ₃_∂T, ∂²κ₃_∂T²)
 end
 
-function first_order(cd::Cumulants, T)
+function first_order(c::Cumulants, T)
    
-    F_correction = cd.κ₁
-    S_correction = -cd.∂κ₁_∂T
-    U_correction = cd.κ₁ - T*cd.∂κ₁_∂T
-    Cv_correction = -T*cd.∂²κ₁_∂T²
+    F_correction = c.κ₁
+    S_correction = -c.∂κ₁_∂T
+    U_correction = c.κ₁ - T*c.∂κ₁_∂T
+    Cv_correction = -T*c.∂²κ₁_∂T²
 
     return F_correction, S_correction, U_correction, Cv_correction
 end
 
-function second_order(cd::Cumulants, kB, T, stochastic::Bool)
+function second_order(c::Cumulants, kB, T, stochastic::Bool)
 
     pref = stochastic ? -1.0 : 1.0
+    β = 1 / (kB*T)
 
-    F_correction = pref * cd.κ₂ / (2*kB*T)
-    S_correction =  pref * (cd.κ₂ - T*cd.∂κ₂_∂T) / (2*kB*T*T)
-    U_correction =  pref * (cd.κ₂ - 0.5*T*cd.∂κ₂_∂T) / (kB*T)
-    Cv_correction =  (pref / kB) * ((cd.∂κ₂_∂T /T) - (cd.κ₂/(T*T)) - (0.5 * cd.∂²κ₂_∂T²))
+    F_correction = pref * c.κ₂ / (2*kB*T)
+    S_correction =  pref * (c.κ₂ - T*c.∂κ₂_∂T) / (2*kB*T*T)
+    U_correction =  pref * (c.κ₂ - 0.5*T*c.∂κ₂_∂T) / (kB*T)
+    Cv_correction =  pref * ((-U_correction*β/T) + β*(0.5*c.∂κ₂_∂T - 0.5*T*c.∂²κ₂_∂T²))
+
+    return F_correction, S_correction, U_correction, Cv_correction
+end
+
+function third_order(c::Cumulants, kB, T)
+
+    β = 1 / (kB*T)
+    β² = β^2; β³ = β^3
+
+    F_correction = c.κ₃ * β² / 6
+    S_correction = (c.κ₃*kB*β³) - (β²*c.∂κ₃_∂T)
+    U_correction = T*((0.5*kB*β³*c.κ₃) - (β²*c.∂κ₃_∂T/6))
+    Cv_correction = (U_correction/T) - (3*β²*c.κ₃/2) + (5*β²*c.∂κ₃_∂T/6) + (T*β²*c.∂²κ₃_∂T²/6)
 
     return F_correction, S_correction, U_correction, Cv_correction
 end
@@ -147,6 +173,7 @@ function estimate_thermo_properties(
     U₀ = U_harmonic(ω, ħ, kB, temperature, limit)
     Cᵥ₀ = Cᵥ_harmonic(ω, kB, temperature, limit)
 
+    #*TODO ADD BOOTSRAP ERROR ESTIMATES
     c = Cumulants(V, ΔV, kB, temperature)
     ΔF₁, ΔS₁, ΔU₁, ΔCᵥ₁ = first_order(c, temperature) 
     ΔF₂, ΔS₂, ΔU₂, ΔCᵥ₂ = 0.0, 0.0, 0.0, 0.0
