@@ -71,7 +71,7 @@ function third_order(c::Cumulants, kB, T)
     β² = β^2; β³ = β^3
 
     F_correction = c.κ₃ * β² / 6
-    S_correction = (c.κ₃*kB*β³) - (β²*c.∂κ₃_∂T)
+    S_correction = (c.κ₃*kB*β³/3) - (β²*c.∂κ₃_∂T/6)
     U_correction = T*((0.5*kB*β³*c.κ₃) - (β²*c.∂κ₃_∂T/6))
     Cv_correction = (U_correction/T) - (3*β²*c.κ₃/2) + (5*β²*c.∂κ₃_∂T/6) + (T*β²*c.∂²κ₃_∂T²/6)
 
@@ -86,7 +86,7 @@ const header_dict = Dict(
 )
 
 function thermo_prop_checks(lammps_dump_path, order, dump_fields)
-    if order ∉ [1,2]
+    if order ∉ [1,2,3]
         @error "Can only calculate first and second order cumulant corrections"
     end
 
@@ -150,7 +150,7 @@ function estimate_thermo_properties(
     stat_file_path::String,
     ifc2::AbstractMatrix,
     ω, kB, ħ, temperature; 
-    limit::Limit = Classical(), order::Int = 2, 
+    limit::Limit = Classical(), order::Int = 3, 
     dump_x_unrolled_names::AbstractVector{String} = ["xu", "yu", "zu"],
     stochastic::Bool = false
 )
@@ -177,16 +177,21 @@ function estimate_thermo_properties(
     c = Cumulants(V, ΔV, kB, temperature)
     ΔF₁, ΔS₁, ΔU₁, ΔCᵥ₁ = first_order(c, temperature) 
     ΔF₂, ΔS₂, ΔU₂, ΔCᵥ₂ = 0.0, 0.0, 0.0, 0.0
+    ΔF₃, ΔS₃, ΔU₃, ΔCᵥ₃ = 0.0, 0.0, 0.0, 0.0
 
     if order >= 2
         ΔF₂, ΔS₂, ΔU₂, ΔCᵥ₂ = second_order(c, kB, temperature, stochastic)
     end
 
+    if order >= 3
+        ΔF₃, ΔS₃, ΔU₃, ΔCᵥ₃ = third_order(c, kB, temperature)
+    end
+
     df = DataFrame(
-        F = [F₀, ΔF₁, ΔF₂],
-        S = [S₀, ΔS₁, ΔS₂],
-        U = [U₀, ΔU₁, ΔU₂],
-        Cv = [Cᵥ₀, ΔCᵥ₁, ΔCᵥ₂]
+        F = [F₀, ΔF₁, ΔF₂, ΔF₃],
+        S = [S₀, ΔS₁, ΔS₂, ΔS₃],
+        U = [U₀, ΔU₁, ΔU₂, ΔU₃],
+        Cv = [Cᵥ₀, ΔCᵥ₁, ΔCᵥ₂, ΔCᵥ₃]
     )
 
     # Estimate true internal energy and heat capacity
