@@ -144,11 +144,14 @@ function load_displacements(ld::LammpsDump, initial_positions::AbstractMatrix;
     u_tmp = zeros(Float64, n_atoms(ld), D)
 
     open(ld.path, "r") do file
+        p = Progress(ld.n_samples; desc = "Loading Displacements")
         for i in 1:ld.n_samples
             parse_next_timestep!(current_positions, ld, file, unrolled_cols)
             u_tmp .= current_positions .- initial_positions
             u[:,i] .= reduce(vcat, eachrow(u_tmp))
+            next!(p)
         end
+        finish!(p)
     end
 
     return u

@@ -12,6 +12,18 @@ struct Cumulants{A,B,C,D,E,F,G,H,I}
     ∂²κ₃_∂T²::I
 end
 
+struct CumulantData{O,A,B,C}
+    κ::Measurement{A}
+    ∂κ_∂T::Measurement{B}
+    ∂²κ_∂T²::Measurement{C}
+end
+
+order(::CumulantData{O}) where O = O
+
+
+function skew(X)
+    return mean((data .- mean(data)).^3)
+end 
 
 function Cumulants(V, ΔV, kB, T)
 
@@ -20,60 +32,70 @@ function Cumulants(V, ΔV, kB, T)
     
     # Various derivatives of ⟨O⟩
     ∂A_∂T(A) = cov(A, V) / (kB * T * T)
-    ∂AB_∂T(A, B; dA = ∂A_∂T(A), dB =  ∂A_∂T(B)) = (mean(A) * dB) + (mean(B) * dA)
-    ∂²A_∂T²(A; dA = ∂A_∂T(A)) = (-2*dA/T) + ((1/(kB*T*T)) * (∂A_∂T(A.*V) - ∂AB_∂T(A, V; dA = dA)))
+    ∂AB_∂T(A, B, dA = ∂A_∂T(A), dB =  ∂A_∂T(B)) = (mean(A) * dB) + (mean(B) * dA)
+    ∂²A_∂T²(A, dA = ∂A_∂T(A)) = (-2*dA/T) + ((1/(kB*T*T)) * (∂A_∂T(A.*V) - ∂AB_∂T(A, V, dA)))
 
-    κ₁ = mean(ΔV)
-    ∂κ₁_∂T = ∂A_∂T(ΔV)
-    ∂²κ₁_∂T² = ∂²A_∂T²(ΔV; dA = ∂κ₁_∂T)
+    # Cannot re-use calculations (easily) due to block averaging
+    @sync begin
+        Threads.@spawn κ₁ = @block_average mean(ΔV)
+        Threads.@spawn ∂κ₁_∂T = @block_average ∂A_∂T(ΔV) #* WILL NOT WORK SINCE V IS CAPTURED TOO
+        Threads.@spawn ∂²κ₁_∂T² = @block_average ∂²A_∂T²(ΔV) #* WILL NOT WORK SINCE V IS CAPTURED TOO
 
-    κ₂ = var(ΔV)
-    ∂ΔV²_∂T = ∂A_∂T(ΔV²)
-    ∂²ΔV²_∂T² = ∂²A_∂T²(ΔV²; dA = ∂ΔV²_∂T)
+        Threads.@spawn κ₂ = @block_average var(ΔV)
+        Threads.@spawn ∂ΔV²_∂T = @block_average ∂A_∂T(ΔV²) #* WILL NOT WORK SINCE V IS CAPTURED TOO
+        Threads.@spawn ∂²ΔV²_∂T² = @block_average ∂²A_∂T²(ΔV²) #* WILL NOT WORK SINCE V IS CAPTURED TOO
+
+        Threads.@spawn κ₃ = @block_average skew(ΔV)
+        Threads.@spawn ∂ΔV³_∂T = @block_average ∂A_∂T(ΔV³) #* WILL NOT WORK SINCE V IS CAPTURED TOO
+        Threads.@spawn ∂²ΔV³_∂T² = @block_average ∂²A_∂T²(ΔV³) #* WILL NOT WORK SINCE V IS CAPTURED TOO
+        Threads.@spawn μ_ΔV² = @block_average mean(ΔV²)
+    end
+
     ∂κ₂_∂T = ∂ΔV²_∂T - (2*κ₁*∂κ₁_∂T)
     ∂²κ₂_∂T² = ∂²ΔV²_∂T² - 2*((∂κ₁_∂T^2) + (κ₁*∂²κ₁_∂T²))
 
-    κ₃ = mean((ΔV .- κ₁).^3)
-    ∂ΔV³_∂T = ∂A_∂T(ΔV³)
-    μ_ΔV² = mean(ΔV²)
     ∂κ₃_∂T = ∂ΔV³_∂T - 3*κ₁*∂ΔV²_∂T + 3*μ_ΔV²*∂κ₁_∂T
-    ∂²κ₃_∂T² = ∂²A_∂T²(ΔV³, dA = ∂ΔV³_∂T) - 3*(∂κ₁_∂T*∂ΔV²_∂T + κ₁*∂²ΔV²_∂T²) + 3*(∂ΔV²_∂T*∂κ₁_∂T + μ_ΔV²*∂²κ₁_∂T²)
+    ∂²κ₃_∂T² = ∂²ΔV³_∂T² - 3*(∂κ₁_∂T*∂ΔV²_∂T + κ₁*∂²ΔV²_∂T²) + 3*(∂ΔV²_∂T*∂κ₁_∂T + μ_ΔV²*∂²κ₁_∂T²)
 
-    return Cumulants(κ₁, ∂κ₁_∂T, ∂²κ₁_∂T², κ₂, ∂κ₂_∂T, ∂²κ₂_∂T², κ₃, ∂κ₃_∂T, ∂²κ₃_∂T²)
+    first_order_data = CumulantData{1}(κ₁, ∂κ₁_∂T, ∂²κ₁_∂T²)
+    second_order_data = CumulantData{2}(κ₂, ∂κ₂_∂T, ∂²κ₂_∂T²)
+    third_order_data = CumulantData{3}(κ₃, ∂κ₃_∂T, ∂²κ₃_∂T²)
+
+    return first_order_data, second_order_data, third_order_data
 end
 
-function first_order(c::Cumulants, T)
+function first_order_corrections(c1::CumulantData{1}, T)
    
-    F_correction = c.κ₁
-    S_correction = -c.∂κ₁_∂T
-    U_correction = c.κ₁ - T*c.∂κ₁_∂T
-    Cv_correction = -T*c.∂²κ₁_∂T²
+    F_correction = c1.κ
+    S_correction = -c1.∂κ_∂T
+    U_correction = c1.κ - T*c.∂κ_∂T
+    Cv_correction = -T*c1.∂²κ_∂T²
 
     return F_correction, S_correction, U_correction, Cv_correction
 end
 
-function second_order(c::Cumulants, kB, T, stochastic::Bool)
+function second_order_corrections(c2::CumulantData{2}, kB, T, stochastic::Bool)
 
     pref = stochastic ? -1.0 : 1.0
     β = 1 / (kB*T)
 
-    F_correction = pref * c.κ₂ / (2*kB*T)
-    S_correction =  pref * (c.κ₂ - T*c.∂κ₂_∂T) / (2*kB*T*T)
-    U_correction =  pref * (c.κ₂ - 0.5*T*c.∂κ₂_∂T) / (kB*T)
-    Cv_correction =  pref * ((-U_correction*β/T) + β*(0.5*c.∂κ₂_∂T - 0.5*T*c.∂²κ₂_∂T²))
+    F_correction = pref * c2.κ / (2*kB*T)
+    S_correction =  pref * (c2.κ - T*c2.∂κ_∂T) / (2*kB*T*T)
+    U_correction =  pref * (c2.κ - 0.5*T*c2.∂κ_∂T) / (kB*T)
+    Cv_correction =  pref * ((-U_correction*β/T) + β*(0.5*c2.∂κ_∂T - 0.5*T*c2.∂²κ_∂T²))
 
     return F_correction, S_correction, U_correction, Cv_correction
 end
 
-function third_order(c::Cumulants, kB, T)
+function third_order_corrections(c3::CumulantData{3}, kB, T)
 
     β = 1 / (kB*T)
     β² = β^2; β³ = β^3
 
-    F_correction = c.κ₃ * β² / 6
-    S_correction = (c.κ₃*kB*β³/3) - (β²*c.∂κ₃_∂T/6)
-    U_correction = T*((0.5*kB*β³*c.κ₃) - (β²*c.∂κ₃_∂T/6))
-    Cv_correction = (U_correction/T) - (3*β²*c.κ₃/2) + (5*β²*c.∂κ₃_∂T/6) + (T*β²*c.∂²κ₃_∂T²/6)
+    F_correction = c3.κ * β² / 6
+    S_correction = (c3.κ*kB*β³/3) - (β²*c3.∂κ_∂T/6)
+    U_correction = T*((0.5*kB*β³*c3.κ) - (β²*c3.∂κ_∂T/6))
+    Cv_correction = (U_correction/T) - (3*β²*c3.κ/2) + (5*β²*c3.∂κ_∂T/6) + (T*β²*c3.∂²κ_∂T²/6)
 
     return F_correction, S_correction, U_correction, Cv_correction
 end
@@ -152,7 +174,7 @@ function estimate_thermo_properties(
     ω, kB, ħ, temperature; 
     limit::Limit = Classical(), order::Int = 3, 
     dump_x_unrolled_names::AbstractVector{String} = ["xu", "yu", "zu"],
-    stochastic::Bool = false
+    stochastic::Bool = false, n_boot = 20
 )
 
     D = length(dump_x_unrolled_names)
@@ -162,7 +184,6 @@ function estimate_thermo_properties(
     initial_positions, atom_masses, E_total, V =
         parse_files(lammps_eq_dump_path, stat_file_path, temperature)
 
-    @info "Parsing Displacements"
     u = load_displacements(ld, initial_positions, 
                             dump_x_unrolled_names = dump_x_unrolled_names, D = D)
     V₂ = V_harmonic.(Ref(ifc2), eachcol(u))
