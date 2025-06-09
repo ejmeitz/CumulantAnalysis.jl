@@ -19,10 +19,12 @@ order(::CumulantData{O}) where O = O
 
 function CumulantData(V, ΔV, kB, T, ::Val{1})
 
+    ba_ΔV_V = BlockAveragable(ΔV, V)
+
     @sync begin
         Threads.@spawn κ₁ = @ba mean(ΔV)
-        Threads.@spawn ∂κ₁_∂T = @ba ∂A_∂T(ΔV, V, kB, T) #* WILL NOT WORK SINCE V IS CAPTURED TOO
-        Threads.@spawn ∂²κ₁_∂T² = @ba ∂²A_∂T²(ΔV, V, kB, T) #* WILL NOT WORK SINCE V IS CAPTURED TOO
+        Threads.@spawn ∂κ₁_∂T = @ba nargs=2 ∂A_∂T(ΔV, V, kB, T)
+        Threads.@spawn ∂²κ₁_∂T² = @ba nargs=2 ∂²A_∂T²(ΔV, V, kB, T)
     end
 
     return CumulantData{1}(κ₁, ∂κ₁_∂T, ∂²κ₁_∂T²)
@@ -34,8 +36,8 @@ function CumulantData(V, ΔV, kB, T, ::Val{2})
 
     @sync begin
         Threads.@spawn κ₂ = @ba var(ΔV)
-        Threads.@spawn ∂ΔV²_∂T = @ba ∂A_∂T(ΔV², V, kB, T) #* WILL NOT WORK SINCE V IS CAPTURED TOO
-        Threads.@spawn ∂²ΔV²_∂T² = @ba ∂²A_∂T²(ΔV², V, kB, T) #* WILL NOT WORK SINCE V IS CAPTURED TOO
+        Threads.@spawn ∂ΔV²_∂T = @ba nargs=2 ∂A_∂T(ΔV², V, kB, T)
+        Threads.@spawn ∂²ΔV²_∂T² = @ba nargs=2 ∂²A_∂T²(ΔV², V, kB, T)
     end
 
     ∂κ₂_∂T = ∂ΔV²_∂T - (2*κ₁*∂κ₁_∂T)
@@ -50,9 +52,9 @@ function CumulantData(V, ΔV, kB, T, ::Val{3})
 
     @sync begin
         Threads.@spawn κ₃ = @ba skew(ΔV)
-        Threads.@spawn ∂ΔV³_∂T = @ba ∂A_∂T(ΔV³, V, kB, T) #* WILL NOT WORK SINCE V IS CAPTURED TOO
-        Threads.@spawn ∂²ΔV³_∂T² = @ba ∂²A_∂T²(ΔV³, V, kB, T) #* WILL NOT WORK SINCE V IS CAPTURED TOO
-        Threads.@spawn μ_ΔV² = @ba mean(ΔV², V, kB, T)
+        Threads.@spawn ∂ΔV³_∂T = @ba nargs=2 ∂A_∂T(ΔV³, V, kB, T)
+        Threads.@spawn ∂²ΔV³_∂T² = @ba nargs=2 ∂²A_∂T²(ΔV³, V, kB, T)
+        Threads.@spawn μ_ΔV² = @ba nargs=2 mean(ΔV², V, kB, T)
     end
 
     ∂κ₃_∂T = ∂ΔV³_∂T - 3*κ₁*∂ΔV²_∂T + 3*μ_ΔV²*∂κ₁_∂T
