@@ -1,16 +1,13 @@
-export estimate_thermo_properties, Cumulants
+export estimate_thermo_properties, CumulantData
 
-struct Cumulants{A,B,C,D,E,F,G,H,I}
-    κ₁::A
-    ∂κ₁_∂T::B
-    ∂²κ₁_∂T²::C
-    κ₂::D
-    ∂κ₂_∂T::E
-    ∂²κ₂_∂T²::F
-    κ₃::G
-    ∂κ₃_∂T::H
-    ∂²κ₃_∂T²::I
-end
+# Various derivatives of ⟨O⟩
+∂A_∂T(A, V, kB, T) = cov(A, V) / (kB * T * T)
+∂AB_∂T(A, B, V, kB, T, dA = ∂A_∂T(A, V, kB, T), dB =  ∂A_∂T(B, V, kB, T)) = (mean(A) * dB) + (mean(B) * dA)
+∂²A_∂T²(A, V, kB, T, dA = ∂A_∂T(A, V, kB, T)) = (-2*dA/T) + ((1/(kB*T*T)) * (∂A_∂T(A.*V, V, kB, T) - ∂AB_∂T(A, V, V, kB, T, dA)))
+
+function skew(X)
+    return mean((X .- mean(X)).^3)
+end 
 
 struct CumulantData{O,A,B,C}
     κ::Measurement{A}
@@ -20,48 +17,48 @@ end
 
 order(::CumulantData{O}) where O = O
 
+function CumulantData(V, ΔV, kB, T, ::Val{1})
 
-function skew(X)
-    return mean((data .- mean(data)).^3)
-end 
+    @sync begin
+        Threads.@spawn κ₁ = @ba mean(ΔV)
+        Threads.@spawn ∂κ₁_∂T = @ba ∂A_∂T(ΔV, V, kB, T) #* WILL NOT WORK SINCE V IS CAPTURED TOO
+        Threads.@spawn ∂²κ₁_∂T² = @ba ∂²A_∂T²(ΔV, V, kB, T) #* WILL NOT WORK SINCE V IS CAPTURED TOO
+    end
 
-function Cumulants(V, ΔV, kB, T)
+    return CumulantData{1}(κ₁, ∂κ₁_∂T, ∂²κ₁_∂T²)
+end
+
+function CumulantData(V, ΔV, kB, T, ::Val{2})
 
     ΔV² = ΔV .^ 2
-    ΔV³ = ΔV² .* ΔV
-    
-    # Various derivatives of ⟨O⟩
-    ∂A_∂T(A) = cov(A, V) / (kB * T * T)
-    ∂AB_∂T(A, B, dA = ∂A_∂T(A), dB =  ∂A_∂T(B)) = (mean(A) * dB) + (mean(B) * dA)
-    ∂²A_∂T²(A, dA = ∂A_∂T(A)) = (-2*dA/T) + ((1/(kB*T*T)) * (∂A_∂T(A.*V) - ∂AB_∂T(A, V, dA)))
 
-    # Cannot re-use calculations (easily) due to block averaging
     @sync begin
-        Threads.@spawn κ₁ = @block_average mean(ΔV)
-        Threads.@spawn ∂κ₁_∂T = @block_average ∂A_∂T(ΔV) #* WILL NOT WORK SINCE V IS CAPTURED TOO
-        Threads.@spawn ∂²κ₁_∂T² = @block_average ∂²A_∂T²(ΔV) #* WILL NOT WORK SINCE V IS CAPTURED TOO
-
-        Threads.@spawn κ₂ = @block_average var(ΔV)
-        Threads.@spawn ∂ΔV²_∂T = @block_average ∂A_∂T(ΔV²) #* WILL NOT WORK SINCE V IS CAPTURED TOO
-        Threads.@spawn ∂²ΔV²_∂T² = @block_average ∂²A_∂T²(ΔV²) #* WILL NOT WORK SINCE V IS CAPTURED TOO
-
-        Threads.@spawn κ₃ = @block_average skew(ΔV)
-        Threads.@spawn ∂ΔV³_∂T = @block_average ∂A_∂T(ΔV³) #* WILL NOT WORK SINCE V IS CAPTURED TOO
-        Threads.@spawn ∂²ΔV³_∂T² = @block_average ∂²A_∂T²(ΔV³) #* WILL NOT WORK SINCE V IS CAPTURED TOO
-        Threads.@spawn μ_ΔV² = @block_average mean(ΔV²)
+        Threads.@spawn κ₂ = @ba var(ΔV)
+        Threads.@spawn ∂ΔV²_∂T = @ba ∂A_∂T(ΔV², V, kB, T) #* WILL NOT WORK SINCE V IS CAPTURED TOO
+        Threads.@spawn ∂²ΔV²_∂T² = @ba ∂²A_∂T²(ΔV², V, kB, T) #* WILL NOT WORK SINCE V IS CAPTURED TOO
     end
 
     ∂κ₂_∂T = ∂ΔV²_∂T - (2*κ₁*∂κ₁_∂T)
     ∂²κ₂_∂T² = ∂²ΔV²_∂T² - 2*((∂κ₁_∂T^2) + (κ₁*∂²κ₁_∂T²))
 
+    return CumulantData{2}(κ₂, ∂κ₂_∂T, ∂²κ₂_∂T²)
+end
+
+function CumulantData(V, ΔV, kB, T, ::Val{3})
+
+    ΔV³ = ΔV² .* ΔV
+
+    @sync begin
+        Threads.@spawn κ₃ = @ba skew(ΔV)
+        Threads.@spawn ∂ΔV³_∂T = @ba ∂A_∂T(ΔV³, V, kB, T) #* WILL NOT WORK SINCE V IS CAPTURED TOO
+        Threads.@spawn ∂²ΔV³_∂T² = @ba ∂²A_∂T²(ΔV³, V, kB, T) #* WILL NOT WORK SINCE V IS CAPTURED TOO
+        Threads.@spawn μ_ΔV² = @ba mean(ΔV², V, kB, T)
+    end
+
     ∂κ₃_∂T = ∂ΔV³_∂T - 3*κ₁*∂ΔV²_∂T + 3*μ_ΔV²*∂κ₁_∂T
     ∂²κ₃_∂T² = ∂²ΔV³_∂T² - 3*(∂κ₁_∂T*∂ΔV²_∂T + κ₁*∂²ΔV²_∂T²) + 3*(∂ΔV²_∂T*∂κ₁_∂T + μ_ΔV²*∂²κ₁_∂T²)
 
-    first_order_data = CumulantData{1}(κ₁, ∂κ₁_∂T, ∂²κ₁_∂T²)
-    second_order_data = CumulantData{2}(κ₂, ∂κ₂_∂T, ∂²κ₂_∂T²)
-    third_order_data = CumulantData{3}(κ₃, ∂κ₃_∂T, ∂²κ₃_∂T²)
-
-    return first_order_data, second_order_data, third_order_data
+    return CumulantData{3}(κ₃, ∂κ₃_∂T, ∂²κ₃_∂T²)
 end
 
 function first_order_corrections(c1::CumulantData{1}, T)
@@ -174,7 +171,7 @@ function estimate_thermo_properties(
     ω, kB, ħ, temperature; 
     limit::Limit = Classical(), order::Int = 3, 
     dump_x_unrolled_names::AbstractVector{String} = ["xu", "yu", "zu"],
-    stochastic::Bool = false, n_boot = 20
+    stochastic::Bool = false
 )
 
     D = length(dump_x_unrolled_names)
@@ -194,18 +191,19 @@ function estimate_thermo_properties(
     U₀ = U_harmonic(ω, ħ, kB, temperature, limit)
     Cᵥ₀ = Cᵥ_harmonic(ω, kB, temperature, limit)
 
-    #*TODO ADD BOOTSRAP ERROR ESTIMATES
-    c = Cumulants(V, ΔV, kB, temperature)
-    ΔF₁, ΔS₁, ΔU₁, ΔCᵥ₁ = first_order(c, temperature) 
-    ΔF₂, ΔS₂, ΔU₂, ΔCᵥ₂ = 0.0, 0.0, 0.0, 0.0
-    ΔF₃, ΔS₃, ΔU₃, ΔCᵥ₃ = 0.0, 0.0, 0.0, 0.0
+    c1 = Cumulants(V, ΔV, kB, temperature, Val{1}())
+    ΔF₁, ΔS₁, ΔU₁, ΔCᵥ₁ = first_order(c1, temperature) 
 
+    ΔF₂, ΔS₂, ΔU₂, ΔCᵥ₂ = 0.0, 0.0, 0.0, 0.0
     if order >= 2
-        ΔF₂, ΔS₂, ΔU₂, ΔCᵥ₂ = second_order(c, kB, temperature, stochastic)
+        c2 = Cumulants(V, ΔV, kB, temperature, Val{2}())
+        ΔF₂, ΔS₂, ΔU₂, ΔCᵥ₂ = second_order(c2, kB, temperature, stochastic)
     end
 
+    ΔF₃, ΔS₃, ΔU₃, ΔCᵥ₃ = 0.0, 0.0, 0.0, 0.0
     if order >= 3
-        ΔF₃, ΔS₃, ΔU₃, ΔCᵥ₃ = third_order(c, kB, temperature)
+        c3 = Cumulants(V, ΔV, kB, temperature, Val{3}())
+        ΔF₃, ΔS₃, ΔU₃, ΔCᵥ₃ = third_order(c3, kB, temperature)
     end
 
     df = DataFrame(

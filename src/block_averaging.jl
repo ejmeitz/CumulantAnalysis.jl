@@ -87,19 +87,19 @@ specified by name will not work!
 
 For example,
 ````
-@macroexpand @block_average y = mean(rand(3,3))
+@macroexpand @ba y = mean(rand(3,3))
 quote
     __ba_fn = (ba_data->mean(ba_data))
     y = do_block_averaging(rand(3, 3), __ba_fn)
 end
 
-@macroexpand y = @block_average mean(rand(3,3))
+@macroexpand y = @ba mean(rand(3,3))
 :(y = begin
     __ba_fn = (ba_data->mean(ba_data))
     do_block_averaging(rand(3, 3), __ba_fn)
 end)
 
-@macroexpand @block_average y = test(z, 2)
+@macroexpand @ba y = test(z, 2)
 quote
     __ba_fn = (ba_data->test(ba_data, 2))
     y = do_block_averaging(z, __ba_fn)
@@ -108,20 +108,20 @@ end
 
 ```
 """
-macro block_average(ex)
+macro ba(ex)
 
     result_variable = nothing
 
     # Figure out if macro put before of after the = sign
     if ex.head == :(=)
-        # @block_average y = f(data; kwargs...)
+        # @ba y = f(data; kwargs...)
         result_variable = ex.args[1]
         fn_sig = ex.args[2]
         fn_name = fn_sig.args[1]
         data = fn_sig.args[2]
         kwargs = fn_sig.args[3:end]
     elseif ex.head == (:call)
-        # @block_average f(data; kwargs...)
+        # @ba f(data; kwargs...)
         fn_name = ex.args[1]
         data = ex.args[2]
         kwargs = ex.args[3:end]
