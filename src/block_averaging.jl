@@ -83,17 +83,17 @@ function select_plateau(bad::BlockAveragedData; tol::Real=0.05,  lookback::Int=3
 end
 
 
-function block_average_plot(bad::BlockAveragedData)
+function block_average_plot(bad::BlockAveragedData, outpath::String)
     #TODO
     #* x-axis log2
     # use plotlylight?
 end
 
 
-function do_block_averaging(X::BlockAveragable, statistic::Function)
+function do_block_averaging(X::BlockAveragable, statistic::Function, outpath::Union{String, Nothing})
     bad = block_average(X, statistic)
     converged_idx = select_plateau(bad)
-    #* MAKE block average plot??
+    !isnothing(outpath) && block_average_plot(bad, outpath)
     return measurement(bad.statistic_estimate, bad.SE_estimate[converged_idx])
 end
 
@@ -141,13 +141,28 @@ quote
 end
 ```
 """
-macro ba(nargs, ex)
+macro ba(exs...)
 
-    if nargs isa Expr && nargs.head === :(=)
-        N = nargs.args[2]
-        @assert N isa Integer
-    else
-        Base.throw(ArgumentError("If passing param to @ba must be nargs=<int>"))
+    arg_expressions = exs[1:end-1]
+    path = nothing
+    N = 1
+
+    # Parse arguments if they are passed
+    for ae in arg_expressions
+        if ae isa Expr && ae.head === :(=)
+            arg_name = ae.args[1]
+            if arg_name === :path
+                path = ae.args[2]
+                @assert path isa String
+            elseif arg_name === :nargs
+                N = arg.args[2]
+                @assert N isa Integer
+            else
+                Base.throw(ArgumentError("Unxpected arg in @ba. Expects nargs or path, got $(arg_name)"))
+            end
+        else
+            Base.throw(ArgumentError("If passing param to @ba must be nargs=<int> and/or path=<str>"))
+        end
     end
 
     result_variable = nothing
@@ -171,6 +186,7 @@ macro ba(nargs, ex)
         Base.throw("Block average macro can only be applied to function calls or assignments")
     end
 
+    # Generate code
     tmp_fn = gensym()
     tmp_ba = gensym()
 
@@ -178,24 +194,16 @@ macro ba(nargs, ex)
         quote
             local $tmp_fn = (d) -> $(fn_name)(d, $(kwargs...))
             local $tmp_ba = $CumulantAnalysis.BlockAveragable($(data...))
-            $CumulantAnalysis.do_block_averaging($tmp_ba, $tmp_fn)
+            $CumulantAnalysis.do_block_averaging($tmp_ba, $tmp_fn, $path)
         end
     else
         quote
             local $tmp_fn = (d) -> $(fn_name)(d, $(kwargs...))
             local $tmp_ba = $CumulantAnalysis.BlockAveragable($(data...))
-            $result_variable = $CumulantAnalysis.do_block_averaging($tmp_ba, $tmp_fn)
+            $result_variable = $CumulantAnalysis.do_block_averaging($tmp_ba, $tmp_fn, $path)
         end
     end
 
     return esc(body)
 
-end
-
-macro ba(ex)
-    return esc(
-        quote
-            $CumulantAnalysis.@ba num=1 $ex
-        end
-    )
 end

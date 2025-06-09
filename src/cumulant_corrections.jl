@@ -17,27 +17,29 @@ end
 
 order(::CumulantData{O}) where O = O
 
-function CumulantData(V, ΔV, kB, T, ::Val{1})
+function CumulantData(V, ΔV, kB, T, outdir::String, ::Val{1})
 
-    ba_ΔV_V = BlockAveragable(ΔV, V)
+    p = (x) -> joinpath(outdir, "$(x).png")
 
     @sync begin
-        Threads.@spawn κ₁ = @ba mean(ΔV)
-        Threads.@spawn ∂κ₁_∂T = @ba nargs=2 ∂A_∂T(ΔV, V, kB, T)
-        Threads.@spawn ∂²κ₁_∂T² = @ba nargs=2 ∂²A_∂T²(ΔV, V, kB, T)
+        Threads.@spawn κ₁ = @ba path=p("k1") mean(ΔV)
+        Threads.@spawn ∂κ₁_∂T = @ba nargs=2 path=p("dk1_dT") ∂A_∂T(ΔV, V, kB, T)
+        Threads.@spawn ∂²κ₁_∂T² = @ba nargs=2 path=p("d2k1_dT2") ∂²A_∂T²(ΔV, V, kB, T)
     end
 
     return CumulantData{1}(κ₁, ∂κ₁_∂T, ∂²κ₁_∂T²)
 end
 
-function CumulantData(V, ΔV, kB, T, ::Val{2})
+function CumulantData(V, ΔV, kB, T, outdir::String, ::Val{2})
+
+    p = (x) -> joinpath(outdir, "$(x).png")
 
     ΔV² = ΔV .^ 2
 
     @sync begin
-        Threads.@spawn κ₂ = @ba var(ΔV)
-        Threads.@spawn ∂ΔV²_∂T = @ba nargs=2 ∂A_∂T(ΔV², V, kB, T)
-        Threads.@spawn ∂²ΔV²_∂T² = @ba nargs=2 ∂²A_∂T²(ΔV², V, kB, T)
+        Threads.@spawn κ₂ = @ba path=p("k2") var(ΔV)
+        Threads.@spawn ∂ΔV²_∂T = @ba nargs=2 path=p("dDelV2_dT") ∂A_∂T(ΔV², V, kB, T)
+        Threads.@spawn ∂²ΔV²_∂T² = @ba nargs=2 path=p("d2DelV2_dT2") ∂²A_∂T²(ΔV², V, kB, T)
     end
 
     ∂κ₂_∂T = ∂ΔV²_∂T - (2*κ₁*∂κ₁_∂T)
@@ -46,15 +48,17 @@ function CumulantData(V, ΔV, kB, T, ::Val{2})
     return CumulantData{2}(κ₂, ∂κ₂_∂T, ∂²κ₂_∂T²)
 end
 
-function CumulantData(V, ΔV, kB, T, ::Val{3})
+function CumulantData(V, ΔV, kB, T, outdir::String, ::Val{3})
+
+    p = (x) -> joinpath(outdir, "$(x).png")
 
     ΔV³ = ΔV² .* ΔV
 
     @sync begin
         Threads.@spawn κ₃ = @ba skew(ΔV)
-        Threads.@spawn ∂ΔV³_∂T = @ba nargs=2 ∂A_∂T(ΔV³, V, kB, T)
-        Threads.@spawn ∂²ΔV³_∂T² = @ba nargs=2 ∂²A_∂T²(ΔV³, V, kB, T)
-        Threads.@spawn μ_ΔV² = @ba nargs=2 mean(ΔV², V, kB, T)
+        Threads.@spawn ∂ΔV³_∂T = @ba nargs=2 path=p("dDelV3_dT") ∂A_∂T(ΔV³, V, kB, T)
+        Threads.@spawn ∂²ΔV³_∂T² = @ba nargs=2 path=p("d2DelV3_dT2") ∂²A_∂T²(ΔV³, V, kB, T)
+        Threads.@spawn μ_ΔV² = @ba mean(ΔV²)
     end
 
     ∂κ₃_∂T = ∂ΔV³_∂T - 3*κ₁*∂ΔV²_∂T + 3*μ_ΔV²*∂κ₁_∂T
@@ -170,6 +174,7 @@ function estimate_thermo_properties(
     lammps_eq_dump_path::String,
     stat_file_path::String,
     ifc2::AbstractMatrix,
+    outdir::String,
     ω, kB, ħ, temperature; 
     limit::Limit = Classical(), order::Int = 3, 
     dump_x_unrolled_names::AbstractVector{String} = ["xu", "yu", "zu"],
@@ -193,18 +198,18 @@ function estimate_thermo_properties(
     U₀ = U_harmonic(ω, ħ, kB, temperature, limit)
     Cᵥ₀ = Cᵥ_harmonic(ω, kB, temperature, limit)
 
-    c1 = Cumulants(V, ΔV, kB, temperature, Val{1}())
+    c1 = Cumulants(V, ΔV, kB, temperature, outdir, Val{1}())
     ΔF₁, ΔS₁, ΔU₁, ΔCᵥ₁ = first_order(c1, temperature) 
 
     ΔF₂, ΔS₂, ΔU₂, ΔCᵥ₂ = 0.0, 0.0, 0.0, 0.0
     if order >= 2
-        c2 = Cumulants(V, ΔV, kB, temperature, Val{2}())
+        c2 = Cumulants(V, ΔV, kB, temperature, outdir, Val{2}())
         ΔF₂, ΔS₂, ΔU₂, ΔCᵥ₂ = second_order(c2, kB, temperature, stochastic)
     end
 
     ΔF₃, ΔS₃, ΔU₃, ΔCᵥ₃ = 0.0, 0.0, 0.0, 0.0
     if order >= 3
-        c3 = Cumulants(V, ΔV, kB, temperature, Val{3}())
+        c3 = Cumulants(V, ΔV, kB, temperature, outdir, Val{3}())
         ΔF₃, ΔS₃, ΔU₃, ΔCᵥ₃ = third_order(c3, kB, temperature)
     end
 
