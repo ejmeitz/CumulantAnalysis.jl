@@ -1,17 +1,17 @@
 struct BlockAveragable{N,T}
-    data::AbstractVector{T}
+    data::T
 end
 
 function BlockAveragable(args...)
     N = length(args)
     @assert N > 0 "Tried to create empty BlockAveragable??"
     @assert allequal(length(a) for a in args) "BlockAveragable data must have same length"
-    return BlockAveragable{N, typeof(args[1])}([args...])
+    return BlockAveragable{N, typeof(args)}(args)
 end
 
 n_datasets(::BlockAveragable{N}) where N = N
 Base.length(ba::BlockAveragable) = length(first(ba.data))
-Base.getindex(ba::BlockAveragable, slice::UnitRange{<:Integer}) = @views BlockAveragable([d[slice] for d in ba.data]...)
+Base.getindex(ba::BlockAveragable, slice::UnitRange{<:Integer}) = @views (d[slice] for d in ba.data)
 Base.getindex(ba::BlockAveragable, i::Integer) = ba.data[i]
 
 struct BlockAveragedData{R,S,T}
@@ -29,10 +29,10 @@ function single_block_average(ba::BlockAveragable, n_blocks::Integer, statistic:
     N_max = block_size * n_blocks # ignore data at end to keep block size consistent
     block_ranges = [s : min(s + block_size - 1, N) for s in 1:block_size:N_max]
 
-    # getindex for BlockAveragable returns a new
-    # BlockAveragable which stores the slices as views
-    ba_slices = getindex.(Ref(ba), block_ranges)
-    block_values = [statistic(ba_slice.data...) for ba_slice in ba_slices]
+    # getindex for BlockAveragable returns a
+    # tuple of views into the data
+    slices = getindex.(Ref(ba), block_ranges)
+    block_values = [statistic(slice...) for slice in slices]
     σ = std(block_values)
     SE_estimate = σ / sqrt(n_blocks)
 
@@ -139,7 +139,7 @@ macro ba(expressions...)
     end
 
     result_variable::Union{Nothing, Symbol} = nothing
-    fn_sig::Symbol = Symbol()
+    fn_sig::Expr = Expr(Symbol())
     fn_name::Symbol = Symbol()
 
     # Figure out if macro put before of after the = sign
@@ -164,16 +164,25 @@ macro ba(expressions...)
     # Generate code
     tmp_fn = gensym()
     tmp_ba = gensym()
+    arg_syms = [gensym(:a) for _ in 1:N]
+
+    closure = Expr(
+        :->,
+        Expr(:tuple, arg_syms...),
+        Expr(:call, fn_name, arg_syms..., kwargs...)
+    )
 
     body = if isnothing(result_variable)
         quote
-            local $tmp_fn = (d) -> $(fn_name)(d, $(kwargs...))
+            # local $tmp_fn = ($(arg_syms...)) -> $(fn_name)($(arg_syms...), $(kwargs...))
+            local $tmp_fn = $closure
             local $tmp_ba = $CumulantAnalysis.BlockAveragable($(data...))
             $CumulantAnalysis.do_block_averaging($tmp_ba, $tmp_fn, $path)
         end
     else
         quote
-            local $tmp_fn = (d) -> $(fn_name)(d, $(kwargs...))
+            # local $tmp_fn = (d) -> $(fn_name)(d, $(kwargs...))
+            local $tmp_fn = $closure
             local $tmp_ba = $CumulantAnalysis.BlockAveragable($(data...))
             $(result_variable) = $CumulantAnalysis.do_block_averaging($tmp_ba, $tmp_fn, $path)
         end
