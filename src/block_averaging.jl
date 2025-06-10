@@ -10,9 +10,9 @@ function BlockAveragable(args...)
 end
 
 n_datasets(::BlockAveragable{N}) where N = N
-length(ba::BlockAveragable) = length(first(ba.data))
-getindex(ba::BlockAveragable, slice::UnitRange{<:Integer}) = @views BlockAveragable([d[slice] for d in ba.data]...)
-getindex(ba::BlockAveragable, i::Integer) = ba.data[i]
+Base.length(ba::BlockAveragable) = length(first(ba.data))
+Base.getindex(ba::BlockAveragable, slice::UnitRange{<:Integer}) = @views BlockAveragable([d[slice] for d in ba.data]...)
+Base.getindex(ba::BlockAveragable, i::Integer) = ba.data[i]
 
 struct BlockAveragedData{R,S,T}
     block_sizes::AbstractVector{Int}
@@ -24,7 +24,7 @@ end
 
 function single_block_average(ba::BlockAveragable, n_blocks::Integer, statistic::Function)
 
-    N = length(x)
+    N = length(ba)
     block_size = div(N, n_blocks)
     N_max = block_size * n_blocks # ignore data at end to keep block size consistent
     block_ranges = [s : min(s + block_size - 1, N) for s in 1:block_size:N_max]
@@ -52,7 +52,7 @@ function block_average(ba::BlockAveragable, statistic::Function; min_block_size:
     max_exp = floor(Int, log2(max_blocks))
     n_blocks = 2 .^ (1:max_exp)
 
-    value = statistic(ba.data)
+    value = statistic(ba.data...)
     results = single_block_average.(Ref(ba), n_blocks, Ref(statistic))
     block_sizes = getindex.(results, 1)
     σ_estimates = getindex.(results, 2)
@@ -94,7 +94,7 @@ function do_block_averaging(X::BlockAveragable, statistic::Function, outpath::Un
     bad = block_average(X, statistic)
     converged_idx = select_plateau(bad)
     !isnothing(outpath) && block_average_plot(bad, outpath)
-    return measurement(bad.statistic_estimate, bad.SE_estimate[converged_idx])
+    return measurement(bad.statistic_estimate, bad.SE_estimates[converged_idx])
 end
 
 
@@ -103,49 +103,23 @@ end
 @ba y = test(z, 2)
 y = @ba test(z,2)
 @ba nargs=2 y=mean([1,2,3],[2,3,4])
+@ba nargs=2 path="/home" y=mean([1,2,3],[2,3,4])
 
-Applies block averaging to the data with the function specificying the statistic.
-The first argument is assumed to be the data to do the blocking analysis one. All
+Applies block averaging to f(data..., args...) with the function `f` specificying the statistic.
+The first `nargs` arguments are the data to do the blocking analysis one. All
 other args are captured and passed to the end of the function. Key word arguments 
-specified by name will not work! Only functions like f(data..., args...) will work
-where nargs optionally specifies how many args to expect in data.
+specified by name will not work!
 
-For example,
-```
-@macroexpand @ba y = mean(rand(3,3))
-quote
-    __ba_fn = (ba_data->mean(ba_data))
-    y = do_block_averaging(rand(3, 3), __ba_fn)
-end
-
-@macroexpand y = @ba mean(rand(3,3))
-:(y = begin
-    __ba_fn = (ba_data->mean(ba_data))
-    do_block_averaging(rand(3, 3), __ba_fn)
-end)
-
-@macroexpand @ba y = test(z, 2)
-quote
-    __ba_fn = (ba_data->test(ba_data, 2))
-    y = do_block_averaging(z, __ba_fn)
-end
-```
-
-If your function takes multiple inputs you can specify the number of 
-arguments which should be sampled concurrently. For example,
-```
-@macroexpand @ba nargs=2 y = mean([1,2,3],[2,3,4])
-quote
-    __ba_fn = (ba_data->mean(ba_data))
-    y = do_block_averaging([1, 2, 3], [2, 3, 4], __ba_fn)
-end
-```
+Optional Arguments:
+- nargs: How many paramters to take from the front as data to sample from
+- path: If the path argument is set, then a convergence plot will be created and saved. 
 """
-macro ba(exs...)
+macro ba(expressions...)
 
-    arg_expressions = exs[1:end-1]
+    arg_expressions = expressions[1:end-1]
+    ex = expressions[end]
     path = nothing
-    N = 1
+    N::Int = 1
 
     # Parse arguments if they are passed
     for ae in arg_expressions
@@ -153,9 +127,8 @@ macro ba(exs...)
             arg_name = ae.args[1]
             if arg_name === :path
                 path = ae.args[2]
-                @assert path isa String
             elseif arg_name === :nargs
-                N = arg.args[2]
+                N = ae.args[2]
                 @assert N isa Integer
             else
                 Base.throw(ArgumentError("Unxpected arg in @ba. Expects nargs or path, got $(arg_name)"))
@@ -165,7 +138,9 @@ macro ba(exs...)
         end
     end
 
-    result_variable = nothing
+    result_variable::Union{Nothing, Symbol} = nothing
+    fn_sig::Symbol = Symbol()
+    fn_name::Symbol = Symbol()
 
     # Figure out if macro put before of after the = sign
     if ex.head === :(=)
@@ -173,13 +148,13 @@ macro ba(exs...)
         result_variable = ex.args[1]
         fn_sig = ex.args[2]
         fn_name = fn_sig.args[1]
-        data_end_idx = 2 + N - 1
+        data_end_idx = N + 1
         data = fn_sig.args[2:data_end_idx]
         kwargs = fn_sig.args[data_end_idx+1:end]
     elseif ex.head === (:call)
         # @ba f(data, args...)
         fn_name = ex.args[1]
-        data_end_idx = 2 + N - 1
+        data_end_idx = N + 1
         data = ex.args[2:data_end_idx]
         kwargs = ex.args[data_end_idx+1:end]
     else
@@ -200,7 +175,7 @@ macro ba(exs...)
         quote
             local $tmp_fn = (d) -> $(fn_name)(d, $(kwargs...))
             local $tmp_ba = $CumulantAnalysis.BlockAveragable($(data...))
-            $result_variable = $CumulantAnalysis.do_block_averaging($tmp_ba, $tmp_fn, $path)
+            $(result_variable) = $CumulantAnalysis.do_block_averaging($tmp_ba, $tmp_fn, $path)
         end
     end
 

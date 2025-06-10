@@ -7,6 +7,8 @@ using DelimitedFiles
 using Measurements
 using ProgressMeter
 
+
+
 include("lammps_dump_parser.jl")
 include("harmonic_properties.jl")
 include("block_averaging.jl")
