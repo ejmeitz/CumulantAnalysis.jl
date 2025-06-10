@@ -8,6 +8,10 @@ using Measurements
 using ProgressMeter
 using Plots
 
+#Supresses Plot Displays
+ENV["PLOTS_TEST"] = "true"
+ENV["GKSwstype"] = "100"
+
 include("lammps_dump_parser.jl")
 include("harmonic_properties.jl")
 include("block_averaging.jl")

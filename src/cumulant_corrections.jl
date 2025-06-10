@@ -10,9 +10,9 @@ function skew(X)
 end 
 
 struct CumulantData{O,A,B,C}
-    κ::Measurement{A}
-    ∂κ_∂T::Measurement{B}
-    ∂²κ_∂T²::Measurement{C}
+    κ::A
+    ∂κ_∂T::B
+    ∂²κ_∂T²::C
 end
 
 order(::CumulantData{O}) where O = O
@@ -21,13 +21,17 @@ function CumulantData(V, ΔV, kB, T, outdir::String, ::Val{1})
 
     p = (x) -> joinpath(outdir, "$(x).png")
 
-    @sync begin
-        Threads.@spawn κ₁ = @ba path=p("k1") mean(ΔV)
-        Threads.@spawn ∂κ₁_∂T = @ba nargs=2 path=p("dk1_dT") ∂A_∂T(ΔV, V, kB, T)
-        Threads.@spawn ∂²κ₁_∂T² = @ba nargs=2 path=p("d2k1_dT2") ∂²A_∂T²(ΔV, V, kB, T)
-    end
+    # I dont think Plots.jl is thread safe...
+    t1 = Threads.@spawn @ba path=p("k1") mean(ΔV)
+    t2 = Threads.@spawn @ba nargs=2 path=p("dk1_dT") ∂A_∂T(ΔV, V, kB, T)
+    t3 = Threads.@spawn @ba nargs=2 path=p("d2k1_dT2") ∂²A_∂T²(ΔV, V, kB, T)
 
-    return CumulantData{1}(κ₁, ∂κ₁_∂T, ∂²κ₁_∂T²)
+    κ₁ = fetch(t1)
+    ∂κ₁_∂T = fetch(t2)
+    ∂²κ₁_∂T² = fetch(t3)
+
+    return CumulantData{1, typeof(κ₁), typeof(∂κ₁_∂T), typeof(∂²κ₁_∂T²)}(
+                        fetch(κ₁), fetch(∂κ₁_∂T), fetch(∂²κ₁_∂T²))
 end
 
 function CumulantData(V, ΔV, kB, T, outdir::String, ::Val{2})
@@ -36,42 +40,50 @@ function CumulantData(V, ΔV, kB, T, outdir::String, ::Val{2})
 
     ΔV² = ΔV .^ 2
 
-    @sync begin
-        Threads.@spawn κ₂ = @ba path=p("k2") var(ΔV)
-        Threads.@spawn ∂ΔV²_∂T = @ba nargs=2 path=p("dDelV2_dT") ∂A_∂T(ΔV², V, kB, T)
-        Threads.@spawn ∂²ΔV²_∂T² = @ba nargs=2 path=p("d2DelV2_dT2") ∂²A_∂T²(ΔV², V, kB, T)
-    end
+
+    t1 = Threads.@spawn @ba path=p("k2") var(ΔV)
+    t2 = Threads.@spawn @ba nargs=2 path=p("dDelV2_dT") ∂A_∂T(ΔV², V, kB, T)
+    t3 = Threads.@spawn @ba nargs=2 path=p("d2DelV2_dT2") ∂²A_∂T²(ΔV², V, kB, T)
+
+    κ₂ = fetch(t1)
+    ∂ΔV²_∂T = fetch(t2)
+    ∂²ΔV²_∂T² = fetch(t3)
 
     ∂κ₂_∂T = ∂ΔV²_∂T - (2*κ₁*∂κ₁_∂T)
     ∂²κ₂_∂T² = ∂²ΔV²_∂T² - 2*((∂κ₁_∂T^2) + (κ₁*∂²κ₁_∂T²))
 
-    return CumulantData{2}(κ₂, ∂κ₂_∂T, ∂²κ₂_∂T²)
+    return CumulantData{2, typeof(κ₂), typeof(∂κ₂_∂T), typeof(∂²κ₂_∂T²)}(
+                        κ₂, ∂κ₂_∂T, ∂²κ₂_∂T²)
 end
 
 function CumulantData(V, ΔV, kB, T, outdir::String, ::Val{3})
 
     p = (x) -> joinpath(outdir, "$(x).png")
 
-    ΔV³ = ΔV² .* ΔV
+    ΔV³ = ΔV .^ 3
 
-    @sync begin
-        Threads.@spawn κ₃ = @ba skew(ΔV)
-        Threads.@spawn ∂ΔV³_∂T = @ba nargs=2 path=p("dDelV3_dT") ∂A_∂T(ΔV³, V, kB, T)
-        Threads.@spawn ∂²ΔV³_∂T² = @ba nargs=2 path=p("d2DelV3_dT2") ∂²A_∂T²(ΔV³, V, kB, T)
-        Threads.@spawn μ_ΔV² = @ba mean(ΔV²)
-    end
+    t1 = Threads.@spawn @ba path=p("k3") skew(ΔV)
+    t2 = Threads.@spawn @ba nargs=2 path=p("dDelV3_dT") ∂A_∂T(ΔV³, V, kB, T)
+    t3 = Threads.@spawn @ba nargs=2 path=p("d2DelV3_dT2") ∂²A_∂T²(ΔV³, V, kB, T)
+    t4 = Threads.@spawn @ba path=p("muDelV2") mean(ΔV²)
+
+    κ₃ = fetch(t1)
+    ∂ΔV³_∂T = fetch(t2)
+    ∂²ΔV³_∂T² = fetch(t3)
+    μ_ΔV² = fetch(t4)
 
     ∂κ₃_∂T = ∂ΔV³_∂T - 3*κ₁*∂ΔV²_∂T + 3*μ_ΔV²*∂κ₁_∂T
     ∂²κ₃_∂T² = ∂²ΔV³_∂T² - 3*(∂κ₁_∂T*∂ΔV²_∂T + κ₁*∂²ΔV²_∂T²) + 3*(∂ΔV²_∂T*∂κ₁_∂T + μ_ΔV²*∂²κ₁_∂T²)
 
-    return CumulantData{3}(κ₃, ∂κ₃_∂T, ∂²κ₃_∂T²)
+    return CumulantData{3, typeof(κ₃), typeof(∂κ₃_∂T), typeof(∂²κ₃_∂T²)}(
+                            κ₃, ∂κ₃_∂T, ∂²κ₃_∂T²)
 end
 
 function first_order_corrections(c1::CumulantData{1}, T)
    
     F_correction = c1.κ
     S_correction = -c1.∂κ_∂T
-    U_correction = c1.κ - T*c.∂κ_∂T
+    U_correction = c1.κ - T*c1.∂κ_∂T
     Cv_correction = -T*c1.∂²κ_∂T²
 
     return F_correction, S_correction, U_correction, Cv_correction
@@ -198,31 +210,41 @@ function estimate_thermo_properties(
     U₀ = U_harmonic(ω, ħ, kB, temperature, limit)
     Cᵥ₀ = Cᵥ_harmonic(ω, kB, temperature, limit)
 
-    c1 = Cumulants(V, ΔV, kB, temperature, outdir, Val{1}())
-    ΔF₁, ΔS₁, ΔU₁, ΔCᵥ₁ = first_order(c1, temperature) 
+    @info "Calculating First Order Corrections"
+    c1 = CumulantData(V, ΔV, kB, temperature, outdir, Val{1}())
+    ΔF₁, ΔS₁, ΔU₁, ΔCᵥ₁ = first_order_corrections(c1, temperature) 
 
     ΔF₂, ΔS₂, ΔU₂, ΔCᵥ₂ = 0.0, 0.0, 0.0, 0.0
     if order >= 2
-        c2 = Cumulants(V, ΔV, kB, temperature, outdir, Val{2}())
-        ΔF₂, ΔS₂, ΔU₂, ΔCᵥ₂ = second_order(c2, kB, temperature, stochastic)
+        @info "Calculating Secoind Order Corrections"
+        c2 = CumulantData(V, ΔV, kB, temperature, outdir, Val{2}())
+        ΔF₂, ΔS₂, ΔU₂, ΔCᵥ₂ = second_order_corrections(c2, kB, temperature, stochastic)
     end
 
     ΔF₃, ΔS₃, ΔU₃, ΔCᵥ₃ = 0.0, 0.0, 0.0, 0.0
     if order >= 3
-        c3 = Cumulants(V, ΔV, kB, temperature, outdir, Val{3}())
-        ΔF₃, ΔS₃, ΔU₃, ΔCᵥ₃ = third_order(c3, kB, temperature)
+        @info "Calculating Third Order Corrections"
+        c3 = CumulantData(V, ΔV, kB, temperature, outdir, Val{3}())
+        ΔF₃, ΔS₃, ΔU₃, ΔCᵥ₃ = third_order_corrections(c3, kB, temperature)
     end
 
-    df = DataFrame(
-        F = [F₀, ΔF₁, ΔF₂, ΔF₃],
-        S = [S₀, ΔS₁, ΔS₂, ΔS₃],
-        U = [U₀, ΔU₁, ΔU₂, ΔU₃],
-        Cv = [Cᵥ₀, ΔCᵥ₁, ΔCᵥ₂, ΔCᵥ₃]
+    data_df = DataFrame(
+        F = getproperty.([F₀, ΔF₁, ΔF₂, ΔF₃], :val),
+        S = getproperty.([S₀, ΔS₁, ΔS₂, ΔS₃], :val),
+        U = getproperty.([U₀, ΔU₁, ΔU₂, ΔU₃], :val),
+        Cv = getproperty.([Cᵥ₀, ΔCᵥ₁, ΔCᵥ₂, ΔCᵥ₃], :val)
+    )
+
+    err_df = DataFrame(
+        F_SE = getproperty.([F₀, ΔF₁, ΔF₂, ΔF₃], :err),
+        S_SE = getproperty.([S₀, ΔS₁, ΔS₂, ΔS₃], :err),
+        U_SE = getproperty.([U₀, ΔU₁, ΔU₂, ΔU₃], :err),
+        Cv_SE = getproperty.([Cᵥ₀, ΔCᵥ₁, ΔCᵥ₂, ΔCᵥ₃], :err)
     )
 
     # Estimate true internal energy and heat capacity
     U_MD = mean(E_total)
     Cᵥ_MD = var(E_total) / (kB * temperature^2)
 
-    return df, U_MD, Cᵥ_MD
+    return data_df, err_df, U_MD, Cᵥ_MD
 end
