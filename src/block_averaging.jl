@@ -1,3 +1,5 @@
+export ba
+
 struct BlockAveragable{N,T}
     data::T
 end
@@ -20,6 +22,7 @@ struct BlockAveragedData{R,S,T}
     σ_estimates::AbstractVector{R}
     SE_estimates::AbstractVector{S}
     statistic_estimate::T
+    original_data_length::Integer
 end
 
 function single_block_average(ba::BlockAveragable, n_blocks::Integer, statistic::Function)
@@ -58,14 +61,14 @@ function block_average(ba::BlockAveragable, statistic::Function; min_block_size:
     σ_estimates = getindex.(results, 2)
     SE_estimates = getindex.(results, 3)
 
-    return BlockAveragedData(block_sizes, n_blocks, σ_estimates, SE_estimates, value)
+    return BlockAveragedData(block_sizes, n_blocks, σ_estimates, SE_estimates, value, length(ba))
 end
 
 
 # Returns the index where standard deviation is within `tol` percent
 # of the the last `lookback` values averaged. If no values are found
 # the last index is returned. 
-function select_plateau(bad::BlockAveragedData; tol::Real=0.05,  lookback::Int=3)
+function select_plateau(bad::BlockAveragedData; tol::Real=0.07,  lookback::Int=3)
 
     bs = bad.block_sizes
     σ = bad.σ_estimates
@@ -77,23 +80,57 @@ function select_plateau(bad::BlockAveragedData; tol::Real=0.05,  lookback::Int=3
     L = min(lookback, n)
     ref = mean(σ[n-L+1 : n])
 
-    idx = findfirst(s -> s >= (1 - tol)*ref, σ)
+    idx = findfirst(s -> s <= (1 + tol)*ref, σ)
     return isnothing(idx) ? lastindex(bs) : idx
 
 end
 
+function block_average_plot(bad::BlockAveragedData, converged_idx::Integer, outpath::String)
+    # unpack
+    bs   = bad.block_sizes
+    sigs = bad.σ_estimates
 
-function block_average_plot(bad::BlockAveragedData, outpath::String)
-    #TODO
-    #* x-axis log2
-    # use plotlylight?
+    xticks = [bs[i] for i in 1:3:length(bs)]
+
+    # start your scatter
+    p = scatter(
+        bs, sigs,
+        xscale     = :log2,
+        title      = "Total Elements: $(bad.original_data_length)",
+        xticks     = (xticks, string.(xticks)),
+        xlabel     = "Elements per Block",
+        ylabel     = "Standard Deviation",
+        label      = "Std Dev",
+        color      = "#4682b4",
+        legend     = :topright,
+        markersize = 6,
+        show       = false
+    );
+
+    # add horizontal line at the converged σ
+    hline!(
+        p,
+        [sigs[converged_idx]],
+        linestyle = :dash,
+        linewidth = 2,
+        color     = :red,
+        label     = "Converged σ",
+        show      = false
+    );
+
+    savefig(p, outpath)
+
+    return nothing
 end
+
+
+
 
 
 function do_block_averaging(X::BlockAveragable, statistic::Function, outpath::Union{String, Nothing})
     bad = block_average(X, statistic)
     converged_idx = select_plateau(bad)
-    !isnothing(outpath) && block_average_plot(bad, outpath)
+    !isnothing(outpath) && block_average_plot(bad, converged_idx, outpath)
     return measurement(bad.statistic_estimate, bad.SE_estimates[converged_idx])
 end
 

@@ -6,7 +6,7 @@ using Unitful
 using DelimitedFiles
 using Measurements
 using ProgressMeter
-
+using Plots
 
 include("lammps_dump_parser.jl")
 include("harmonic_properties.jl")
