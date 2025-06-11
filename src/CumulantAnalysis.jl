@@ -6,11 +6,7 @@ using Unitful
 using DelimitedFiles
 using Measurements
 using ProgressMeter
-using Plots
-
-#Supresses Plot Displays
-ENV["PLOTS_TEST"] = "true"
-ENV["GKSwstype"] = "100"
+using HDF5
 
 include("lammps_dump_parser.jl")
 include("harmonic_properties.jl")

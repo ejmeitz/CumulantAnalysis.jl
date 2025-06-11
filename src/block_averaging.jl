@@ -1,4 +1,5 @@
-export ba
+export @ba, BlockAveragedData, block_average_plot
+
 
 struct BlockAveragable{N,T}
     data::T
@@ -85,55 +86,26 @@ function select_plateau(bad::BlockAveragedData; tol::Real=0.07,  lookback::Int=3
 
 end
 
-function block_average_plot(bad::BlockAveragedData, converged_idx::Integer, outpath::String)
-    # unpack
-    bs   = bad.block_sizes
-    sigs = bad.σ_estimates
-
-    xticks = [bs[i] for i in 1:3:length(bs)]
-
-    # start your scatter
-    p = scatter(
-        bs, sigs,
-        xscale     = :log2,
-        title      = "Total Elements: $(bad.original_data_length)",
-        xticks     = (xticks, string.(xticks)),
-        xlabel     = "Elements per Block",
-        ylabel     = "Standard Deviation",
-        label      = "Std Dev",
-        color      = "#4682b4",
-        legend     = :topright,
-        markersize = 6,
-        show       = false
-    );
-
-    # add horizontal line at the converged σ
-    hline!(
-        p,
-        [sigs[converged_idx]],
-        linestyle = :dash,
-        linewidth = 2,
-        color     = :red,
-        label     = "Converged σ",
-        show      = false
-    );
-
-    savefig(p, outpath)
-
-    return nothing
-end
-
-
-
-
-
 function do_block_averaging(X::BlockAveragable, statistic::Function, outpath::Union{String, Nothing})
     bad = block_average(X, statistic)
     converged_idx = select_plateau(bad)
-    !isnothing(outpath) && block_average_plot(bad, converged_idx, outpath)
+
+    h5open(outpath, "w") do file
+        file["block_sizes"] = bad.block_sizes
+        file["N_blocks"] = bad.N_blocks
+        file["all_std_estimates"] = bad.σ_estimates
+        file["all_SE_estimates"] = bad.SE_estimates
+        file["converged_idx"] = converged_idx
+        file["statistic_estimate"] = bad.statistic_estimate
+        file["SE_estimate"] = bad.SE_estimates[converged_idx]
+        file["original_data_length"] = bad.original_data_length
+    end
+
     return measurement(bad.statistic_estimate, bad.SE_estimates[converged_idx])
 end
 
+# Stub for plotting extension to overload
+function block_average_plot end
 
 """
 @ba y = mean(rand(3,3))

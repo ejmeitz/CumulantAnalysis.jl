@@ -8,12 +8,19 @@ function V_harmonic(ifc2::AbstractMatrix, u::AbstractVector)
     return 0.5 * ((transpose(u) * ifc2) * u)
 end
 
-
-#* ARE ALL OF THESE MISSING A FACTOR OF 1/Nq ???
+function sum_over_freqs!(freqs, f::Function, freq_tol = 1e-6)
+    res = 0.0
+    for freq in freqs
+        if freq > freq_tol
+            res += f(freq)
+        end
+    end
+    return res
+end
 
 function U_harmonic(ω, ħ, kB, T, limit::Quantum)
-    mode_internal_energies = @. (ħ*ω) * ((1 / (exp(ħ*ω/(kB*T)) - 1)) + 0.5)
-    return sum(mode_internal_energies)
+    f = (freq) -> (ħ*freq) * ((1 / (exp(ħ*freq/(kB*T)) - 1)) + 0.5)
+    return sum_over_freqs!(ω, f)
 end
 
 function U_harmonic(ω, ħ, kB, T, limit::Classical)
@@ -22,28 +29,32 @@ end
 
 function F_harmonic(ω, ħ, kB, T, limit::Quantum)
     kBT = kB * T
-    mode_free_energies = @. (0.5*ħ*ω) + kBT * log(1 - exp(-ħ*ω/kBT))
-    return sum(mode_free_energies)
+    f = (freq) -> @. (0.5*ħ*freq) + kBT * log(1 - exp(-ħ*freq/kBT))
+    return sum_over_freqs!(ω, f)
 end
 
 function F_harmonic(ω, ħ, kB, T, limit::Classical)
-    return 0.0 #*TODO
+    kBT = kB * T
+    f = (freq) -> log(ħ*freq/kBT)
+    return kBT * sum_over_freqs!(ω, f)
 end
 
 function S_harmonic(ω, ħ, kB, T, limit::Quantum)
-    ħω_kBT = ħ .* ω ./ (kB * T)
-    mode_entropies = @. ħω_kBT / (exp(ħω_kBT) - 1) - log(1 - exp(-ħω_kBT))
-    return kB * sum(mode_entropies)
+    kBT = kB * T
+    f = (freq) -> ((ħ*freq/kBT) / (exp(ħ*freq/kBT) - 1)) - log(1 - exp(-ħ*freq/kBT))
+    return kB * sum_over_freqs!(ω, f)
 end
 
 function S_harmonic(ω, ħ, kB, T, limit::Classical)
-    return 0.0 #*TODO
+    kBT = kB * T
+    f = (freq) -> (1 - log(ħ*freq/kBT))
+    return kB * sum_over_freqs!(ω, f)
 end
 
 function Cᵥ_harmonic(ω, kB, T, limit::Quantum)
-    ħω_2kBT = ħ * ω / (2 * kB * T)
-    mode_heat_capacities = @. ((ħω_2kBT)^2) * (csch(ħω_2kBT)^2)
-    return kB * sum(mode_heat_capacities)
+    tkBT =  2 * kB * T
+    f = (freq) -> ((ħ*freq/tkBT)^2) * (csch(ħ*freq/tkBT)^2)
+    return kB * sum_over_freqs!(ω, f)
 end
 
 function Cᵥ_harmonic(ω, kB, T, limit::Classical)

@@ -19,7 +19,7 @@ order(::CumulantData{O}) where O = O
 
 function CumulantData(V, ΔV, kB, T, outdir::String, ::Val{1})
 
-    p = (x) -> joinpath(outdir, "$(x).png")
+    p = (x) -> joinpath(outdir, "$(x).hdf5")
 
     # I dont think Plots.jl is thread safe...
     t1 = Threads.@spawn @ba path=p("k1") mean(ΔV)
@@ -34,9 +34,9 @@ function CumulantData(V, ΔV, kB, T, outdir::String, ::Val{1})
                         fetch(κ₁), fetch(∂κ₁_∂T), fetch(∂²κ₁_∂T²))
 end
 
-function CumulantData(V, ΔV, kB, T, outdir::String, ::Val{2})
+function CumulantData(V, ΔV, kB, T, c1::CumulantData{1}, outdir::String, ::Val{2})
 
-    p = (x) -> joinpath(outdir, "$(x).png")
+    p = (x) -> joinpath(outdir, "$(x).hdf5")
 
     ΔV² = ΔV .^ 2
 
@@ -49,16 +49,16 @@ function CumulantData(V, ΔV, kB, T, outdir::String, ::Val{2})
     ∂ΔV²_∂T = fetch(t2)
     ∂²ΔV²_∂T² = fetch(t3)
 
-    ∂κ₂_∂T = ∂ΔV²_∂T - (2*κ₁*∂κ₁_∂T)
-    ∂²κ₂_∂T² = ∂²ΔV²_∂T² - 2*((∂κ₁_∂T^2) + (κ₁*∂²κ₁_∂T²))
+    ∂κ₂_∂T = ∂ΔV²_∂T - (2*c1.κ*c1.∂κ_∂T)
+    ∂²κ₂_∂T² = ∂²ΔV²_∂T² - 2*((c1.∂κ_∂T^2) + (c1.κ*c1.∂²κ_∂T²))
 
     return CumulantData{2, typeof(κ₂), typeof(∂κ₂_∂T), typeof(∂²κ₂_∂T²)}(
                         κ₂, ∂κ₂_∂T, ∂²κ₂_∂T²)
 end
 
-function CumulantData(V, ΔV, kB, T, outdir::String, ::Val{3})
+function CumulantData(V, ΔV, kB, T, c1::CumulantData{1}, outdir::String, ::Val{3})
 
-    p = (x) -> joinpath(outdir, "$(x).png")
+    p = (x) -> joinpath(outdir, "$(x).hdf5")
 
     ΔV³ = ΔV .^ 3
 
@@ -72,8 +72,8 @@ function CumulantData(V, ΔV, kB, T, outdir::String, ::Val{3})
     ∂²ΔV³_∂T² = fetch(t3)
     μ_ΔV² = fetch(t4)
 
-    ∂κ₃_∂T = ∂ΔV³_∂T - 3*κ₁*∂ΔV²_∂T + 3*μ_ΔV²*∂κ₁_∂T
-    ∂²κ₃_∂T² = ∂²ΔV³_∂T² - 3*(∂κ₁_∂T*∂ΔV²_∂T + κ₁*∂²ΔV²_∂T²) + 3*(∂ΔV²_∂T*∂κ₁_∂T + μ_ΔV²*∂²κ₁_∂T²)
+    ∂κ₃_∂T = ∂ΔV³_∂T - 3*c1.κ*∂ΔV²_∂T + 3*μ_ΔV²*c1.∂κ_∂T
+    ∂²κ₃_∂T² = ∂²ΔV³_∂T² - 3*(c1.∂κ_∂T*∂ΔV²_∂T + c1.κ*∂²ΔV²_∂T²) + 3*(∂ΔV²_∂T*c1.∂κ_∂T + μ_ΔV²*c1.∂²κ_∂T²)
 
     return CumulantData{3, typeof(κ₃), typeof(∂κ₃_∂T), typeof(∂²κ₃_∂T²)}(
                             κ₃, ∂κ₃_∂T, ∂²κ₃_∂T²)
@@ -217,29 +217,29 @@ function estimate_thermo_properties(
     ΔF₂, ΔS₂, ΔU₂, ΔCᵥ₂ = 0.0, 0.0, 0.0, 0.0
     if order >= 2
         @info "Calculating Secoind Order Corrections"
-        c2 = CumulantData(V, ΔV, kB, temperature, outdir, Val{2}())
+        c2 = CumulantData(V, ΔV, kB, temperature, c1, outdir, Val{2}())
         ΔF₂, ΔS₂, ΔU₂, ΔCᵥ₂ = second_order_corrections(c2, kB, temperature, stochastic)
     end
 
     ΔF₃, ΔS₃, ΔU₃, ΔCᵥ₃ = 0.0, 0.0, 0.0, 0.0
     if order >= 3
         @info "Calculating Third Order Corrections"
-        c3 = CumulantData(V, ΔV, kB, temperature, outdir, Val{3}())
+        c3 = CumulantData(V, ΔV, kB, temperature, c1, outdir, Val{3}())
         ΔF₃, ΔS₃, ΔU₃, ΔCᵥ₃ = third_order_corrections(c3, kB, temperature)
     end
 
     data_df = DataFrame(
-        F = getproperty.([F₀, ΔF₁, ΔF₂, ΔF₃], :val),
-        S = getproperty.([S₀, ΔS₁, ΔS₂, ΔS₃], :val),
-        U = getproperty.([U₀, ΔU₁, ΔU₂, ΔU₃], :val),
-        Cv = getproperty.([Cᵥ₀, ΔCᵥ₁, ΔCᵥ₂, ΔCᵥ₃], :val)
+        F = [F₀; getproperty.([ΔF₁, ΔF₂, ΔF₃], :val)],
+        S = [S₀; getproperty.([ΔS₁, ΔS₂, ΔS₃], :val)],
+        U = [U₀; getproperty.([ΔU₁, ΔU₂, ΔU₃], :val)],
+        Cv = [Cᵥ₀; getproperty.([ΔCᵥ₁, ΔCᵥ₂, ΔCᵥ₃], :val)]
     )
 
     err_df = DataFrame(
-        F_SE = getproperty.([F₀, ΔF₁, ΔF₂, ΔF₃], :err),
-        S_SE = getproperty.([S₀, ΔS₁, ΔS₂, ΔS₃], :err),
-        U_SE = getproperty.([U₀, ΔU₁, ΔU₂, ΔU₃], :err),
-        Cv_SE = getproperty.([Cᵥ₀, ΔCᵥ₁, ΔCᵥ₂, ΔCᵥ₃], :err)
+        F_SE = [0.0; getproperty.([ΔF₁, ΔF₂, ΔF₃], :err)],
+        S_SE = [0.0; getproperty.([ΔS₁, ΔS₂, ΔS₃], :err)],
+        U_SE = [0.0; getproperty.([ΔU₁, ΔU₂, ΔU₃], :err)],
+        Cv_SE = [0.0; getproperty.([ΔCᵥ₁, ΔCᵥ₂, ΔCᵥ₃], :err)]
     )
 
     # Estimate true internal energy and heat capacity
