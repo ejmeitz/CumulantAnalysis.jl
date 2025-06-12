@@ -1,7 +1,7 @@
 export estimate_thermo_properties, CumulantData
 
 # Various derivatives of ⟨O⟩
-∂A_∂T(A, V, kB, T) = cov(A, V) / (kB * T * T)
+∂A_∂T(A, V, kB, T) = cov(A, V; corrected = false) / (kB * T * T)
 ∂AB_∂T(A, B, V, kB, T, dA = ∂A_∂T(A, V, kB, T), dB =  ∂A_∂T(B, V, kB, T)) = (mean(A) * dB) + (mean(B) * dA)
 ∂²A_∂T²(A, V, kB, T, dA = ∂A_∂T(A, V, kB, T)) = (-2*dA/T) + ((1/(kB*T*T)) * (∂A_∂T(A.*V, V, kB, T) - ∂AB_∂T(A, V, V, kB, T, dA)))
 
@@ -21,17 +21,16 @@ function CumulantData(V, ΔV, kB, T, outdir::String, ::Val{1})
 
     p = (x) -> joinpath(outdir, "$(x).hdf5")
 
-    # I dont think Plots.jl is thread safe...
-    t1 = Threads.@spawn @ba path=p("k1") mean(ΔV)
-    t2 = Threads.@spawn @ba nargs=2 path=p("dk1_dT") ∂A_∂T(ΔV, V, kB, T)
-    t3 = Threads.@spawn @ba nargs=2 path=p("d2k1_dT2") ∂²A_∂T²(ΔV, V, kB, T)
+    t1 = Threads.@spawn mean(ΔV)
+    t2 = Threads.@spawn ∂A_∂T(ΔV, V, kB, T)
+    t3 = Threads.@spawn ∂²A_∂T²(ΔV, V, kB, T)
 
     κ₁ = fetch(t1)
     ∂κ₁_∂T = fetch(t2)
     ∂²κ₁_∂T² = fetch(t3)
 
     return CumulantData{1, typeof(κ₁), typeof(∂κ₁_∂T), typeof(∂²κ₁_∂T²)}(
-                        fetch(κ₁), fetch(∂κ₁_∂T), fetch(∂²κ₁_∂T²))
+                            κ₁, ∂κ₁_∂T, ∂²κ₁_∂T²)
 end
 
 function CumulantData(V, ΔV, kB, T, c1::CumulantData{1}, outdir::String, ::Val{2})
@@ -41,16 +40,16 @@ function CumulantData(V, ΔV, kB, T, c1::CumulantData{1}, outdir::String, ::Val{
     ΔV² = ΔV .^ 2
 
 
-    t1 = Threads.@spawn @ba path=p("k2") var(ΔV)
-    t2 = Threads.@spawn @ba nargs=2 path=p("dDelV2_dT") ∂A_∂T(ΔV², V, kB, T)
-    t3 = Threads.@spawn @ba nargs=2 path=p("d2DelV2_dT2") ∂²A_∂T²(ΔV², V, kB, T)
+    t1 = Threads.@spawn var(ΔV; corrected = false)
+    t2 = Threads.@spawn ∂A_∂T(ΔV², V, kB, T)
+    t3 = Threads.@spawn ∂²A_∂T²(ΔV², V, kB, T)
 
     κ₂ = fetch(t1)
     ∂ΔV²_∂T = fetch(t2)
     ∂²ΔV²_∂T² = fetch(t3)
 
     ∂κ₂_∂T = ∂ΔV²_∂T - (2*c1.κ*c1.∂κ_∂T)
-    ∂²κ₂_∂T² = ∂²ΔV²_∂T² - 2*((c1.∂κ_∂T^2) + (c1.κ*c1.∂²κ_∂T²))
+    ∂²κ₂_∂T² = ∂²ΔV²_∂T² - 2*(((c1.∂κ_∂T)^2) + (c1.κ*c1.∂²κ_∂T²))
 
     return CumulantData{2, typeof(κ₂), typeof(∂κ₂_∂T), typeof(∂²κ₂_∂T²)}(
                         κ₂, ∂κ₂_∂T, ∂²κ₂_∂T²)
@@ -62,10 +61,10 @@ function CumulantData(V, ΔV, kB, T, c1::CumulantData{1}, outdir::String, ::Val{
 
     ΔV³ = ΔV .^ 3
 
-    t1 = Threads.@spawn @ba path=p("k3") skew(ΔV)
-    t2 = Threads.@spawn @ba nargs=2 path=p("dDelV3_dT") ∂A_∂T(ΔV³, V, kB, T)
-    t3 = Threads.@spawn @ba nargs=2 path=p("d2DelV3_dT2") ∂²A_∂T²(ΔV³, V, kB, T)
-    t4 = Threads.@spawn @ba path=p("muDelV2") mean(ΔV²)
+    t1 = Threads.@spawn skew(ΔV)
+    t2 = Threads.@spawn ∂A_∂T(ΔV³, V, kB, T)
+    t3 = Threads.@spawn ∂²A_∂T²(ΔV³, V, kB, T)
+    t4 = Threads.@spawn mean(ΔV²)
 
     κ₃ = fetch(t1)
     ∂ΔV³_∂T = fetch(t2)
@@ -96,8 +95,9 @@ function second_order_corrections(c2::CumulantData{2}, kB, T, stochastic::Bool)
 
     F_correction = pref * c2.κ / (2*kB*T)
     S_correction =  pref * (c2.κ - T*c2.∂κ_∂T) / (2*kB*T*T)
-    U_correction =  pref * (c2.κ - 0.5*T*c2.∂κ_∂T) / (kB*T)
-    Cv_correction =  pref * ((-U_correction*β/T) + β*(0.5*c2.∂κ_∂T - 0.5*T*c2.∂²κ_∂T²))
+    U_correction =  pref * β * (c2.κ - 0.5*T*c2.∂κ_∂T)
+    # Cv_correction =  pref * ((-U_correction/T) + β*(0.5*c2.∂κ_∂T - 0.5*T*c2.∂²κ_∂T²))
+    Cv_correction = pref * β * ((-c2.κ/T) + c2.∂κ_∂T - ((T/2)*(c2.∂²κ_∂T²)))
 
     return F_correction, S_correction, U_correction, Cv_correction
 end

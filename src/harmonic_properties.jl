@@ -4,6 +4,8 @@ abstract type Limit end
 struct Quantum <: Limit end
 struct Classical <: Limit end
 
+#* ACCOUNT FOR MISSING DOFS IN CLASSICAL LIMITS?
+
 function V_harmonic(ifc2::AbstractMatrix, u::AbstractVector)
     return 0.5 * ((transpose(u) * ifc2) * u)
 end
