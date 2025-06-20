@@ -17,9 +17,7 @@ end
 
 order(::CumulantData{O}) where O = O
 
-function CumulantData(V, ΔV, kB, T, outdir::String, ::Val{1})
-
-    p = (x) -> joinpath(outdir, "$(x).hdf5")
+function CumulantData(V, ΔV, kB, T, ::Val{1})
 
     t1 = Threads.@spawn mean(ΔV)
     t2 = Threads.@spawn ∂A_∂T(ΔV, V, kB, T)
@@ -33,12 +31,9 @@ function CumulantData(V, ΔV, kB, T, outdir::String, ::Val{1})
                             κ₁, ∂κ₁_∂T, ∂²κ₁_∂T²)
 end
 
-function CumulantData(V, ΔV, kB, T, c1::CumulantData{1}, outdir::String, ::Val{2})
-
-    p = (x) -> joinpath(outdir, "$(x).hdf5")
+function CumulantData(V, ΔV, kB, T, c1::CumulantData{1}, ::Val{2})
 
     ΔV² = ΔV .^ 2
-
 
     t1 = Threads.@spawn var(ΔV; corrected = false)
     t2 = Threads.@spawn ∂A_∂T(ΔV², V, kB, T)
@@ -55,21 +50,25 @@ function CumulantData(V, ΔV, kB, T, c1::CumulantData{1}, outdir::String, ::Val{
                         κ₂, ∂κ₂_∂T, ∂²κ₂_∂T²)
 end
 
-function CumulantData(V, ΔV, kB, T, c1::CumulantData{1}, outdir::String, ::Val{3})
+function CumulantData(V, ΔV, kB, T, c1::CumulantData{1}, ::Val{3})
 
-    p = (x) -> joinpath(outdir, "$(x).hdf5")
-
+    ΔV² = ΔV .^ 2
     ΔV³ = ΔV .^ 3
 
     t1 = Threads.@spawn skew(ΔV)
     t2 = Threads.@spawn ∂A_∂T(ΔV³, V, kB, T)
     t3 = Threads.@spawn ∂²A_∂T²(ΔV³, V, kB, T)
     t4 = Threads.@spawn mean(ΔV²)
+    # These are both re calculated from second order
+    t5 = Threads.@spawn ∂A_∂T(ΔV², V, kB, T)
+    t6 = Threads.@spawn ∂²A_∂T²(ΔV², V, kB, T)
 
     κ₃ = fetch(t1)
     ∂ΔV³_∂T = fetch(t2)
     ∂²ΔV³_∂T² = fetch(t3)
     μ_ΔV² = fetch(t4)
+    ∂ΔV²_∂T = fetch(t5)
+    ∂²ΔV²_∂T² = fetch(t6)
 
     ∂κ₃_∂T = ∂ΔV³_∂T - 3*c1.κ*∂ΔV²_∂T + 3*μ_ΔV²*c1.∂κ_∂T
     ∂²κ₃_∂T² = ∂²ΔV³_∂T² - 3*(c1.∂κ_∂T*∂ΔV²_∂T + c1.κ*∂²ΔV²_∂T²) + 3*(∂ΔV²_∂T*c1.∂κ_∂T + μ_ΔV²*c1.∂²κ_∂T²)
@@ -176,7 +175,7 @@ Parameters:
 - `limit::Limit` = Classical(): Either `Quantum()` or `Classical()`.
 - `order::Int` = 2: Order of the cumulant expansion (1 or 2).
 - `dump_x_unrolled_names = ["xu", "yu", "zu"]` = header_dict: Name of dump columns corresponding to unrolled displacements. In x,y,z order!!
-
+- `true_F` = missing : The true free energy at these thermodynamic conditions. Optional
 Returns:
 -----------
 - A tuple containing the free energy, entropy, internal energy, and heat capacity corrections.
@@ -190,7 +189,7 @@ function estimate_thermo_properties(
     ω, kB, ħ, temperature; 
     limit::Limit = Classical(), order::Int = 3, 
     dump_x_unrolled_names::AbstractVector{String} = ["xu", "yu", "zu"],
-    stochastic::Bool = false
+    stochastic::Bool = false, true_F = missing
 )
 
     D = length(dump_x_unrolled_names)
@@ -210,41 +209,35 @@ function estimate_thermo_properties(
     U₀ = U_harmonic(ω, ħ, kB, temperature, limit)
     Cᵥ₀ = Cᵥ_harmonic(ω, kB, temperature, limit)
 
-    @info "Calculating First Order Corrections"
-    c1 = CumulantData(V, ΔV, kB, temperature, outdir, Val{1}())
-    ΔF₁, ΔS₁, ΔU₁, ΔCᵥ₁ = first_order_corrections(c1, temperature) 
+    ΔF = zeros(order); ΔS = zeros(order)
+    ΔU = zeros(order); ΔCᵥ = zeros(order)
 
-    ΔF₂, ΔS₂, ΔU₂, ΔCᵥ₂ = 0.0, 0.0, 0.0, 0.0
+    @info "Calculating First Order Corrections"
+    c1 = CumulantData(V, ΔV, kB, temperature, Val{1}())
+    ΔF[1], ΔS[1], ΔU[1], ΔCᵥ[1] = first_order_corrections(c1, temperature) 
+
     if order >= 2
         @info "Calculating Secoind Order Corrections"
-        c2 = CumulantData(V, ΔV, kB, temperature, c1, outdir, Val{2}())
-        ΔF₂, ΔS₂, ΔU₂, ΔCᵥ₂ = second_order_corrections(c2, kB, temperature, stochastic)
+        c2 = CumulantData(V, ΔV, kB, temperature, c1, Val{2}())
+        ΔF[2], ΔS[2], ΔU[2], ΔCᵥ[2] = second_order_corrections(c2, kB, temperature, stochastic)
     end
 
-    ΔF₃, ΔS₃, ΔU₃, ΔCᵥ₃ = 0.0, 0.0, 0.0, 0.0
     if order >= 3
         @info "Calculating Third Order Corrections"
-        c3 = CumulantData(V, ΔV, kB, temperature, c1, outdir, Val{3}())
-        ΔF₃, ΔS₃, ΔU₃, ΔCᵥ₃ = third_order_corrections(c3, kB, temperature)
+        c3 = CumulantData(V, ΔV, kB, temperature, c1, Val{3}())
+        ΔF[3], ΔS[3], ΔU[3], ΔCᵥ[3] = third_order_corrections(c3, kB, temperature)
     end
-
-    data_df = DataFrame(
-        F = [F₀; getproperty.([ΔF₁, ΔF₂, ΔF₃], :val)],
-        S = [S₀; getproperty.([ΔS₁, ΔS₂, ΔS₃], :val)],
-        U = [U₀; getproperty.([ΔU₁, ΔU₂, ΔU₃], :val)],
-        Cv = [Cᵥ₀; getproperty.([ΔCᵥ₁, ΔCᵥ₂, ΔCᵥ₃], :val)]
-    )
-
-    err_df = DataFrame(
-        F_SE = [0.0; getproperty.([ΔF₁, ΔF₂, ΔF₃], :err)],
-        S_SE = [0.0; getproperty.([ΔS₁, ΔS₂, ΔS₃], :err)],
-        U_SE = [0.0; getproperty.([ΔU₁, ΔU₂, ΔU₃], :err)],
-        Cv_SE = [0.0; getproperty.([ΔCᵥ₁, ΔCᵥ₂, ΔCᵥ₃], :err)]
-    )
 
     # Estimate true internal energy and heat capacity
     U_MD = mean(E_total)
     Cᵥ_MD = var(E_total) / (kB * temperature^2)
 
-    return data_df, err_df, U_MD, Cᵥ_MD
+    true_S = (U_MD - true_F) / temperature
+    # we should be able to get elastic moduli and thermal expansion too
+    F_corrections = CumulantCorrections(F₀, SVector(ΔF...), true_F, "F")
+    S_corrections = CumulantCorrections(S₀,  SVector(ΔS...), true_S, "S")
+    U_corrections = CumulantCorrections(U₀,  SVector(ΔU...), U_MD, "U")
+    Cv_corrections = CumulantCorrections(Cᵥ₀,  SVector(ΔCᵥ...), Cᵥ_MD, "Cv")
+
+    return F_corrections, S_corrections, U_corrections, Cv_corrections
 end
