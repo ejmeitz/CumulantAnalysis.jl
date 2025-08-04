@@ -106,10 +106,11 @@ function third_order_corrections(c3::CumulantData{3}, kB, T)
     β = 1 / (kB*T)
     β² = β^2; β³ = β^3
 
+    # no clue which of these are correct
     F_correction = c3.κ * β² / 6
-    S_correction = (c3.κ*kB*β³/3) - (β²*c3.∂κ_∂T/6)
-    U_correction = T*((0.5*kB*β³*c3.κ) - (β²*c3.∂κ_∂T/6))
-    Cv_correction = (U_correction/T) - (3*β²*c3.κ/2) + (5*β²*c3.∂κ_∂T/6) + (T*β²*c3.∂²κ_∂T²/6)
+    S_correction = 0.0 #(c3.κ*kB*β³/3) - (β²*c3.∂κ_∂T/6)
+    U_correction = 0.0 #T*((0.5*kB*β³*c3.κ) - (β²*c3.∂κ_∂T/6))
+    Cv_correction = 0.0 #(U_correction/T) - (3*β²*c3.κ/2) + (5*β²*c3.∂κ_∂T/6) + (T*β²*c3.∂²κ_∂T²/6)
 
     return F_correction, S_correction, U_correction, Cv_correction
 end
