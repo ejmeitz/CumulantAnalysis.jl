@@ -10,7 +10,7 @@ function CumulantAnalysis.sTDEPEstimator(order, nsamples, temperature_K, quantum
     limit = (quantum == true) ? Quantum : Classical
     T = ustrip(temperature_K) * u"K"
     cc = CanonicalConfiguration(
-        temperature = temperature,
+        temperature = temperature_K,
         nconf = nsamples,
         quantum = quantum, 
     )
