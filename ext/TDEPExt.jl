@@ -6,11 +6,11 @@ using AtomsCalculators
 using OhMyThreads
 using StaticArrays
 
-function CumulantAnalysis.sTDEPEstimator(order, nsamples, temperature_K, quantum::Bool)
+function CumulantAnalysis.sTDEPEstimator(order::Int, nsamples::Int, temperature_K, quantum::Bool)
     limit = (quantum == true) ? Quantum : Classical
     T = ustrip(temperature_K) * u"K"
     cc = CanonicalConfiguration(
-        temperature = temperature_K,
+        temperature = Float64(ustrip(temperature_K)),
         nconf = nsamples,
         quantum = quantum, 
     )

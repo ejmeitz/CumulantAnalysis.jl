@@ -5,7 +5,7 @@ struct Quantum <: Limit end
 struct Classical <: Limit end
 
 
-abstract type ThermoEstimator{O <: Integer, L <: Limit}end
+abstract type ThermoEstimator{O, L <: Limit}end
 abstract type MDEstimator{O} <: ThermoEstimator{O, Classical} end
 
 order(::ThermoEstimator{O}) where O = O
@@ -34,5 +34,5 @@ struct MollyEstimator{O,T} <: MDEstimator{O}
     n_configs::Int
 end
 
-limit(::MDEstimator) = Classical()
+limit(::MDEstimator) = Classical
 stochastic(::MDEstimator) = false
