@@ -13,6 +13,8 @@ using Printf
 using OrderedCollections
 
 const FREQ_TOL = 1e-6
+const kB = ustrip(u"eV / K", Unitful.k)
+const ħ = ustrip(u"eV * s", Unitful.ħ)
 
 include("lammps_dump_parser.jl")
 include("harmonic_properties.jl")

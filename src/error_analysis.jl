@@ -11,7 +11,6 @@ function CumulantCorrections(harmonic, corrections, ground_truth, property)
 
     return CumulantCorrections{length(corrections), typeof(harmonic), typeof(ground_truth)}(
                                 harmonic, corrections, ground_truth, property)
-
 end
 
 estimate(cc::CumulantCorrections) = cc.harmonic + sum(cc.corrections)

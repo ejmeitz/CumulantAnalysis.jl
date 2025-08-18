@@ -5,7 +5,21 @@ struct Quantum <: Limit end
 struct Classical <: Limit end
 
 
+function harmonic_properties(
+    estim::Estimator,
+    ω::AbstractVector,
+    kB, ħ
+)
+    F₀ = F_harmonic(ω, ħ, kB, estim.temperature, limit(estim))
+    S₀ = S_harmonic(ω, ħ, kB, estim.temperature, limit(estim))
+    U₀ = U_harmonic(ω, ħ, kB, estim.temperature, limit(estim))
+    Cᵥ₀ = Cᵥ_harmonic(ω, kB, estim.temperature, limit(estim))
+
+    return F₀, S₀, U₀, Cᵥ₀
+end
+
 #* FIX CONTRIBUTION FROM Zero-Point MOTION ON RIGID TRANSLATION MODES??
+#* SEE HOW TDEP IMPLEMENTS THINGS LIKE FREE ENERGY
 
 function V_harmonic(ifc2::AbstractMatrix, u::AbstractVector)
     return 0.5 * ((transpose(u) * ifc2) * u)
