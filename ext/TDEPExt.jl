@@ -6,7 +6,7 @@ using AtomsCalculators
 using OhMyThreads
 using StaticArrays
 
-function CumulantAnalysis.sTDEPEstimator(order, nsamples, temperature_K, quamtum::Bool)
+function CumulantAnalysis.sTDEPEstimator(order, nsamples, temperature_K, quantum::Bool)
     limit = (quantum == true) ? Quantum : Classical
     T = ustrip(temperature_K) * u"K"
     cc = CanonicalConfiguration(
@@ -59,13 +59,13 @@ function get_V(cc, calc, ssposcar_path, basedir, verbose, n_threads)
         end
     end
 
-    return V, V2
+    return ustrip.(V), ustrip.(V2)
 end
 
 function CumulantAnalysis.estimate(
     e::sTDEPEstimator,
     calc,
-    ω::AbstractVector{W},
+    ω,
     ssposcar_path::String;
     basedir = dirname(ssposcar_path),
     n_threads = Threads.nthreads(),
