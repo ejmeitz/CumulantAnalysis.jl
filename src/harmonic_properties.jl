@@ -1,12 +1,6 @@
-export Quantum, Classical
-
-abstract type Limit end
-struct Quantum <: Limit end
-struct Classical <: Limit end
-
 
 function harmonic_properties(
-    estim::Estimator,
+    estim::ThermoEstimator,
     ω::AbstractVector,
     kB, ħ
 )

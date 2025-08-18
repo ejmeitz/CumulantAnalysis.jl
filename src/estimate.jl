@@ -1,36 +1,4 @@
-export sTDEPEstimator, LAMMPSEstimator, MollyEstimator, estimate
-
-abstract type ThermoEstimator{O, L} where {L <: Limit} end
-abstract type MDEstimator{O} <: ThermoEstimator{O, Classical} end
-
-order(::ThermoEstimator{O}) where O = O
-
-"""
-"""
-struct sTDEPEstimator{O,L,T,C} <: ThermoEstimator{O,L}
-    cc::C # C will be CanonicalConfiguratoin, but that is not availbale here
-    temperature::T
-end
-
-limit(::sTDEPEstimator{O,L}) where {O,L} = L
-stochastic(::sTDEPEstimator) = true
-
-"""
-"""
-struct LAMMPSEstimator{O,T} <: MDEstimator{O}
-    temperature::T
-end
-
-
-"""
-"""
-struct MollyEstimator{O,T} <: MDEstimator{O}
-    temperature::T
-    n_configs::Int
-end
-
-limit(::MDTDEPEstimator) = Classical()
-stochastic(::MDTDEPEstimator) = false
+export estimate
 
 function calculate_corrections(e::ThermoEstimator, ω::AbstractVector, V, ΔV)
 
