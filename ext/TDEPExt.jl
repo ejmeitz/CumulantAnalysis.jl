@@ -39,6 +39,7 @@ function get_V(cc, calc, ssposcar_path, basedir, verbose, n_threads)
     p = Progress(cc.nconf, desc = "Calculating Energies")
     @tasks for i in 1:cc.nconf
         @set ntasks = n_threads
+        @local S = deepcopy(sys_ss)
 
         filepath = get_filepath(i)
         TDEP.read_poscar_positions!(S.positions, filepath; n_atoms = n_atoms)
