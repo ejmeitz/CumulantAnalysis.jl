@@ -41,7 +41,7 @@ function get_V(cc, calc, ssposcar_path, basedir, verbose, n_threads)
     L = typeof(1.0u"Å")
     @tasks for i in 1:cc.nconf
         @set ntasks = n_threads
-        @local posns = Matrix{L}(undef, 3, n_atoms)
+        @local posns = Matrix{Float64}(undef, 3, n_atoms)
         
         filepath = get_filepath(i)
         TDEP.read_poscar_positions!(posns, filepath; n_atoms = n_atoms)
