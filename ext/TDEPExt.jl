@@ -36,14 +36,20 @@ function get_V(cc, calc, ssposcar_path, basedir, verbose, n_threads)
     V = zeros(typeof(1.0 * energy_unit), cc.nconf)
     V2 = zeros(typeof(1.0 * energy_unit), cc.nconf)
 
+    chnl = Channel{typeof(sys_ss)}(n_threads)
+    foreach(1:nbuffers) do _
+        put!(chnl, deepcopy(sys_ss))
+    end
+
     p = Progress(cc.nconf, desc = "Calculating Energies")
     @tasks for i in 1:cc.nconf
         @set ntasks = n_threads
-        @local S = deepcopy(sys_ss)
+        S = take!(chnl)
 
         filepath = get_filepath(i)
         TDEP.read_poscar_positions!(reinterpret(SVector{3, Float64}, S.position),
                                      filepath; n_atoms = n_atoms)
+        put!(chnl, S)
        
         V[i] = uconvert(energy_unit, AtomsCalculators.potential_energy(S, calc))
 
