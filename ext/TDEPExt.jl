@@ -86,6 +86,7 @@ function CumulantAnalysis.estimate(
     mkpath(config_dir)
 
     ω = CumulantAnalysis.convert_freq_units(ω)
+    N_atoms = Int(length(ω) / 3)
 
     if !isfile(ifc_path)
         error(ArgumentError("Could not find infile.forceconstant in basedir: $(basedir)"))
@@ -101,10 +102,22 @@ function CumulantAnalysis.estimate(
     F₀, ΔF, S₀, ΔS, U₀, ΔU, Cᵥ₀, ΔCᵥ = CumulantAnalysis.calculate_corrections(e, ω, V, ΔV)
 
     # we should be able to get elastic moduli and thermal expansion too
-    F_corrections = CumulantCorrections(F₀, SVector(ΔF...), true_F, "F")
-    S_corrections = CumulantCorrections(S₀,  SVector(ΔS...), missing, "S")
-    U_corrections = CumulantCorrections(U₀,  SVector(ΔU...), missing, "U")
-    Cv_corrections = CumulantCorrections(Cᵥ₀,  SVector(ΔCᵥ...), missing, "Cv")
+    F_corrections = CumulantCorrections(F₀ / N_atoms,
+                                        SVector(ΔF...) ./  N_atoms,
+                                        true_F,
+                                        "F", "[eV/atom]")
+    S_corrections = CumulantCorrections(S₀ / (ustrip(kB) * N_atoms), 
+                                        SVector(ΔS...) ./ (ustrip(kB) * N_atoms),
+                                        missing,
+                                        "S", "[kB / atom]")
+    U_corrections = CumulantCorrections(U₀ / N_atoms,
+                                        SVector(ΔU...) ./  N_atoms,
+                                        missing,
+                                        "U", "[eV/atom]")
+    Cv_corrections = CumulantCorrections(Cᵥ₀ / (ustrip(kB) * N_atoms),
+                                         SVector(ΔCᵥ...) ./ (ustrip(kB) * N_atoms),
+                                         missing,
+                                         "Cv", "Cv [kB / atom]")
 
     return F_corrections, S_corrections, U_corrections, Cv_corrections
 
