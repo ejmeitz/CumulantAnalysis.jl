@@ -81,8 +81,8 @@ function CumulantAnalysis.estimate(
         error(ArgumentError("Could not find infile.forceconstant in basedir: $(basedir)"))
     end
 
-    cp(ucposcar_path, basedir)
-    cp(ssposcar_path, basedir)
+    cp(ucposcar_path, joinpath(basedir, "infile.ucposcar"))
+    cp(ssposcar_path, joinpath(basedir, "infile.ssposcar"))
 
     V, V2 = get_V(e.cc, calc, ssposcar_path, basedir, verbose, n_threads)
     ΔV = V .- V2
