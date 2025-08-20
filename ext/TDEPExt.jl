@@ -41,7 +41,7 @@ function get_V(cc, calc, ssposcar_path, basedir, verbose, n_threads)
         @set ntasks = n_threads
 
         filepath = get_filepath(i)
-        read_poscar_positions(S.positions, filepath; n_atoms = n_atoms)
+        TDEP.read_poscar_positions!(S.positions, filepath; n_atoms = n_atoms)
        
         V[i] = uconvert(energy_unit, AtomsCalculators.potential_energy(S, calc))
 
