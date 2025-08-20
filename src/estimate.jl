@@ -31,9 +31,10 @@ end
 function convert_freq_units(freqs)
     
     freq_unit = unit(first(freqs))
+    freq_dim = dimension(freq_unit)
 
-    if dimension(freq_unit) != Unitful.𝐓^-1
-        error(ArgumentError("Frequency units should be inverse time"))
+    if freq_dim != Unitful.𝐓^-1
+        error(ArgumentError("Frequency units should be inverse time. Got dimensions of $(freq_dim)"))
     end
 
     return  ustrip.(u"rad/s", freq_unit)
