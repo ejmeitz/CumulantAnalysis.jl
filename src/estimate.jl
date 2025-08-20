@@ -37,7 +37,7 @@ function convert_freq_units(freqs)
         error(ArgumentError("Frequency units should be inverse time. Got dimensions of $(freq_dim)"))
     end
 
-    return  ustrip.(u"rad/s", freq_unit)
+    return  ustrip.(u"rad/s", freqs)
 
 end
 
