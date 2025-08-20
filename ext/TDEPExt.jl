@@ -37,7 +37,7 @@ function get_V(cc, calc, ssposcar_path, basedir, verbose, n_threads)
     V2 = zeros(typeof(1.0 * energy_unit), cc.nconf)
 
     chnl = Channel{typeof(sys_ss)}(n_threads)
-    foreach(1:nbuffers) do _
+    foreach(1:n_threads) do _
         put!(chnl, deepcopy(sys_ss))
     end
 
