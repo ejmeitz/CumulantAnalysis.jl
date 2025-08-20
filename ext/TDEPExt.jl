@@ -102,20 +102,21 @@ function CumulantAnalysis.estimate(
     F₀, ΔF, S₀, ΔS, U₀, ΔU, Cᵥ₀, ΔCᵥ = CumulantAnalysis.calculate_corrections(e, ω, V, ΔV)
 
     # we should be able to get elastic moduli and thermal expansion too
+    NatkB = N_atoms * ustrip(CumulantAnalysis.kB)
     F_corrections = CumulantCorrections(F₀ / N_atoms,
                                         SVector(ΔF...) ./  N_atoms,
                                         true_F,
                                         "F", "[eV/atom]")
-    S_corrections = CumulantCorrections(S₀ / (ustrip(kB) * N_atoms), 
-                                        SVector(ΔS...) ./ (ustrip(kB) * N_atoms),
+    S_corrections = CumulantCorrections(S₀ / NatkB, 
+                                        SVector(ΔS...) ./ NatkB,
                                         missing,
                                         "S", "[kB / atom]")
     U_corrections = CumulantCorrections(U₀ / N_atoms,
                                         SVector(ΔU...) ./  N_atoms,
                                         missing,
                                         "U", "[eV/atom]")
-    Cv_corrections = CumulantCorrections(Cᵥ₀ / (ustrip(kB) * N_atoms),
-                                         SVector(ΔCᵥ...) ./ (ustrip(kB) * N_atoms),
+    Cv_corrections = CumulantCorrections(Cᵥ₀ / NatkB,
+                                         SVector(ΔCᵥ...) ./ NatkB,
                                          missing,
                                          "Cv", "Cv [kB / atom]")
 
