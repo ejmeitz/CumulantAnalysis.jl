@@ -152,10 +152,22 @@ function estimate(
 
     true_S = (U_MD - true_F) / e.temperature
     # we should be able to get elastic moduli and thermal expansion too
-    F_corrections = CumulantCorrections(F₀ / N_atoms, SVector(ΔF...) ./  N_atoms, true_F, "F", "[eV/atom]")
-    S_corrections = CumulantCorrections(S₀ / (ustrip(kB) * N_atoms),  SVector(ΔS...) ./ (ustrip(kB) * N_atoms), true_S, "S", "[kB / atom]")
-    U_corrections = CumulantCorrections(U₀ / N_atoms,  SVector(ΔU...) ./  N_atoms, U_MD, "U", "[eV/atom]")
-    Cv_corrections = CumulantCorrections(Cᵥ₀ / (ustrip(kB) * N_atoms),  SVector(ΔCᵥ...) ./ (ustrip(kB) * N_atoms), Cᵥ_MD, "Cv [kB / atom]")
+    F_corrections = CumulantCorrections(F₀ / N_atoms,
+                                        SVector(ΔF...) ./  N_atoms,
+                                        true_F,
+                                        "F", "[eV/atom]")
+    S_corrections = CumulantCorrections(S₀ / (ustrip(kB) * N_atoms), 
+                                        SVector(ΔS...) ./ (ustrip(kB) * N_atoms),
+                                        true_S,
+                                        "S", "[kB / atom]")
+    U_corrections = CumulantCorrections(U₀ / N_atoms,
+                                        SVector(ΔU...) ./  N_atoms,
+                                        U_MD,
+                                        "U", "[eV/atom]")
+    Cv_corrections = CumulantCorrections(Cᵥ₀ / (ustrip(kB) * N_atoms),
+                                         SVector(ΔCᵥ...) ./ (ustrip(kB) * N_atoms),
+                                         Cᵥ_MD,
+                                         "Cv", "Cv [kB / atom]")
 
     return F_corrections, S_corrections, U_corrections, Cv_corrections
 
