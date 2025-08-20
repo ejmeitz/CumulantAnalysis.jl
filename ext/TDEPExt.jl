@@ -73,7 +73,7 @@ function CumulantAnalysis.estimate(
     verbose::Bool = true
 )
 
-    ω = TDEP.convert_freq_units(ω)
+    ω = CumulantAnalysis.convert_freq_units(ω)
 
     if !isfile(joinpath(basedir, "infile.forceconstant"))
         raise(ArgumentError("Could not find infile.forceconstant in basedir: $(basedir)"))
@@ -82,7 +82,7 @@ function CumulantAnalysis.estimate(
     V, V2 = get_V(e.cc, calc, ssposcar_path, basedir, verbose, n_threads)
     ΔV = V .- V2
 
-    F₀, ΔF, S₀, ΔS, U₀, ΔU, Cᵥ₀, ΔCᵥ = calculate_corrections(e, ω, V, ΔV)
+    F₀, ΔF, S₀, ΔS, U₀, ΔU, Cᵥ₀, ΔCᵥ = CumulantAnalysis.calculate_corrections(e, ω, V, ΔV)
 
     # we should be able to get elastic moduli and thermal expansion too
     F_corrections = CumulantCorrections(F₀, SVector(ΔF...), true_F, "F")
