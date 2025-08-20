@@ -4,10 +4,10 @@ function harmonic_properties(
     ω::AbstractVector,
     kB, ħ
 )
-    F₀ = F_harmonic(ω, ħ, kB, estim.temperature, limit(estim))
-    S₀ = S_harmonic(ω, ħ, kB, estim.temperature, limit(estim))
-    U₀ = U_harmonic(ω, ħ, kB, estim.temperature, limit(estim))
-    Cᵥ₀ = Cᵥ_harmonic(ω, kB, estim.temperature, limit(estim))
+    F₀ = F_harmonic(ω, ħ, kB, ustrip(estim.temperature), limit(estim))
+    S₀ = S_harmonic(ω, ħ, kB, ustrip(estim.temperature), limit(estim))
+    U₀ = U_harmonic(ω, ħ, kB, ustrip(estim.temperature), limit(estim))
+    Cᵥ₀ = Cᵥ_harmonic(ω, kB, ustrip(estim.temperature), limit(estim))
 
     return F₀, S₀, U₀, Cᵥ₀
 end

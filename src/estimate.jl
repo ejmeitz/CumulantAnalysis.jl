@@ -2,7 +2,7 @@ export estimate
 
 function calculate_corrections(e::ThermoEstimator, ω::AbstractVector, V, ΔV)
 
-    F₀, S₀, U₀, Cᵥ₀ = harmonic_properties(e, ω, kB, ħ)
+    F₀, S₀, U₀, Cᵥ₀ = harmonic_properties(e, ω, ustrip(kB), ustrip(ħ))
     O = order(e)
 
     ΔF = zeros(O); ΔS = zeros(O)
