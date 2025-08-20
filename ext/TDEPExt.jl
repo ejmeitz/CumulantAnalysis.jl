@@ -76,7 +76,7 @@ function CumulantAnalysis.estimate(
     ω = CumulantAnalysis.convert_freq_units(ω)
 
     if !isfile(joinpath(basedir, "infile.forceconstant"))
-        raise(ArgumentError("Could not find infile.forceconstant in basedir: $(basedir)"))
+        error(ArgumentError("Could not find infile.forceconstant in basedir: $(basedir)"))
     end
     
     V, V2 = get_V(e.cc, calc, ssposcar_path, basedir, verbose, n_threads)
