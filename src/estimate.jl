@@ -131,6 +131,7 @@ function estimate(
     ifc2, ω = convert_units(ω, ifc2)
 
     D = length(dump_x_unrolled_names)
+    N_atoms = Int(length(ω) / 3)
 
     ld = thermo_prop_checks(lammps_dump_path, order, dump_x_unrolled_names)
 
@@ -151,10 +152,10 @@ function estimate(
 
     true_S = (U_MD - true_F) / e.temperature
     # we should be able to get elastic moduli and thermal expansion too
-    F_corrections = CumulantCorrections(F₀, SVector(ΔF...), true_F, "F")
-    S_corrections = CumulantCorrections(S₀,  SVector(ΔS...), true_S, "S")
-    U_corrections = CumulantCorrections(U₀,  SVector(ΔU...), U_MD, "U")
-    Cv_corrections = CumulantCorrections(Cᵥ₀,  SVector(ΔCᵥ...), Cᵥ_MD, "Cv")
+    F_corrections = CumulantCorrections(F₀ / N_atoms, SVector(ΔF...) ./  N_atoms, true_F, "F", "[eV/atom]")
+    S_corrections = CumulantCorrections(S₀ / (ustrip(kB) * N_atoms),  SVector(ΔS...) ./ (ustrip(kB) * N_atoms), true_S, "S", "[kB / atom]")
+    U_corrections = CumulantCorrections(U₀ / N_atoms,  SVector(ΔU...) ./  N_atoms, U_MD, "U", "[eV/atom]")
+    Cv_corrections = CumulantCorrections(Cᵥ₀ / (ustrip(kB) * N_atoms),  SVector(ΔCᵥ...) ./ (ustrip(kB) * N_atoms), Cᵥ_MD, "Cv [kB / atom]")
 
     return F_corrections, S_corrections, U_corrections, Cv_corrections
 

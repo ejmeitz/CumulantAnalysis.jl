@@ -5,12 +5,13 @@ struct CumulantCorrections{O,T,G}
     corrections::SVector{O,T} # O is order of corrections
     ground_truth::G
     property::String
+    unit_str::String
 end
 
-function CumulantCorrections(harmonic, corrections, ground_truth, property)
+function CumulantCorrections(harmonic, corrections, ground_truth, property, unit_str)
 
     return CumulantCorrections{length(corrections), typeof(harmonic), typeof(ground_truth)}(
-                                harmonic, corrections, ground_truth, property)
+                                harmonic, corrections, ground_truth, property, unit_str)
 end
 
 estimate(cc::CumulantCorrections) = cc.harmonic + sum(cc.corrections)
@@ -44,6 +45,7 @@ correction(cc::CumulantCorrections) = sum(cc.corrections)
 # Calculates mean and se for each order
 function save_errors(vcc::Vector{<:CumulantCorrections{ORDER}}, outdir::String) where ORDER
     prop_name = first(vcc).property
+    unit_str = first(vcc).unit_str
 
     outpath_mean = (ext) -> joinpath(outdir, prop_name * "_mean.$(ext)")
     outpath_seed = (ext) -> joinpath(outdir, prop_name * "_seed.$(ext)")
@@ -55,13 +57,13 @@ function save_errors(vcc::Vector{<:CumulantCorrections{ORDER}}, outdir::String) 
     str_fmt_str = (N) -> Printf.Format(join(fill("%15s", N), " "))
 
     for order in 0:ORDER
-        mean_data[prop_name * "$(order)"] = CumulantAnalysis.mean(vcc, order)
+        mean_data[prop_name * "$(order) $(unit_str)"] = CumulantAnalysis.mean(vcc, order)
         mean_data[prop_name * "$(order)_SE"] = se(vcc, order)
 
-        seed_data[prop_name * "$(order)"] = getindex.(vcc, order)
+        seed_data[prop_name * "$(order) $(unit_str)"] = getindex.(vcc, order)
     end
 
-    mean_data[prop_name*"_total"] = CumulantAnalysis.mean(vcc)
+    mean_data[prop_name*"_total $(unit_str)"] = CumulantAnalysis.mean(vcc)
     mean_data[prop_name*"_total_SE"] = se(vcc)
 
 
