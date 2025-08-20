@@ -56,7 +56,7 @@ function save_errors(vcc::Vector{<:CumulantCorrections{ORDER}}, outdir::String) 
     float_fmt_str = (N) -> Printf.Format(join(fill("%15.7f", N), " "))
     str_fmt_str = (N) -> Printf.Format(join(fill("%15s", N), " "))
 
-    for order in 0:ORDER
+    for order in 1:ORDER
         mean_data[prop_name * "$(order) $(unit_str)"] = CumulantAnalysis.mean(vcc, order)
         mean_data[prop_name * "$(order)_SE"] = se(vcc, order)
 

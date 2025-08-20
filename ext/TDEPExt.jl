@@ -118,7 +118,7 @@ function CumulantAnalysis.estimate(
     Cv_corrections = CumulantCorrections(Cᵥ₀ / NatkB,
                                          SVector(ΔCᵥ...) ./ NatkB,
                                          missing,
-                                         "Cv", "Cv [kB / atom]")
+                                         "Cv", "[kB / atom]")
 
     return F_corrections, S_corrections, U_corrections, Cv_corrections
 

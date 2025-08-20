@@ -167,7 +167,7 @@ function estimate(
     Cv_corrections = CumulantCorrections(Cᵥ₀ / (ustrip(kB) * N_atoms),
                                          SVector(ΔCᵥ...) ./ (ustrip(kB) * N_atoms),
                                          Cᵥ_MD,
-                                         "Cv", "Cv [kB / atom]")
+                                         "Cv", "[kB / atom]")
 
     return F_corrections, S_corrections, U_corrections, Cv_corrections
 
