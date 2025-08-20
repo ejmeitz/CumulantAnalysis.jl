@@ -2,6 +2,8 @@ export estimate
 
 function calculate_corrections(e::ThermoEstimator, ω::AbstractVector, V, ΔV)
 
+    T = ustrip(e.temperature)
+
     F₀, S₀, U₀, Cᵥ₀ = harmonic_properties(e, ω, ustrip(kB), ustrip(ħ))
     O = order(e)
 
@@ -9,19 +11,19 @@ function calculate_corrections(e::ThermoEstimator, ω::AbstractVector, V, ΔV)
     ΔU = zeros(O); ΔCᵥ = zeros(O)
 
     @info "Calculating First Order Corrections"
-    c1 = CumulantData(V, ΔV, kB, e.temperature, Val{1}())
-    ΔF[1], ΔS[1], ΔU[1], ΔCᵥ[1] = first_order_corrections(c1, e.temperature) 
+    c1 = CumulantData(V, ΔV, kB, T, Val{1}())
+    ΔF[1], ΔS[1], ΔU[1], ΔCᵥ[1] = first_order_corrections(c1, T) 
 
     if O >= 2
         @info "Calculating Secoind Order Corrections"
-        c2 = CumulantData(V, ΔV, kB, e.temperature, c1, Val{2}())
-        ΔF[2], ΔS[2], ΔU[2], ΔCᵥ[2] = second_order_corrections(c2, kB, e.temperature, stochastic(e))
+        c2 = CumulantData(V, ΔV, kB, T, c1, Val{2}())
+        ΔF[2], ΔS[2], ΔU[2], ΔCᵥ[2] = second_order_corrections(c2, kB, T, stochastic(e))
     end
 
     if O >= 3
         @info "Calculating Third Order Corrections"
-        c3 = CumulantData(V, ΔV, kB, e.temperature, c1, Val{3}())
-        ΔF[3], ΔS[3], ΔU[3], ΔCᵥ[3] = third_order_corrections(c3, kB, e.temperature)
+        c3 = CumulantData(V, ΔV, kB, T, c1, Val{3}())
+        ΔF[3], ΔS[3], ΔU[3], ΔCᵥ[3] = third_order_corrections(c3, kB, T)
     end
 
     return F₀, ΔF, S₀, ΔS, U₀, ΔU, Cᵥ₀, ΔCᵥ
