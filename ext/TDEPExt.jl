@@ -42,7 +42,7 @@ function get_V(cc, calc, ssposcar_path, basedir, verbose, n_threads)
         @local S = deepcopy(sys_ss)
 
         filepath = get_filepath(i)
-        TDEP.read_poscar_positions!(S.positions, filepath; n_atoms = n_atoms)
+        TDEP.read_poscar_positions!(S.position, filepath; n_atoms = n_atoms)
        
         V[i] = uconvert(energy_unit, AtomsCalculators.potential_energy(S, calc))
 
