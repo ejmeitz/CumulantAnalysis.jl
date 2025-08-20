@@ -67,7 +67,7 @@ function CumulantAnalysis.estimate(
     e::sTDEPEstimator,
     calc,
     ω,
-    ucposcar_path::String;
+    ucposcar_path::String,
     ssposcar_path::String;
     basedir = dirname(ssposcar_path),
     n_threads = Threads.nthreads(),
