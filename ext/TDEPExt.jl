@@ -67,9 +67,10 @@ function CumulantAnalysis.estimate(
     e::sTDEPEstimator,
     calc,
     ω,
-    ucposcar_path::String,
-    ssposcar_path::String;
-    basedir = dirname(ssposcar_path),
+    basedir::String;
+    ucposcar_path::String = joinpath(basedir, "infile.ucposcar"),
+    ssposcar_path::String = joinpath(basedir, "infile.ssposcar"),
+    ifc_path::String = joinpath(basedir, "infile.forceconstant"),
     n_threads = Threads.nthreads(),
     true_F = missing,
     verbose::Bool = true
@@ -80,10 +81,11 @@ function CumulantAnalysis.estimate(
 
     ω = CumulantAnalysis.convert_freq_units(ω)
 
-    if !isfile(joinpath(basedir, "infile.forceconstant"))
+    if !isfile(ifc_path)
         error(ArgumentError("Could not find infile.forceconstant in basedir: $(basedir)"))
     end
 
+    cp(ifc_path, joinpath(config_dir, "infile.forceconstant"); force = true)
     cp(ucposcar_path, joinpath(config_dir, "infile.ucposcar"); force = true)
     cp(ssposcar_path, joinpath(config_dir, "infile.ssposcar"); force = true)
 
