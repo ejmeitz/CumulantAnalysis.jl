@@ -5,6 +5,7 @@ using CumulantAnalysis
 using AtomsCalculators
 using OhMyThreads
 using StaticArrays
+using ProgressMeter
 
 function CumulantAnalysis.sTDEPEstimator(order::Int, nsamples::Int, temperature_K, quantum::Bool)
     limit = (quantum == true) ? Quantum : Classical
@@ -66,6 +67,7 @@ function CumulantAnalysis.estimate(
     e::sTDEPEstimator,
     calc,
     ω,
+    ucposcar_path::String;
     ssposcar_path::String;
     basedir = dirname(ssposcar_path),
     n_threads = Threads.nthreads(),
@@ -78,7 +80,10 @@ function CumulantAnalysis.estimate(
     if !isfile(joinpath(basedir, "infile.forceconstant"))
         error(ArgumentError("Could not find infile.forceconstant in basedir: $(basedir)"))
     end
-    
+
+    cp(ucposcar_path, basedir)
+    cp(ssposcar_path, basedir)
+
     V, V2 = get_V(e.cc, calc, ssposcar_path, basedir, verbose, n_threads)
     ΔV = V .- V2
 
