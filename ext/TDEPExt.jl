@@ -55,7 +55,7 @@ function get_V(cc, calc, ssposcar_path, basedir, verbose, n_threads)
     finish!(p)
 
     # Parse V2 from logfile
-    open(joinpath(basedir, "$(TDEP.cmd_name(cmd)).log")) do f
+    open(joinpath(basedir, "$(TDEP.cmd_name(cc)).log")) do f
         readline(f)
         readline(f)
         readline(f)
