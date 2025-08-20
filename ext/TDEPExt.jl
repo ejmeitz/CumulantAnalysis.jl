@@ -63,7 +63,7 @@ function get_V(cc, calc, ssposcar_path, basedir, verbose, n_threads)
 
         for i in 1:cc.nconf
             data = split(strip(readline(f)))
-            V2[i] = (n_atoms * parse(Float64, data[4])) * energy_unit
+            V2[i] = parse(Float64, data[4]) * energy_unit
         end
     end
 
