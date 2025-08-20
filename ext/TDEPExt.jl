@@ -76,6 +76,7 @@ function CumulantAnalysis.estimate(
 )
 
     config_dir = joinpath(basedir, "configs")
+    mkpath(config_dir)
 
     ω = CumulantAnalysis.convert_freq_units(ω)
 
