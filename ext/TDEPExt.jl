@@ -56,9 +56,10 @@ function get_V(cc, calc, ssposcar_path, basedir, verbose, n_threads)
 
     # Parse V2 from logfile
     open(joinpath(basedir, "$(TDEP.cmd_name(cc)).log")) do f
+
+        while strip(readline(f)) != "... remapped fc" end
         readline(f)
-        readline(f)
-        readline(f)
+
         for i in 1:cc.nconf
             data = split(strip(readline(f)))
             V2[i] = (n_atoms * parse(Float64, data[4])) * energy_unit
