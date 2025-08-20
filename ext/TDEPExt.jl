@@ -75,16 +75,18 @@ function CumulantAnalysis.estimate(
     verbose::Bool = true
 )
 
+    config_dir = joinpath(basedir, "configs")
+
     ω = CumulantAnalysis.convert_freq_units(ω)
 
     if !isfile(joinpath(basedir, "infile.forceconstant"))
         error(ArgumentError("Could not find infile.forceconstant in basedir: $(basedir)"))
     end
 
-    cp(ucposcar_path, joinpath(basedir, "infile.ucposcar"); force = true)
-    cp(ssposcar_path, joinpath(basedir, "infile.ssposcar"); force = true)
+    cp(ucposcar_path, joinpath(config_dir, "infile.ucposcar"); force = true)
+    cp(ssposcar_path, joinpath(config_dir, "infile.ssposcar"); force = true)
 
-    V, V2 = get_V(e.cc, calc, ssposcar_path, basedir, verbose, n_threads)
+    V, V2 = get_V(e.cc, calc, ssposcar_path, config_dir, verbose, n_threads)
     ΔV = V .- V2
 
     F₀, ΔF, S₀, ΔS, U₀, ΔU, Cᵥ₀, ΔCᵥ = CumulantAnalysis.calculate_corrections(e, ω, V, ΔV)
