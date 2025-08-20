@@ -6,6 +6,7 @@ using AtomsCalculators
 using OhMyThreads
 using StaticArrays
 using ProgressMeter
+using DelimitedFiles
 
 function CumulantAnalysis.sTDEPEstimator(order::Int, nsamples::Int, temperature_K, quantum::Bool)
     limit = (quantum == true) ? Quantum : Classical
@@ -98,6 +99,11 @@ function CumulantAnalysis.estimate(
 
     V, V2 = get_V(e.cc, calc, ssposcar_path, config_dir, verbose, n_threads)
     ΔV = V .- V2
+
+    header = ["V [eV]" "V2 [eV]" "ΔV [eV]"]
+    open(joinpath(basedir, "potential_energies.txt"), "w") do f
+        writedlm(f, [header; V V2 ΔV])
+    end
 
     F₀, ΔF, S₀, ΔS, U₀, ΔU, Cᵥ₀, ΔCᵥ = CumulantAnalysis.calculate_corrections(e, ω, V, ΔV)
 
