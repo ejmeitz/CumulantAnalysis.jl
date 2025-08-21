@@ -55,7 +55,7 @@ function bootstrap_corrections(e::ThermoEstimator, ω::AbstractVector, V, ΔV, n
 
     # Could parallelize here
     p = Progress(n_boot, "Bootstrapping Corrections")
-    for i in n_boot
+    for i in 1:n_boot
         sample!(1:length(V), idx_storage; replace = true)
         _, ΔFs[:,i], _, ΔSs[:,i], _, ΔUs[:,i], _, ΔCᵥs[:,i] = calculate_corrections(e, ω, V[idx_storage], ΔV[idx_storage])
         F_totals[i] = sum(ΔFs[:,i]) + F₀; S_totals[i] = sum(ΔSs[:,i]) + S₀
