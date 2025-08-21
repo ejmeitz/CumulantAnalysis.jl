@@ -47,8 +47,8 @@ function bootstrap_corrections(e::ThermoEstimator, ω::AbstractVector, V, ΔV, n
 
     idx_storage = zeros(Int, boot_size)
 
-    ΔFs = zeros(O + 1, n_boot); ΔSs = zeros(O + 1, n_boot)
-    ΔUs = zeros(O + 1, n_boot); ΔCᵥs = zeros(O + 1, n_boot)
+    ΔFs = zeros(O, n_boot); ΔSs = zeros(O, n_boot)
+    ΔUs = zeros(O, n_boot); ΔCᵥs = zeros(O, n_boot)
 
     F_totals = zeros(n_boot); S_totals = zeros(n_boot)
     U_totals = zeros(n_boot); Cᵥ_totals = zeros(n_boot)
