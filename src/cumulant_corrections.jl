@@ -5,9 +5,11 @@ export estimate_thermo_properties, CumulantData
 ∂AB_∂T(A, B, V, kB, T, dA = ∂A_∂T(A, V, kB, T), dB =  ∂A_∂T(B, V, kB, T)) = (mean(A) * dB) + (mean(B) * dA)
 ∂²A_∂T²(A, V, kB, T, dA = ∂A_∂T(A, V, kB, T)) = (-2*dA/T) + ((1/(kB*T*T)) * (∂A_∂T(A.*V, V, kB, T) - ∂AB_∂T(A, V, V, kB, T, dA)))
 
-function skew(X)
-    return mean((X .- mean(X)).^3)
-end 
+function central_moment(X, n::Int)
+    return mean( (X .- mean(X)) .^ n )
+end
+
+skew(X) = central_moment(X, 3)
 
 struct CumulantData{O,A,B,C}
     κ::A

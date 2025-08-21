@@ -30,6 +30,75 @@ function calculate_corrections(e::ThermoEstimator, ω::AbstractVector, V, ΔV)
 
 end
 
+struct BootstrapCumualantEstimate{O,H}
+    harmonic::H
+    corrections::SVector{O, H}
+    correction_SEs::SVector{O, H}
+    total::H
+    total_SE::H
+    property::String
+    unit_str::String
+end
+
+function bootstrap_corrections(e::ThermoEstimator, ω::AbstractVector, V, ΔV, n_boot, boot_size; normalize::Bool = true)
+    
+    F₀, S₀, U₀, Cᵥ₀ = harmonic_properties(e, ω, ustrip(kB), ustrip(ħ))
+    O = order(e)
+
+    idx_storage = zeros(Int, boot_size)
+
+    ΔFs = zeros(O + 1, n_boot); ΔSs = zeros(O + 1, n_boot)
+    ΔUs = zeros(O + 1, n_boot); ΔCᵥs = zeros(O + 1, n_boot)
+
+    F_totals = zeros(n_boot); S_totals = zeros(n_boot)
+    U_totals = zeros(n_boot); Cᵥ_totals = zeros(n_boot)
+
+    for i in n_boot
+        sample!(1:length(V), idx_storage; replace = true)
+        #* ALSO BOOTSTRAP TOTAL VALUES
+        _, ΔFs[:,i], _, ΔSs[:,i], _, ΔUs[:,i], _, ΔCᵥs[:,i] = calculate_corrections(e, ω, V[idx_storage], ΔV[idx_storage])
+        F_totals[i] = sum(ΔFs[:,i]) + F₀; S_totals[i] = sum(ΔSs[:,i]) + S₀
+        U_totals[i] = sum(ΔUs[:,i]) + U₀; Cᵥ_totals[i] = sum(ΔCᵥs[:,i]) + Cᵥ₀
+    end
+
+    ΔF = mean(ΔFs, dims = 2); ΔS = mean(ΔSs, dims = 2)
+    ΔU = mean(ΔUs, dims = 2); ΔCᵥ = mean(ΔCᵥs, dims = 2)
+    
+    F_SEs = std(ΔFs, dims = 2); S_SEs = std(ΔSs, dims = 2)
+    U_SEs = std(ΔUs, dims = 2); Cᵥ_SEs = std(ΔCᵥs, dims = 2)
+
+    Nat = 1.0
+    kBNat = 1.0
+
+    if normalize
+        Nat = Int(length(ω) / 3)
+        kBNat = ustrip(CumulantAnalysis.kB * Nat)
+    end
+
+    F = BootstrapCumualantEstimate(
+        F₀ / Nat, SVector(ΔF...) ./ Nat, SVector(F_SEs...) ./ Nat,
+        mean(F_totals) / Nat, std(F_totals) / Nat, "F", "[eV/atom]"
+    )
+
+    S = BootstrapCumualantEstimate(
+        S₀ / kBNat, SVector(ΔS...) ./ kBNat, SVector(S_SEs...) ./ kBNat,
+        mean(S_totals) / kBNat, std(S_totals) / kBNat, "S", "[kB / atom]"
+    )
+
+    U = BootstrapCumualantEstimate(
+        U₀ / Nat, SVector(ΔU...) ./ Nat, SVector(U_SEs...) ./ Nat,
+        mean(U_totals) / Nat, std(U_totals) / Nat, "U", "[eV/atom]"
+    )
+
+    Cᵥ = BootstrapCumualantEstimate(
+        Cᵥ₀ / kBNat, SVector(ΔCᵥ...) ./ kBNat, SVector(Cᵥ_SEs...) ./ kBNat,
+        mean(Cᵥ_totals) / kBNat, std(Cᵥ_totals) / kBNat, "Cv", "[kB / atom]"
+    )
+
+    return F, S, U, Cᵥ
+
+end
+
 function convert_freq_units(freqs)
     
     freq_unit = unit(first(freqs))

@@ -93,3 +93,32 @@ function save_errors(vcc::Vector{<:CumulantCorrections{ORDER}}, outdir::String) 
 
 end
 
+function save_errors(cc::BootstrapCumualantEstimate{ORDER}, outdir::String) where ORDER
+    prop_name = cc.property
+    unit_str = cc.unit_str
+
+    outpath_mean = (ext) -> joinpath(outdir, prop_name * "_mean.$(ext)")
+    mean_data = OrderedDict(prop_name*"0" => cc.harmonic)
+
+    for order in 1:ORDER
+        mean_data[prop_name * "$(order) $(unit_str)"] = cc.corrections[order]
+        mean_data[prop_name * "$(order)_SE"] = cc.correction_SEs[order]
+    end
+
+    mean_data[prop_name*"_total $(unit_str)"] = cc.total
+    mean_data[prop_name*"_total_SE"] = cc.total_SE
+
+    float_fmt_str = (N) -> Printf.Format(join(fill("%15.7f", N), " "))
+    str_fmt_str = (N) -> Printf.Format(join(fill("%15s", N), " "))
+
+     # Human Readable Version
+    mean_header = collect(keys(mean_data))
+    mean_values = collect(values(mean_data))
+    N = length(mean_header)
+    open(outpath_mean("txt"), "w") do f
+        println(f, Printf.format(str_fmt_str(N), mean_header...))
+        println(f, Printf.format(float_fmt_str(N), mean_values...))
+    end
+    # Save to HDF5
+    save(outpath_mean, mean_data)
+end

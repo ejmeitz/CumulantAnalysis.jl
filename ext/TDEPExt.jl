@@ -79,15 +79,18 @@ function CumulantAnalysis.estimate(
     ssposcar_path::String = joinpath(basedir, "infile.ssposcar"),
     ifc_path::String = joinpath(basedir, "infile.forceconstant"),
     n_threads = Threads.nthreads(),
-    true_F = missing,
-    verbose::Bool = true
+    verbose::Bool = true,
+    n_boot::Int = 25,
+    boot_size::Int = 10_000
 )
+    if e.cc.n_conf < boot_size
+        error("Number of configurations $(e.cc.nconf) is less than the number of bootstrap samples $(boot_size).")
+    end
 
     config_dir = joinpath(basedir, "configs")
     mkpath(config_dir)
 
     ω = CumulantAnalysis.convert_freq_units(ω)
-    N_atoms = Int(length(ω) / 3)
 
     if !isfile(ifc_path)
         error(ArgumentError("Could not find infile.forceconstant in basedir: $(basedir)"))
@@ -105,28 +108,8 @@ function CumulantAnalysis.estimate(
         writedlm(f, [header; V V2 ΔV])
     end
 
-    F₀, ΔF, S₀, ΔS, U₀, ΔU, Cᵥ₀, ΔCᵥ = CumulantAnalysis.calculate_corrections(e, ω, V, ΔV)
-
-    # we should be able to get elastic moduli and thermal expansion too
-    NatkB = N_atoms * ustrip(CumulantAnalysis.kB)
-    F_corrections = CumulantCorrections(F₀ / N_atoms,
-                                        SVector(ΔF...) ./  N_atoms,
-                                        true_F,
-                                        "F", "[eV/atom]")
-    S_corrections = CumulantCorrections(S₀ / NatkB, 
-                                        SVector(ΔS...) ./ NatkB,
-                                        missing,
-                                        "S", "[kB / atom]")
-    U_corrections = CumulantCorrections(U₀ / N_atoms,
-                                        SVector(ΔU...) ./  N_atoms,
-                                        missing,
-                                        "U", "[eV/atom]")
-    Cv_corrections = CumulantCorrections(Cᵥ₀ / NatkB,
-                                         SVector(ΔCᵥ...) ./ NatkB,
-                                         missing,
-                                         "Cv", "[kB / atom]")
-
-    return F_corrections, S_corrections, U_corrections, Cv_corrections
+    # F₀, ΔF, S₀, ΔS, U₀, ΔU, Cᵥ₀, ΔCᵥ = CumulantAnalysis.calculate_corrections(e, ω, V, ΔV)
+    return bootstrap_corrections(e, ω, V, ΔV, n_boot, boot_size; normalize = true)
 
 end
 
