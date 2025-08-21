@@ -3,6 +3,7 @@ module CumulantAnalysis
 using DataFrames
 using StaticArrays
 using Statistics
+using StatsBase
 using Unitful
 using DelimitedFiles
 using Measurements

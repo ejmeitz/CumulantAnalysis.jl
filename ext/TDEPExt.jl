@@ -7,6 +7,7 @@ using OhMyThreads
 using StaticArrays
 using ProgressMeter
 using DelimitedFiles
+using StatsBase
 
 function CumulantAnalysis.sTDEPEstimator(order::Int, nsamples::Int, temperature_K, quantum::Bool)
     limit = (quantum == true) ? Quantum : Classical
