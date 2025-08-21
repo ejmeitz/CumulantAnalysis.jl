@@ -120,5 +120,5 @@ function save_errors(cc::BootstrapCumualantEstimate{ORDER}, outdir::String) wher
         println(f, Printf.format(float_fmt_str(N), mean_values...))
     end
     # Save to HDF5
-    save(outpath_mean, mean_data)
+    save(outpath_mean("h5"), mean_data)
 end
