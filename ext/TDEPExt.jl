@@ -108,8 +108,7 @@ function CumulantAnalysis.estimate(
         writedlm(f, [header; V V2 ΔV])
     end
 
-    # F₀, ΔF, S₀, ΔS, U₀, ΔU, Cᵥ₀, ΔCᵥ = CumulantAnalysis.calculate_corrections(e, ω, V, ΔV)
-    return bootstrap_corrections(e, ω, V, ΔV, n_boot, boot_size; normalize = true)
+    return CumulantAnalysis.bootstrap_corrections(e, ω, V, ΔV, n_boot, boot_size; normalize = true)
 
 end
 
