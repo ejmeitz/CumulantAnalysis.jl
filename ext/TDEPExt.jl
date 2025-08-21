@@ -83,7 +83,7 @@ function CumulantAnalysis.estimate(
     n_boot::Int = 25,
     boot_size::Int = 10_000
 )
-    if e.cc.n_conf < boot_size
+    if e.cc.nconf < boot_size
         error("Number of configurations $(e.cc.nconf) is less than the number of bootstrap samples $(boot_size).")
     end
 

@@ -53,6 +53,7 @@ function bootstrap_corrections(e::ThermoEstimator, ω::AbstractVector, V, ΔV, n
     F_totals = zeros(n_boot); S_totals = zeros(n_boot)
     U_totals = zeros(n_boot); Cᵥ_totals = zeros(n_boot)
 
+    # Could parallelize here
     p = Progress(n_boot, "Bootstrapping Corrections")
     for i in n_boot
         sample!(1:length(V), idx_storage; replace = true)
