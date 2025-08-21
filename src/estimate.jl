@@ -53,13 +53,15 @@ function bootstrap_corrections(e::ThermoEstimator, ω::AbstractVector, V, ΔV, n
     F_totals = zeros(n_boot); S_totals = zeros(n_boot)
     U_totals = zeros(n_boot); Cᵥ_totals = zeros(n_boot)
 
+    p = Progress(n_boot, "Bootstrapping Corrections")
     for i in n_boot
         sample!(1:length(V), idx_storage; replace = true)
-        #* ALSO BOOTSTRAP TOTAL VALUES
         _, ΔFs[:,i], _, ΔSs[:,i], _, ΔUs[:,i], _, ΔCᵥs[:,i] = calculate_corrections(e, ω, V[idx_storage], ΔV[idx_storage])
         F_totals[i] = sum(ΔFs[:,i]) + F₀; S_totals[i] = sum(ΔSs[:,i]) + S₀
         U_totals[i] = sum(ΔUs[:,i]) + U₀; Cᵥ_totals[i] = sum(ΔCᵥs[:,i]) + Cᵥ₀
+        next!(p)
     end
+    finish!(p)
 
     ΔF = mean(ΔFs, dims = 2); ΔS = mean(ΔSs, dims = 2)
     ΔU = mean(ΔUs, dims = 2); ΔCᵥ = mean(ΔCᵥs, dims = 2)
