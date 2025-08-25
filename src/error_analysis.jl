@@ -50,8 +50,8 @@ function save_errors(vcc::Vector{<:CumulantCorrections{ORDER}}, outdir::String) 
     outpath_mean = (ext) -> joinpath(outdir, prop_name * "_mean.$(ext)")
     outpath_seed = (ext) -> joinpath(outdir, prop_name * "_seed.$(ext)")
 
-    mean_data = OrderedDict(prop_name*"0" => CumulantAnalysis.mean(vcc, 0))
-    seed_data = OrderedDict(prop_name*"0" => harmonic_part.(vcc))
+    mean_data = OrderedDict(prop_name*"0 $(unit_str)" => CumulantAnalysis.mean(vcc, 0))
+    seed_data = OrderedDict(prop_name*"0 $(unit_str)" => harmonic_part.(vcc))
 
     float_fmt_str = (N) -> Printf.Format(join(fill("%15.7f", N), " "))
     str_fmt_str = (N) -> Printf.Format(join(fill("%15s", N), " "))
@@ -98,7 +98,7 @@ function save_errors(cc::BootstrapCumualantEstimate{ORDER}, outdir::String) wher
     unit_str = cc.unit_str
 
     outpath_mean = (ext) -> joinpath(outdir, prop_name * "_mean.$(ext)")
-    mean_data = OrderedDict(prop_name*"0" => cc.harmonic)
+    mean_data = OrderedDict(prop_name*"0 $(unit_str)" => cc.harmonic)
 
     for order in 1:ORDER
         mean_data[prop_name * "$(order) $(unit_str)"] = cc.corrections[order]

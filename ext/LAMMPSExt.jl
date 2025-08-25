@@ -11,4 +11,7 @@ function CumulantAnalysis.estimate(
 end
 
 
+#* DUPLICATE LAMMPS_CALCULATOR HERE??
+
+
 end

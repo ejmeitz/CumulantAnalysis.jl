@@ -38,13 +38,11 @@ function get_V(cc, calc, ssposcar_path, basedir, verbose, n_threads)
     V = zeros(typeof(1.0 * energy_unit), cc.nconf)
     V2 = zeros(typeof(1.0 * energy_unit), cc.nconf)
 
+    posns = Matrix{Float64}(undef, 3, n_atoms)
 
     p = Progress(cc.nconf, desc = "Calculating Energies")
     L = typeof(1.0u"Å")
-    @tasks for i in 1:cc.nconf
-        @set ntasks = n_threads
-        @local posns = Matrix{Float64}(undef, 3, n_atoms)
-        
+    for i in 1:cc.nconf   
         filepath = get_filepath(i)
         TDEP.read_poscar_positions!(posns, filepath; n_atoms = n_atoms)
         
@@ -81,7 +79,7 @@ function CumulantAnalysis.estimate(
     ifc_path::String = joinpath(basedir, "infile.forceconstant"),
     n_threads = Threads.nthreads(),
     verbose::Bool = true,
-    n_boot::Int = 25,
+    n_boot::Int = 100,
     boot_size::Int = 10_000
 )
     if e.cc.nconf < boot_size
