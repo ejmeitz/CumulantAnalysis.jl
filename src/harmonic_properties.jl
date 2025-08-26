@@ -41,7 +41,7 @@ function harmonic_properties(estim::ThermoEstimator, ifc_dir::String)
     # N_branch / 3 == N_atoms_per_unitcell
     N = N_full_q_point / (N_branch / 3)
 
-    return harmonic_properties(estim, freqs_rad_s, ustrip(kB), ustrip(ħ); normalization_factor = N)
+    return harmonic_properties(estim, reduce(vcat, freqs_rad_s), ustrip(kB), ustrip(ħ); normalization_factor = N)
 end
 
 #* FIX CONTRIBUTION FROM Zero-Point MOTION ON RIGID TRANSLATION MODES??
