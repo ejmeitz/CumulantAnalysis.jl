@@ -10,18 +10,15 @@ function calculate_corrections(e::ThermoEstimator, ω::AbstractVector, V, ΔV)
     ΔF = zeros(O); ΔS = zeros(O)
     ΔU = zeros(O); ΔCᵥ = zeros(O)
 
-    @info "Calculating First Order Corrections"
     c1 = CumulantData(V, ΔV, kB, T, Val{1}())
     ΔF[1], ΔS[1], ΔU[1], ΔCᵥ[1] = first_order_corrections(c1, T) 
 
     if O >= 2
-        @info "Calculating Secoind Order Corrections"
         c2 = CumulantData(V, ΔV, kB, T, c1, Val{2}())
         ΔF[2], ΔS[2], ΔU[2], ΔCᵥ[2] = second_order_corrections(c2, kB, T, stochastic(e))
     end
 
     if O >= 3
-        @info "Calculating Third Order Corrections"
         c3 = CumulantData(V, ΔV, kB, T, c1, Val{3}())
         ΔF[3], ΔS[3], ΔU[3], ΔCᵥ[3] = third_order_corrections(c3, kB, T)
     end
@@ -40,9 +37,9 @@ struct BootstrapCumualantEstimate{O,H}
     unit_str::String
 end
 
-function bootstrap_corrections(e::ThermoEstimator, ω::AbstractVector, V, ΔV, n_boot, boot_size; normalize::Bool = true)
+function bootstrap_corrections(e::ThermoEstimator, V, ΔV, n_boot, boot_size, ifc_dir::String)
     
-    F₀, S₀, U₀, Cᵥ₀ = harmonic_properties(e, ω, ustrip(kB), ustrip(ħ))
+    F₀, S₀, U₀, Cᵥ₀ = harmonic_properties(e, ifc_dir)
     O = order(e)
 
     idx_storage = zeros(Int, boot_size)
@@ -70,13 +67,8 @@ function bootstrap_corrections(e::ThermoEstimator, ω::AbstractVector, V, ΔV, n
     F_SEs = std(ΔFs, dims = 2); S_SEs = std(ΔSs, dims = 2)
     U_SEs = std(ΔUs, dims = 2); Cᵥ_SEs = std(ΔCᵥs, dims = 2)
 
-    Nat = 1.0
-    kBNat = 1.0
-
-    if normalize
-        Nat = Int(length(ω) / 3)
-        kBNat = ustrip(CumulantAnalysis.kB * Nat)
-    end
+    Nat = Int(length(ω) / 3)
+    kBNat = ustrip(CumulantAnalysis.kB * Nat)
 
     F = BootstrapCumualantEstimate(
         F₀ / Nat, SVector(ΔF...) ./ Nat, SVector(F_SEs...) ./ Nat,
@@ -141,106 +133,198 @@ function convert_units(freqs, ifc2)
     return freqs_rad_s, ifc2_ev_ang
 end
 
+#### sTDEP ESTIMATOR ####
+
+function get_V(cc, calc, ssposcar_path, basedir, verbose)
+
+    sys_ss = TDEPSystem(ssposcar_path)
+    n_atoms = length(sys_ss)
+
+    get_filepath = (i) -> joinpath(basedir, "contcar_conf$(lpad(i, 4, '0'))")
+    energy_unit = (AtomsCalculators.energy_unit(calc) == NoUnits) ? NoUnits : u"eV"
+
+    if energy_unit == NoUnits
+        @warn "Your calculator did not have units. Assuming eV."
+    end
+
+    @info "Generating Configurations"
+    execute(cc, basedir, 1, verbose)
+
+    V = zeros(typeof(1.0 * energy_unit), cc.nconf)
+    V2 = zeros(typeof(1.0 * energy_unit), cc.nconf)
+
+    posns = Matrix{Float64}(undef, 3, n_atoms)
+
+    p = Progress(cc.nconf, desc = "Calculating Energies")
+    L = typeof(1.0u"Å")
+    for i in 1:cc.nconf   
+        filepath = get_filepath(i)
+        TDEP.read_poscar_positions!(posns, filepath; n_atoms = n_atoms)
+        
+        new_sys = TDEPSystem(sys_ss, vec(collect(reinterpret(SVector{3, L}, posns))))
+
+        V[i] = uconvert(energy_unit, AtomsCalculators.potential_energy(new_sys, calc))
+
+        next!(p)
+    end
+    finish!(p)
+
+    # Parse V2 from logfile
+    open(joinpath(basedir, "$(TDEP.cmd_name(cc)).log")) do f
+
+        while strip(readline(f)) != "... remapped fc" end
+        readline(f)
+
+        for i in 1:cc.nconf
+            data = split(strip(readline(f)))
+            V2[i] = (1.5 * ustrip(kB) * parse(Float64, data[4])) * energy_unit
+        end
+    end
+
+    return ustrip.(V), ustrip.(V2)
+end
+
+function estimate(
+    e::sTDEPEstimator,
+    calc,
+    basedir::String;
+    ucposcar_path::String = joinpath(basedir, "infile.ucposcar"),
+    ssposcar_path::String = joinpath(basedir, "infile.ssposcar"),
+    ifc_path::String = joinpath(basedir, "infile.forceconstant"),
+    verbose::Bool = true,
+    n_boot::Int = 100,
+    boot_size::Int = 10_000
+)
+    if e.cc.nconf < boot_size
+        error("Number of configurations $(e.cc.nconf) is less than the number of bootstrap samples $(boot_size).")
+    end
+
+    config_dir = joinpath(basedir, "configs")
+    mkpath(config_dir)
+
+    if !isfile(ifc_path)
+        error(ArgumentError("Could not find infile.forceconstant in basedir: $(basedir)"))
+    end
+
+    cp(ifc_path, joinpath(config_dir, "infile.forceconstant"); force = true)
+    cp(ucposcar_path, joinpath(config_dir, "infile.ucposcar"); force = true)
+    cp(ssposcar_path, joinpath(config_dir, "infile.ssposcar"); force = true)
+
+    V, V2 = get_V(e.cc, calc, ssposcar_path, config_dir, verbose)
+    ΔV = V .- V2
+
+    header = ["V [eV]" "V2 [eV]" "ΔV [eV]"]
+    open(joinpath(basedir, "potential_energies.txt"), "w") do f
+        writedlm(f, [header; V V2 ΔV])
+    end
+
+    return bootstrap_corrections(e, V, ΔV, n_boot, boot_size, dirname(ifc_path))
+
+end
+
+
+
+
 #### LAMMPS ESTIMATOR ####
 
-# name in lammps dump ==> name used in program
-const header_dict = Dict(
-    "DisplacementX" => "xu",
-    "DisplacementY" => "yu",
-    "DisplacementZ" => "zu",
-)
+# # name in lammps dump ==> name used in program
+# const header_dict = Dict(
+#     "DisplacementX" => "xu",
+#     "DisplacementY" => "yu",
+#     "DisplacementZ" => "zu",
+# )
 
-function thermo_prop_checks(lammps_dump_path, order, dump_fields)
-    if order ∉ [1,2,3]
-        @error "Can only calculate first and second order cumulant corrections"
-    end
+# function thermo_prop_checks(lammps_dump_path, order, dump_fields)
+#     if order ∉ [1,2,3]
+#         @error "Can only calculate first and second order cumulant corrections"
+#     end
 
-    @info "Parsing LAMMPS dump file at $(lammps_dump_path)"
-    ld = LammpsDump(lammps_dump_path)
-    @info "Found $(n_samples(ld)) samples and $(n_atoms(ld)) atoms"
+#     @info "Parsing LAMMPS dump file at $(lammps_dump_path)"
+#     ld = LammpsDump(lammps_dump_path)
+#     @info "Found $(n_samples(ld)) samples and $(n_atoms(ld)) atoms"
 
-    actual_fields = fields(ld)
-    @assert issubset(dump_fields, actual_fields) "Dump file needs $(dump_fields) fields, got $(actual_fields). Can re-name with dump_fields kwarg"
+#     actual_fields = fields(ld)
+#     @assert issubset(dump_fields, actual_fields) "Dump file needs $(dump_fields) fields, got $(actual_fields). Can re-name with dump_fields kwarg"
 
-    return ld
-end
+#     return ld
+# end
 
-function parse_files(lammps_eq_dump_path, stat_file_path, T)
+# function parse_files(lammps_eq_dump_path, stat_file_path, T)
 
-    @info "Parsing Equilibrium Positions"
-    eq = LammpsDump(lammps_eq_dump_path)
+#     @info "Parsing Equilibrium Positions"
+#     eq = LammpsDump(lammps_eq_dump_path)
 
-    parse_timestep!(eq, 1)
-    atom_masses = get_col(eq, "mass")
-    #* HARDCODED COL NAMES!!
-    initial_positions = Matrix(eq.data_storage[!, ["xu", "yu", "zu"]])
+#     parse_timestep!(eq, 1)
+#     atom_masses = get_col(eq, "mass")
+#     #* HARDCODED COL NAMES!!
+#     initial_positions = Matrix(eq.data_storage[!, ["xu", "yu", "zu"]])
 
-    bulk_properties = readdlm(stat_file_path, comments = true)
+#     bulk_properties = readdlm(stat_file_path, comments = true)
 
-    E_total = bulk_properties[:, 3]
-    V = bulk_properties[:, 4]
-    T_sim = bulk_properties[:, 6]
+#     E_total = bulk_properties[:, 3]
+#     V = bulk_properties[:, 4]
+#     T_sim = bulk_properties[:, 6]
 
-    if mean(T_sim) - T > 1e-1
-        @warn "Simulation temperature $(mean(T_sim)) different from target temperature $(T). Results may be inaccurate."
-    end
+#     if mean(T_sim) - T > 1e-1
+#         @warn "Simulation temperature $(mean(T_sim)) different from target temperature $(T). Results may be inaccurate."
+#     end
 
-    return initial_positions, atom_masses, E_total, V
-end
+#     return initial_positions, atom_masses, E_total, V
+# end
 
-# ASSUME LAMMPS UNIT SYSTEM IS METAL
-function estimate(
-    e::LAMMPSEstimator,
-    lammps_dump_path::String,
-    lammps_eq_dump_path::String,
-    stat_file_path::String,
-    ifc2::AbstractMatrix{I},
-    ω::AbstractVector{W};
-    dump_x_unrolled_names::AbstractVector{String} = ["xu", "yu", "zu"],
-    true_F = missing
-) where {I,W}
+# # ASSUME LAMMPS UNIT SYSTEM IS METAL
+# function estimate(
+#     e::LAMMPSEstimator,
+#     lammps_dump_path::String,
+#     lammps_eq_dump_path::String,
+#     stat_file_path::String,
+#     ifc2::AbstractMatrix{I},
+#     ω::AbstractVector{W};
+#     dump_x_unrolled_names::AbstractVector{String} = ["xu", "yu", "zu"],
+#     true_F = missing
+# ) where {I,W}
 
-    ifc2, ω = convert_units(ω, ifc2)
+#     ifc2, ω = convert_units(ω, ifc2)
 
-    D = length(dump_x_unrolled_names)
-    N_atoms = Int(length(ω) / 3)
+#     D = length(dump_x_unrolled_names)
+#     N_atoms = Int(length(ω) / 3)
 
-    ld = thermo_prop_checks(lammps_dump_path, order, dump_x_unrolled_names)
+#     ld = thermo_prop_checks(lammps_dump_path, order, dump_x_unrolled_names)
 
-    initial_positions, _, E_total, V =
-        parse_files(lammps_eq_dump_path, stat_file_path, e.temperature)
+#     initial_positions, _, E_total, V =
+#         parse_files(lammps_eq_dump_path, stat_file_path, e.temperature)
 
-    u = load_displacements(ld, initial_positions, 
-                            dump_x_unrolled_names = dump_x_unrolled_names, D = D)
+#     u = load_displacements(ld, initial_positions, 
+#                             dump_x_unrolled_names = dump_x_unrolled_names, D = D)
 
-    V₂ = V_harmonic.(Ref(ifc2), eachcol(u))
-    ΔV = V .- V₂
+#     V₂ = V_harmonic.(Ref(ifc2), eachcol(u))
+#     ΔV = V .- V₂
 
-    F₀, ΔF, S₀, ΔS, U₀, ΔU, Cᵥ₀, ΔCᵥ = calculate_corrections(e, ω, V, ΔV)
+#     F₀, ΔF, S₀, ΔS, U₀, ΔU, Cᵥ₀, ΔCᵥ = calculate_corrections(e, ω, V, ΔV)
 
-    # Estimate true internal energy and heat capacity
-    U_MD = mean(E_total)
-    Cᵥ_MD = var(E_total) / (e.kB * e.temperature^2)
+#     # Estimate true internal energy and heat capacity
+#     U_MD = mean(E_total)
+#     Cᵥ_MD = var(E_total) / (e.kB * e.temperature^2)
 
-    true_S = (U_MD - true_F) / e.temperature
-    # we should be able to get elastic moduli and thermal expansion too
-    F_corrections = CumulantCorrections(F₀ / N_atoms,
-                                        SVector(ΔF...) ./  N_atoms,
-                                        true_F,
-                                        "F", "[eV/atom]")
-    S_corrections = CumulantCorrections(S₀ / (ustrip(kB) * N_atoms), 
-                                        SVector(ΔS...) ./ (ustrip(kB) * N_atoms),
-                                        true_S,
-                                        "S", "[kB / atom]")
-    U_corrections = CumulantCorrections(U₀ / N_atoms,
-                                        SVector(ΔU...) ./  N_atoms,
-                                        U_MD,
-                                        "U", "[eV/atom]")
-    Cv_corrections = CumulantCorrections(Cᵥ₀ / (ustrip(kB) * N_atoms),
-                                         SVector(ΔCᵥ...) ./ (ustrip(kB) * N_atoms),
-                                         Cᵥ_MD,
-                                         "Cv", "[kB / atom]")
+#     true_S = (U_MD - true_F) / e.temperature
+#     # we should be able to get elastic moduli and thermal expansion too
+#     F_corrections = CumulantCorrections(F₀ / N_atoms,
+#                                         SVector(ΔF...) ./  N_atoms,
+#                                         true_F,
+#                                         "F", "[eV/atom]")
+#     S_corrections = CumulantCorrections(S₀ / (ustrip(kB) * N_atoms), 
+#                                         SVector(ΔS...) ./ (ustrip(kB) * N_atoms),
+#                                         true_S,
+#                                         "S", "[kB / atom]")
+#     U_corrections = CumulantCorrections(U₀ / N_atoms,
+#                                         SVector(ΔU...) ./  N_atoms,
+#                                         U_MD,
+#                                         "U", "[eV/atom]")
+#     Cv_corrections = CumulantCorrections(Cᵥ₀ / (ustrip(kB) * N_atoms),
+#                                          SVector(ΔCᵥ...) ./ (ustrip(kB) * N_atoms),
+#                                          Cᵥ_MD,
+#                                          "Cv", "[kB / atom]")
 
-    return F_corrections, S_corrections, U_corrections, Cv_corrections
+#     return F_corrections, S_corrections, U_corrections, Cv_corrections
 
-end
+# end

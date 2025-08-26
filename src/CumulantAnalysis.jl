@@ -1,6 +1,7 @@
 module CumulantAnalysis
 
 using DataFrames
+using AtomsCalculators
 using StaticArrays
 using Statistics
 using StatsBase
@@ -9,6 +10,7 @@ using DelimitedFiles
 using Measurements
 using ProgressMeter
 using HDF5
+using TDEP
 using FileIO
 using Printf
 using OrderedCollections
