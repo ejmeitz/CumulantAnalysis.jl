@@ -25,7 +25,7 @@ is_quantum = false
 
 # Stillinger-Weber Silicon
 temperatures = [100, 1300]
-sizes = [3,4,5,6,7,8]
+sizes = [2,3,4,5,6,7,8]
 ucposcar_path = "/home/emeitz/scripts/TDEP/SW/infile.ucposcar2"
 
 sw_pot = "/home/emeitz/software/lammps/potentials/Si.sw"
