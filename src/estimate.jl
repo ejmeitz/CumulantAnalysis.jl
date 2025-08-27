@@ -203,23 +203,31 @@ function estimate(
     config_dir = joinpath(basedir, "configs")
     mkpath(config_dir)
 
-    if !isfile(ifc_path)
-        error(ArgumentError("Could not find infile.forceconstant in basedir: $(basedir)"))
-    end
+    isfile(ifc_path) || error(ArgumentError("Could not find infile.forceconstant at $(basedir)"))
+    isfile(ucposcar_path) || error(ArgumentError("Could not find infile.ucposcar at $(ucposcar_path)"))
+    isfile(ssposcar_path) || error(ArgumentError("Could not find infile.ssposcar at $(ssposcar_path)"))
 
     cp(ifc_path, joinpath(config_dir, "infile.forceconstant"); force = true)
     cp(ucposcar_path, joinpath(config_dir, "infile.ucposcar"); force = true)
+    cp(ucposcar_path, joinpath(basedir, "infile.ucposcar"); force = true)
     cp(ssposcar_path, joinpath(config_dir, "infile.ssposcar"); force = true)
 
     V, V2 = get_V(e.cc, calc, ssposcar_path, config_dir, verbose)
     ΔV = V .- V2
+
+    # If lots of configs are made this can take a bit
+    t = Threads.@spawn rm(config_dir, recursive = true)
 
     header = ["V [eV]" "V2 [eV]" "ΔV [eV]"]
     open(joinpath(basedir, "potential_energies.txt"), "w") do f
         writedlm(f, [header; V V2 ΔV])
     end
 
-    return bootstrap_corrections(e, V, ΔV, n_boot, boot_size, dirname(ifc_path))
+    res = bootstrap_corrections(e, V, ΔV, n_boot, boot_size, dirname(ifc_path))
+
+    wait(t)
+
+    return res
 
 end
 
