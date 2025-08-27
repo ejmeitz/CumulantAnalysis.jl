@@ -27,6 +27,7 @@ is_quantum = false
 temperatures = [100, 1300]
 sizes = [2,3,4,5,6,7,8]
 ucposcar_path = "/home/emeitz/scripts/TDEP/SW/infile.ucposcar2"
+make_ifc_path = (T) -> "/mnt/merged/emeitz/SW_IFC_NODES/IFCs/T$(T)_0/infile.forceconstant"
 
 sw_pot = "/home/emeitz/software/lammps/potentials/Si.sw"
 sw_cmds = ["pair_style sw", "pair_coeff * * \"$(sw_pot)\" Si"]
@@ -37,6 +38,7 @@ LAMMPS.MPI.Init()
 for T in temperatures
     for s in sizes
 
+        @info "Temperature: $(T), Supercell: $(s)x(s)x(s)"
         mkpath(basedir(T,s))
 
         crys = Diamond(5.43u"angstrom", :Si, SVector(s,s,s))
@@ -52,10 +54,10 @@ for T in temperatures
         F_c, S_c, U_c, Cv_c = estimate(
             se,
             calc,
-            freqs,
             basedir(T,s);
             ucposcar_path = ucposcar_path,
             ssposcar_path = ssposcar_path,
+            ifc_path = make_ifc_path(T),
             n_boot = 200,
         )
 
