@@ -2,13 +2,12 @@
 function harmonic_properties(
     estim::ThermoEstimator,
     ω::AbstractVector,
-    _kB, _ħ,
     normalization_factor
 )
-    F₀ = F_harmonic(ω, _ħ, _kB, ustrip(estim.temperature), limit(estim)) ./ normalization_factor
-    S₀ = S_harmonic(ω, _ħ, _kB, ustrip(estim.temperature), limit(estim)) ./ normalization_factor
-    U₀ = U_harmonic(ω, _ħ, _kB, ustrip(estim.temperature), limit(estim)) ./ normalization_factor
-    Cᵥ₀ = Cᵥ_harmonic(ω, _ħ, _kB, ustrip(estim.temperature), limit(estim)) ./ normalization_factor
+    F₀ = F_harmonic(ω, ustrip(estim.temperature), limit(estim)) ./ normalization_factor
+    S₀ = S_harmonic(ω, ustrip(estim.temperature), limit(estim)) ./ normalization_factor
+    U₀ = U_harmonic(ω, ustrip(estim.temperature), limit(estim)) ./ normalization_factor
+    Cᵥ₀ = Cᵥ_harmonic(ω, ustrip(estim.temperature), limit(estim)) ./ normalization_factor
 
     return F₀, S₀, U₀, Cᵥ₀
 end
@@ -43,7 +42,7 @@ function harmonic_properties(estim::ThermoEstimator, ifc_dir::String)
     # N_branch / 3 == N_atoms_per_unitcell
     N = N_full_q_point / (N_branch / 3)
 
-    return harmonic_properties(estim, reduce(vcat, freqs_rad_s), ustrip(kB), ustrip(ħ), N)
+    return harmonic_properties(estim, reduce(vcat, freqs_rad_s), N)
 end
 
 #* FIX CONTRIBUTION FROM Zero-Point MOTION ON RIGID TRANSLATION MODES??
@@ -63,46 +62,46 @@ function sum_over_freqs(freqs, f::Function)
     return res
 end
 
-function U_harmonic(ω, ħ, kB, T, ::Type{Quantum})
+function U_harmonic(ω, T, ::Type{Quantum})
     f = (freq) -> (ħ*freq) * ((1 / (exp(ħ*freq/(kB*T)) - 1)) + 0.5)
     return sum_over_freqs(ω, f)
 end
 
-function U_harmonic(ω, ħ, kB, T, ::Type{Classical})
+function U_harmonic(ω, T, ::Type{Classical})
     n_nonzero = count(freq -> freq > FREQ_TOL, ω)
     return n_nonzero*kB*T
 end
 
-function F_harmonic(ω, ħ, kB, T, ::Type{Quantum})
+function F_harmonic(ω, T, ::Type{Quantum})
     kBT = kB * T
     f = (freq) -> (0.5*ħ*freq) + kBT * log(1 - exp(-ħ*freq/kBT))
     return sum_over_freqs(ω, f)
 end
 
-function F_harmonic(ω, ħ, kB, T, ::Type{Classical})
+function F_harmonic(ω, T, ::Type{Classical})
     kBT = kB * T
     f = (freq) -> log(ħ*freq/kBT)
     return kBT * sum_over_freqs(ω, f)
 end
 
-function S_harmonic(ω, ħ, kB, T, ::Type{Quantum})
+function S_harmonic(ω, T, ::Type{Quantum})
     kBT = kB * T
     f = (freq) -> ((ħ*freq/kBT) / (exp(ħ*freq/kBT) - 1)) - log(1 - exp(-ħ*freq/kBT))
     return kB * sum_over_freqs(ω, f)
 end
 
-function S_harmonic(ω, ħ, kB, T, ::Type{Classical})
+function S_harmonic(ω, T, ::Type{Classical})
     f = (freq) -> (1 - log(ħ*freq/(kB * T)))
     return kB * sum_over_freqs(ω, f)
 end
 
-function Cᵥ_harmonic(ω, ħ, kB, T, ::Type{Quantum})
+function Cᵥ_harmonic(ω, T, ::Type{Quantum})
     tkBT =  2 * kB * T
     f = (freq) -> ((ħ*freq/tkBT)^2) * (csch(ħ*freq/tkBT)^2)
     return kB * sum_over_freqs(ω, f)
 end
 
-function Cᵥ_harmonic(ω, ħ, kB, T, ::Type{Classical})
+function Cᵥ_harmonic(ω, T, ::Type{Classical})
     n_nonzero = count(freq -> freq > FREQ_TOL, ω)
     return n_nonzero*kB
 end
