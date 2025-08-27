@@ -2,8 +2,8 @@
 function harmonic_properties(
     estim::ThermoEstimator,
     ω::AbstractVector,
-    _kB, _ħ;
-    normalization_factor = 1.0
+    _kB, _ħ,
+    normalization_factor
 )
     F₀ = F_harmonic(ω, _ħ, _kB, ustrip(estim.temperature), limit(estim)) ./ normalization_factor
     S₀ = S_harmonic(ω, _ħ, _kB, ustrip(estim.temperature), limit(estim)) ./ normalization_factor
@@ -25,7 +25,9 @@ end
 function harmonic_properties(estim::ThermoEstimator, ifc_dir::String)
 
     pdr = PhononDispersionRelations(; dumpgrid = true, temperature = Float64(ustrip(estim.temperature)))
+    
     isdir(ifc_dir) || error(ArgumentError("ifc_dir passed to harmonic_properties is not a valid directory: $(ifc_dir)"))
+    isfile(joinpath(ifc_dir, "infile.ucposar")) || error(ArgumentError("Missing infile.ucposcar when attempting to calculate harmonic properties"))
     
     cd(ifc_dir) do
         execute(pdr, ifc_dir, Threads.nthreads(), false)
@@ -33,7 +35,7 @@ function harmonic_properties(estim::ThermoEstimator, ifc_dir::String)
 
     p = joinpath(ifc_dir, "outfile.grid_dispersions.hdf5")
     isfile(p) || error("Could not find grid dispersion file to calculate harmonic properties")
-    freqs_rad_s = 2pi .* h5read(p, "frequencies") ./ 1e12
+    freqs_rad_s = h5read(p, "frequencies")
 
     N_branch, N_full_q_point = size(freqs_rad_s)
 
@@ -41,7 +43,7 @@ function harmonic_properties(estim::ThermoEstimator, ifc_dir::String)
     # N_branch / 3 == N_atoms_per_unitcell
     N = N_full_q_point / (N_branch / 3)
 
-    return harmonic_properties(estim, reduce(vcat, freqs_rad_s), ustrip(kB), ustrip(ħ); normalization_factor = N)
+    return harmonic_properties(estim, reduce(vcat, freqs_rad_s), ustrip(kB), ustrip(ħ), N)
 end
 
 #* FIX CONTRIBUTION FROM Zero-Point MOTION ON RIGID TRANSLATION MODES??

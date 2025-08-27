@@ -3,8 +3,9 @@ export estimate
 function calculate_corrections(e::ThermoEstimator, ω::AbstractVector, V, ΔV)
 
     T = ustrip(e.temperature)
+    N_atoms = Int(length(ω) / 3)
 
-    F₀, S₀, U₀, Cᵥ₀ = harmonic_properties(e, ω, ustrip(kB), ustrip(ħ))
+    F₀, S₀, U₀, Cᵥ₀ = harmonic_properties(e, ω, ustrip(kB), ustrip(ħ), N_atoms)
     O = order(e)
 
     ΔF = zeros(O); ΔS = zeros(O)
@@ -308,19 +309,19 @@ end
 
 #     true_S = (U_MD - true_F) / e.temperature
 #     # we should be able to get elastic moduli and thermal expansion too
-#     F_corrections = CumulantCorrections(F₀ / N_atoms,
+#     F_corrections = CumulantCorrections(F₀,
 #                                         SVector(ΔF...) ./  N_atoms,
 #                                         true_F,
 #                                         "F", "[eV/atom]")
-#     S_corrections = CumulantCorrections(S₀ / (ustrip(kB) * N_atoms), 
+#     S_corrections = CumulantCorrections(S₀ / (ustrip(kB)), 
 #                                         SVector(ΔS...) ./ (ustrip(kB) * N_atoms),
 #                                         true_S,
 #                                         "S", "[kB / atom]")
-#     U_corrections = CumulantCorrections(U₀ / N_atoms,
+#     U_corrections = CumulantCorrections(U₀,
 #                                         SVector(ΔU...) ./  N_atoms,
 #                                         U_MD,
 #                                         "U", "[eV/atom]")
-#     Cv_corrections = CumulantCorrections(Cᵥ₀ / (ustrip(kB) * N_atoms),
+#     Cv_corrections = CumulantCorrections(Cᵥ₀ / (ustrip(kB)),
 #                                          SVector(ΔCᵥ...) ./ (ustrip(kB) * N_atoms),
 #                                          Cᵥ_MD,
 #                                          "Cv", "[kB / atom]")
