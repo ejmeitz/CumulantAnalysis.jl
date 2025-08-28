@@ -4,7 +4,7 @@ using CumulantAnalysis
 using SimpleCrystals
 using SimpleCrystals
 
-basedir = (T,s) -> "/mnt/merged/emeitz/CumulantAnalysisTest/sTDEP_SW_TEST/T$(ustrip(T))/$(s)UC"
+make_outpath = (T,s) -> "/mnt/merged/emeitz/CumulantAnalysisTest/sTDEP_SW_TEST/T$(ustrip(T))/$(s)UC"
 
 expansion_order = 3
 # just pick a big number, havent looked at effect of nsteps yet
@@ -32,33 +32,38 @@ LAMMPS.MPI.Init()
 for T in temperatures
     for s in sizes
 
+        outpath = make_outpath(T,s)
+        println(outpath)
+
         @info "Temperature: $(T), Supercell: $(s)x$(s)x$(s)"
-        mkpath(basedir(T,s))
+        mkpath(outpath)
+        println(outpath)
 
         crys = Diamond(5.43u"angstrom", :Si, SVector(s,s,s))
         # crys = FCC(5.2468u"angstrom", :Ar, SVector(s,s,s))
 
-        ssposcar_path = joinpath(basedir(T,s), "infile.ssposcar")
+        ssposcar_path = joinpath(outpath, "infile.ssposcar")
         to_ssposcar(crys, ssposcar_path)
+        println(ssposcar_path)
         s = TDEPSystem(ssposcar_path)
         calc = LAMMPSCalculator(s, sw_cmds)
 
         se = sTDEPEstimator(expansion_order, stdep_samples, T, is_quantum)
         
-        println(basedir(T,s))
+        println(outpath)
         F_c, S_c, U_c, Cv_c = estimate(
             se,
             calc,
-            basedir(T,s);
+            outpath;
             ucposcar_path = ucposcar_path,
             ssposcar_path = ssposcar_path,
             ifc_path = make_ifc_path(T),
             n_boot = 200,
         )
 
-        save_errors(F_c,  basedir(T,s))
-        save_errors(S_c,  basedir(T,s))
-        save_errors(U_c,  basedir(T,s))
-        save_errors(Cv_c, basedir(T,s))
+        save_errors(F_c,  outpath)
+        save_errors(S_c,  outpath)
+        save_errors(U_c,  outpath)
+        save_errors(Cv_c, outpath)
     end
 end
