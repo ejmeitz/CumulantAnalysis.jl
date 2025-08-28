@@ -1,15 +1,9 @@
-using JLD2
-using Plots
 using LAMMPS
 using TDEP
 using CumulantAnalysis
 using SimpleCrystals
-using Statistics
-using Measurements
-using CSV
 using SimpleCrystals
 
-outdir = (T) -> joinpath(basepath, "T$(T)")
 basedir = (T,s) -> "/mnt/merged/emeitz/CumulantAnalysisTest/sTDEP_SW_TEST/T$(ustrip(T))/$(s)UC"
 
 expansion_order = 3
@@ -38,7 +32,7 @@ LAMMPS.MPI.Init()
 for T in temperatures
     for s in sizes
 
-        @info "Temperature: $(T), Supercell: $(s)x(s)x(s)"
+        @info "Temperature: $(T), Supercell: $(s)x$(s)x$(s)"
         mkpath(basedir(T,s))
 
         crys = Diamond(5.43u"angstrom", :Si, SVector(s,s,s))

@@ -72,22 +72,22 @@ function bootstrap_corrections(e::ThermoEstimator, V, ΔV, n_boot, boot_size, if
     kBNat = ustrip(CumulantAnalysis.kB * Nat)
 
     F = BootstrapCumualantEstimate(
-        F₀ / Nat, SVector(ΔF...) ./ Nat, SVector(F_SEs...) ./ Nat,
+        F₀, SVector(ΔF...) ./ Nat, SVector(F_SEs...) ./ Nat,
         mean(F_totals) / Nat, std(F_totals) / Nat, "F", "[eV/atom]"
     )
 
     S = BootstrapCumualantEstimate(
-        S₀ / kBNat, SVector(ΔS...) ./ kBNat, SVector(S_SEs...) ./ kBNat,
+        S₀ / kB, SVector(ΔS...) ./ kBNat, SVector(S_SEs...) ./ kBNat,
         mean(S_totals) / kBNat, std(S_totals) / kBNat, "S", "[kB / atom]"
     )
 
     U = BootstrapCumualantEstimate(
-        U₀ / Nat, SVector(ΔU...) ./ Nat, SVector(U_SEs...) ./ Nat,
+        U₀, SVector(ΔU...) ./ Nat, SVector(U_SEs...) ./ Nat,
         mean(U_totals) / Nat, std(U_totals) / Nat, "U", "[eV/atom]"
     )
 
     Cᵥ = BootstrapCumualantEstimate(
-        Cᵥ₀ / kBNat, SVector(ΔCᵥ...) ./ kBNat, SVector(Cᵥ_SEs...) ./ kBNat,
+        Cᵥ₀ / kB, SVector(ΔCᵥ...) ./ kBNat, SVector(Cᵥ_SEs...) ./ kBNat,
         mean(Cᵥ_totals) / kBNat, std(Cᵥ_totals) / kBNat, "Cv", "[kB / atom]"
     )
 
@@ -196,6 +196,7 @@ function estimate(
     n_boot::Int = 100,
     boot_size::Int = 10_000
 )
+
     if e.cc.nconf < boot_size
         error("Number of configurations $(e.cc.nconf) is less than the number of bootstrap samples $(boot_size).")
     end
@@ -208,6 +209,7 @@ function estimate(
     isfile(ssposcar_path) || error(ArgumentError("Could not find infile.ssposcar at $(ssposcar_path)"))
 
     cp(ifc_path, joinpath(config_dir, "infile.forceconstant"); force = true)
+    cp(ifc_path, joinpath(basedir, "infile.forceconstant"); force = true)
     cp(ucposcar_path, joinpath(config_dir, "infile.ucposcar"); force = true)
     cp(ucposcar_path, joinpath(basedir, "infile.ucposcar"); force = true)
     cp(ssposcar_path, joinpath(config_dir, "infile.ssposcar"); force = true)
@@ -223,7 +225,7 @@ function estimate(
         writedlm(f, [header; V V2 ΔV])
     end
 
-    res = bootstrap_corrections(e, V, ΔV, n_boot, boot_size, dirname(ifc_path))
+    res = bootstrap_corrections(e, V, ΔV, n_boot, boot_size, basedir)
 
     wait(t)
 
