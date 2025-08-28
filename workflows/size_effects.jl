@@ -45,6 +45,7 @@ for T in temperatures
 
         se = sTDEPEstimator(expansion_order, stdep_samples, T, is_quantum)
         
+        println(basedir(T,s))
         F_c, S_c, U_c, Cv_c = estimate(
             se,
             calc,

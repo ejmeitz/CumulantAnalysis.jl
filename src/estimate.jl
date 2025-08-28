@@ -145,7 +145,7 @@ function get_V(cc, calc, ssposcar_path, basedir, verbose)
     energy_unit = (AtomsCalculators.energy_unit(calc) == NoUnits) ? NoUnits : u"eV"
 
     if energy_unit == NoUnits
-        @warn "Your calculator did not have units. Assuming eV."
+        @warn "Your energy calculator did not have units. Assuming eV."
     end
 
     @info "Generating Configurations"
@@ -201,6 +201,7 @@ function estimate(
         error("Number of configurations $(e.cc.nconf) is less than the number of bootstrap samples $(boot_size).")
     end
 
+    println(basedir)
     config_dir = joinpath(basedir, "configs")
     mkpath(config_dir)
 
