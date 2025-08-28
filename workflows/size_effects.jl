@@ -33,24 +33,21 @@ for T in temperatures
     for s in sizes
 
         outpath = make_outpath(T,s)
-        println(outpath)
 
         @info "Temperature: $(T), Supercell: $(s)x$(s)x$(s)"
         mkpath(outpath)
-        println(outpath)
 
         crys = Diamond(5.43u"angstrom", :Si, SVector(s,s,s))
         # crys = FCC(5.2468u"angstrom", :Ar, SVector(s,s,s))
 
         ssposcar_path = joinpath(outpath, "infile.ssposcar")
         to_ssposcar(crys, ssposcar_path)
-        println(ssposcar_path)
+
         s = TDEPSystem(ssposcar_path)
         calc = LAMMPSCalculator(s, sw_cmds)
 
         se = sTDEPEstimator(expansion_order, stdep_samples, T, is_quantum)
         
-        println(outpath)
         F_c, S_c, U_c, Cv_c = estimate(
             se,
             calc,

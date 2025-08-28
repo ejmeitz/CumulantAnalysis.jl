@@ -201,7 +201,6 @@ function estimate(
         error("Number of configurations $(e.cc.nconf) is less than the number of bootstrap samples $(boot_size).")
     end
 
-    println(basedir)
     config_dir = joinpath(basedir, "configs")
     mkpath(config_dir)
 
