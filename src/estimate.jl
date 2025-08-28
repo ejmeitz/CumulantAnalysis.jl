@@ -38,6 +38,7 @@ end
 
 function bootstrap_corrections(e::ThermoEstimator, V, ΔV, n_boot, boot_size, ifc_dir::String, Nat::Int)
     
+    # these are returned per-atom
     F₀, S₀, U₀, Cᵥ₀ = harmonic_properties(e, ifc_dir)
     O = order(e)
 
@@ -54,8 +55,8 @@ function bootstrap_corrections(e::ThermoEstimator, V, ΔV, n_boot, boot_size, if
     for i in 1:n_boot
         sample!(1:length(V), idx_storage; replace = true)
         ΔFs[:,i], ΔSs[:,i], ΔUs[:,i], ΔCᵥs[:,i] = calculate_corrections(e, V[idx_storage], ΔV[idx_storage])
-        F_totals[i] = sum(ΔFs[:,i]) + F₀; S_totals[i] = sum(ΔSs[:,i]) + S₀
-        U_totals[i] = sum(ΔUs[:,i]) + U₀; Cᵥ_totals[i] = sum(ΔCᵥs[:,i]) + Cᵥ₀
+        F_totals[i] = sum(ΔFs[:,i]) + (F₀*Nat); S_totals[i] = sum(ΔSs[:,i]) + (S₀*Nat)
+        U_totals[i] = sum(ΔUs[:,i]) + (U₀*Nat); Cᵥ_totals[i] = sum(ΔCᵥs[:,i]) + (Cᵥ₀*Nat)
         next!(p)
     end
     finish!(p)
