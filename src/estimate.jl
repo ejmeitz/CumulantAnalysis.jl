@@ -1,11 +1,9 @@
 export estimate
 
-function calculate_corrections(e::ThermoEstimator, ω::AbstractVector, V, ΔV)
+function calculate_corrections(e::ThermoEstimator, V, ΔV)
 
     T = ustrip(e.temperature)
-    N_atoms = Int(length(ω) / 3)
 
-    F₀, S₀, U₀, Cᵥ₀ = harmonic_properties(e, ω, ustrip(kB), ustrip(ħ), N_atoms)
     O = order(e)
 
     ΔF = zeros(O); ΔS = zeros(O)
@@ -24,7 +22,7 @@ function calculate_corrections(e::ThermoEstimator, ω::AbstractVector, V, ΔV)
         ΔF[3], ΔS[3], ΔU[3], ΔCᵥ[3] = third_order_corrections(c3, kB, T)
     end
 
-    return F₀, ΔF, S₀, ΔS, U₀, ΔU, Cᵥ₀, ΔCᵥ
+    return ΔF, ΔS, ΔU, ΔCᵥ
 
 end
 
@@ -55,7 +53,7 @@ function bootstrap_corrections(e::ThermoEstimator, V, ΔV, n_boot, boot_size, if
     p = Progress(n_boot, "Bootstrapping Corrections")
     for i in 1:n_boot
         sample!(1:length(V), idx_storage; replace = true)
-        _, ΔFs[:,i], _, ΔSs[:,i], _, ΔUs[:,i], _, ΔCᵥs[:,i] = calculate_corrections(e, ω, V[idx_storage], ΔV[idx_storage])
+        ΔFs[:,i], ΔSs[:,i], ΔUs[:,i], ΔCᵥs[:,i] = calculate_corrections(e, V[idx_storage], ΔV[idx_storage])
         F_totals[i] = sum(ΔFs[:,i]) + F₀; S_totals[i] = sum(ΔSs[:,i]) + S₀
         U_totals[i] = sum(ΔUs[:,i]) + U₀; Cᵥ_totals[i] = sum(ΔCᵥs[:,i]) + Cᵥ₀
         next!(p)
@@ -311,6 +309,7 @@ end
 #     V₂ = V_harmonic.(Ref(ifc2), eachcol(u))
 #     ΔV = V .- V₂
 
+#! THIS DOESNT RETURN F0 S0 U0 Cv0 anymore..
 #     F₀, ΔF, S₀, ΔS, U₀, ΔU, Cᵥ₀, ΔCᵥ = calculate_corrections(e, ω, V, ΔV)
 
 #     # Estimate true internal energy and heat capacity
