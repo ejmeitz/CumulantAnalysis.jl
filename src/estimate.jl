@@ -36,7 +36,7 @@ struct BootstrapCumualantEstimate{O,H}
     unit_str::String
 end
 
-function bootstrap_corrections(e::ThermoEstimator, V, ΔV, n_boot, boot_size, ifc_dir::String)
+function bootstrap_corrections(e::ThermoEstimator, V, ΔV, n_boot, boot_size, ifc_dir::String, Nat::Int)
     
     F₀, S₀, U₀, Cᵥ₀ = harmonic_properties(e, ifc_dir)
     O = order(e)
@@ -66,8 +66,7 @@ function bootstrap_corrections(e::ThermoEstimator, V, ΔV, n_boot, boot_size, if
     F_SEs = std(ΔFs, dims = 2); S_SEs = std(ΔSs, dims = 2)
     U_SEs = std(ΔUs, dims = 2); Cᵥ_SEs = std(ΔCᵥs, dims = 2)
 
-    Nat = Int(length(ω) / 3)
-    kBNat = ustrip(CumulantAnalysis.kB * Nat)
+    kBNat = ustrip(CumulantAnalysis.kB) * Nat
 
     F = BootstrapCumualantEstimate(
         F₀, SVector(ΔF...) ./ Nat, SVector(F_SEs...) ./ Nat,
@@ -180,7 +179,7 @@ function get_V(cc, calc, ssposcar_path, basedir, verbose)
         end
     end
 
-    return ustrip.(V), ustrip.(V2)
+    return ustrip.(V), ustrip.(V2), n_atoms
 end
 
 function estimate(
@@ -212,7 +211,7 @@ function estimate(
     cp(ucposcar_path, joinpath(basedir, "infile.ucposcar"); force = true)
     cp(ssposcar_path, joinpath(config_dir, "infile.ssposcar"); force = true)
 
-    V, V2 = get_V(e.cc, calc, ssposcar_path, config_dir, verbose)
+    V, V2, n_atoms = get_V(e.cc, calc, ssposcar_path, config_dir, verbose)
     ΔV = V .- V2
 
     # If lots of configs are made this can take a bit
@@ -223,7 +222,7 @@ function estimate(
         writedlm(f, [header; V V2 ΔV])
     end
 
-    res = bootstrap_corrections(e, V, ΔV, n_boot, boot_size, basedir)
+    res = bootstrap_corrections(e, V, ΔV, n_boot, boot_size, basedir, n_atoms)
 
     wait(t)
 
