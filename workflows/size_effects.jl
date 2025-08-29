@@ -4,7 +4,7 @@ using CumulantAnalysis
 using SimpleCrystals
 using SimpleCrystals
 
-make_outpath = (T,s) -> "/mnt/merged/emeitz/CumulantAnalysisTest/sTDEP_SW_TEST/T$(ustrip(T))/$(s)UC"
+make_outpath = (T,s) -> "/mnt/merged/emeitz/CumulantAnalysisTest/sTDEP_LJ_size_effects/T$(ustrip(T))/$(s)UC"
 
 expansion_order = 3
 # just pick a big number, havent looked at effect of nsteps yet
