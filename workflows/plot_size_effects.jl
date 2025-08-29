@@ -103,7 +103,7 @@ function make_line_plot(sizes, F_total, F_true, T)
     size_in_pixels = size_in_inches .* dpi
 
     f = Figure(resolution = size_in_pixels);
-    ax = Axis(f[1,1], xlabel = "Number of Conventional Cells (N x N x N)", ylabel = "F[eV / atom]",
+    ax = Axis(f[1,1], xlabel = "Number of Conventional Cells (N x N x N)", ylabel = "F [eV / atom]",
         ylabelsize = 40, xlabelsize = 40, yticklabelsize = 30, xticklabelsize = 30,
         xticks = sizes, xgridvisible = false, ygridvisible = false, xticksmirrored = true,
         yticksmirrored = true, xticklabelpad = 4, xtickalign=1, ytickalign = 1)

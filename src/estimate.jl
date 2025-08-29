@@ -3,7 +3,6 @@ export estimate
 function calculate_corrections(e::ThermoEstimator, V, ΔV)
 
     T = ustrip(e.temperature)
-
     O = order(e)
 
     ΔF = zeros(O); ΔS = zeros(O)

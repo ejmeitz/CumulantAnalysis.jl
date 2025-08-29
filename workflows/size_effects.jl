@@ -13,18 +13,22 @@ stdep_samples = 50_000
 is_quantum = false
 
 # Lennard-Jones Argon
-#temperatures = [80, 10]
-#ucposcar_path = "/home/emeitz/scripts/TDEP/LJ/infile.ucposcar_oneatom"
-
+temperatures = [10, 80]
+sizes = [3,4,5,6,7,8]
+ucposcar_path = "/home/emeitz/scripts/TDEP/LJ/infile.ucposcar_oneatom"
+make_ifc_path = (T) -> "/mnt/merged/emeitz/LJ_IFC_INTERPOLATION_NODES_FINE/IFCs/T$(T)_0/infile.forceconstant"
+pot_cmds = ["pair_style lj/cut 8.5", "pair_coeff * * 0.010423 3.4", "pair_modify shift yes"]
+make_crystal = (s) -> FCC(5.2468u"angstrom", :Ar, SVector(s,s,s))
 
 # Stillinger-Weber Silicon
-temperatures = [100, 1300]
-sizes = [2,3,4,5,6,7,8]
-ucposcar_path = "/home/emeitz/scripts/TDEP/SW/infile.ucposcar2"
-make_ifc_path = (T) -> "/mnt/merged/emeitz/SW_IFC_NODES/IFCs/T$(T)_0/infile.forceconstant"
+# temperatures = [100, 1300]
+# sizes = [2,3,4,5,6,7,8]
+# ucposcar_path = "/home/emeitz/scripts/TDEP/SW/infile.ucposcar2"
+# make_ifc_path = (T) -> "/mnt/merged/emeitz/SW_IFC_NODES/IFCs/T$(T)_0/infile.forceconstant"
 
-sw_pot = "/home/emeitz/software/lammps/potentials/Si.sw"
-sw_cmds = ["pair_style sw", "pair_coeff * * \"$(sw_pot)\" Si"]
+# sw_pot = "/home/emeitz/software/lammps/potentials/Si.sw"
+# pot_cmds = ["pair_style sw", "pair_coeff * * \"$(sw_pot)\" Si"]
+# make_crystal = (s) -> Diamond(5.43u"angstrom", :Si, SVector(s,s,s))
 
 LAMMPS.MPI.Init()
 
@@ -37,14 +41,13 @@ for T in temperatures
         @info "Temperature: $(T), Supercell: $(s)x$(s)x$(s)"
         mkpath(outpath)
 
-        crys = Diamond(5.43u"angstrom", :Si, SVector(s,s,s))
-        # crys = FCC(5.2468u"angstrom", :Ar, SVector(s,s,s))
+        crys = make_crystal(s)
 
         ssposcar_path = joinpath(outpath, "infile.ssposcar")
         to_ssposcar(crys, ssposcar_path)
 
         s = TDEPSystem(ssposcar_path)
-        calc = LAMMPSCalculator(s, sw_cmds)
+        calc = LAMMPSCalculator(s, pot_cmds)
 
         se = sTDEPEstimator(expansion_order, stdep_samples, T, is_quantum)
         
