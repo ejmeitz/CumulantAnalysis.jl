@@ -4,7 +4,6 @@ using CumulantAnalysis
 using SimpleCrystals
 using SimpleCrystals
 
-make_outpath = (T,s) -> "/mnt/merged/emeitz/CumulantAnalysisTest/sTDEP_LJ_size_effects/T$(ustrip(T))/$(s)UC"
 
 expansion_order = 3
 # just pick a big number, havent looked at effect of nsteps yet
@@ -13,6 +12,7 @@ stdep_samples = 50_000
 is_quantum = false
 
 # Lennard-Jones Argon
+# make_outpath = (T,s) -> "/mnt/merged/emeitz/CumulantAnalysisTest/sTDEP_LJ_size_effects/T$(ustrip(T))/$(s)UC"
 # temperatures = [10, 80]
 # sizes = [3,4,5,6,7,8]
 # ucposcar_path = "/home/emeitz/scripts/TDEP/LJ/infile.ucposcar_oneatom"
@@ -21,6 +21,7 @@ is_quantum = false
 # make_crystal = (s) -> FCC(5.2468u"angstrom", :Ar, SVector(s,s,s))
 
 # Stillinger-Weber Silicon
+make_outpath = (T,s) -> "/mnt/merged/emeitz/CumulantAnalysisTest/sTDEP_SW_size_effects/T$(ustrip(T))/$(s)UC"
 temperatures = [100, 1300]
 sizes = [2,3,4,5,6,7]
 ucposcar_path = "/home/emeitz/scripts/TDEP/SW/infile.ucposcar2"
