@@ -46,19 +46,18 @@ function bootstrap_corrections(e::ThermoEstimator, V, ΔV, n_boot, boot_size, if
     ΔFs = zeros(O, n_boot); ΔSs = zeros(O, n_boot)
     ΔUs = zeros(O, n_boot); ΔCᵥs = zeros(O, n_boot)
 
-    F_totals = zeros(n_boot); S_totals = zeros(n_boot)
-    U_totals = zeros(n_boot); Cᵥ_totals = zeros(n_boot)
-
-    # Could parallelize here
     p = Progress(n_boot, "Bootstrapping Corrections")
     for i in 1:n_boot
         sample!(1:length(V), idx_storage; replace = true)
         ΔFs[:,i], ΔSs[:,i], ΔUs[:,i], ΔCᵥs[:,i] = calculate_corrections(e, V[idx_storage], ΔV[idx_storage])
-        F_totals[i] = sum(ΔFs[:,i]) + (F₀*Nat); S_totals[i] = sum(ΔSs[:,i]) + (S₀*Nat)
-        U_totals[i] = sum(ΔUs[:,i]) + (U₀*Nat); Cᵥ_totals[i] = sum(ΔCᵥs[:,i]) + (Cᵥ₀*Nat)
         next!(p)
     end
     finish!(p)
+
+    F_totals = sum(ΔFs, dims = 1) .+ (F₀*Nat)
+    S_totals = sum(ΔSs, dims = 1) .+ (S₀*Nat)
+    U_totals = sum(ΔUs, dims = 1) .+ (U₀*Nat)
+    Cᵥ_totals = sum(ΔCᵥs, dims = 1) .+ (Cᵥ₀*Nat)
 
     ΔF = mean(ΔFs, dims = 2); ΔS = mean(ΔSs, dims = 2)
     ΔU = mean(ΔUs, dims = 2); ΔCᵥ = mean(ΔCᵥs, dims = 2)
@@ -151,7 +150,7 @@ function get_V(cc, calc, ssposcar_path, basedir, verbose)
     V = zeros(typeof(1.0 * energy_unit), cc.nconf)
     V2 = zeros(typeof(1.0 * energy_unit), cc.nconf)
 
-    posns = Matrix{Float64}(undef, 3, n_atoms)
+    posns = zeros(Float64, 3, n_atoms)
 
     p = Progress(cc.nconf, desc = "Calculating Energies")
     L = typeof(1.0u"Å")
