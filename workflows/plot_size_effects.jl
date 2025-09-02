@@ -8,7 +8,9 @@ temperatures = [100, 1300]
 F_true = [-4.2957902, -4.6756675]
 F_tol = 1e-3 # eV / atom
 sizes = [2,3,4,5,6,7,8]
-order = 3
+
+order = 2 # order to actually use in plots
+max_order = 3
 order_colors =  ["#080808", "#4287f5", "#f7952d", "#259c2f"]
 
 F0s = zeros(length(temperatures), length(sizes))
@@ -17,13 +19,14 @@ F_terms_SE = zeros(length(temperatures), length(sizes), order)
 F_total = zeros(length(temperatures), length(sizes))
 F_total_SE = zeros(length(temperatures), length(sizes))
 
+od = max_order = order
 for (i,T) in enumerate(temperatures)
     for (j,s) in enumerate(sizes)
         F_path = joinpath(get_datapath(T,s), "F_mean.txt")
         data = readdlm(F_path, skipstart = 1)
         F0s[i,j] = data[1] 
-        F_terms[i,j,:] = data[2:2:end-3]
-        F_terms_SE[i,j,:] = data[3:2:end-2]
+        F_terms[i,j,:] = data[2:2:(end - 3 - 2*od)]
+        F_terms_SE[i,j,:] = data[3:2:(end - 2 - 2*od)]
         F_total[i,j] = data[end-1]
         F_total_SE[i,j] = data[end]
     end
@@ -128,5 +131,5 @@ end
 
 for (i,T) in enumerate(temperatures)
     @views make_line_plot(sizes, F_total[i,:], F_true[i], T)
-    # @views make_bar_plot(F0s[i,:], F_terms[i, :, :], F_total[i,:], F_total_SE[i], F_true[i], order_colors, T)
+    # @views make_bar_plot(F0s[i,:], F_terms[i, :, :], F_total[i,:], F_total_SE[i], F_true[i], order_colors[1:order], T)
 end
