@@ -24,20 +24,20 @@ end
 
 
 function cumulants_from_effective_hamiltonian(
-        T::Float64, # kelvin
+        T::Real, # kelvin
         ::Type{L}, 
         outpath::String;
         energies_file::Union{String, Nothing} = nothing,
         nconf::Int = 50_000,
         ucposcar_path::String = joinpath(outpath, "infile.ucposcar"),
         ssposcar_path::String = joinpath(outpath, "infile.ssposcar"),
-        ifc2_path::String = joinpath(outpath, "infile.ucposcar"),
+        ifc_path::String = joinpath(outpath, "infile.forceconstant"),
         n_boot::Int = 100,
         boot_size::Int = floor(Int, nconf / 5)
     ) where {L <: Limit}
 
     isfile(ucposcar_path) || throw(ArgumentError("ucposcar path is not a file: $(ucposcar_path)"))
-    isfile(ifc2_path) || throw(ArgumentError("Force constant path is not a file: $(ifc2_path)"))
+    isfile(ifc_path) || throw(ArgumentError("Force constant path is not a file: $(ifc_path)"))
     isfile(ssposcar_path) || throw(ArgumentError("ssposcar path is not a file: $(ssposcar_path)"))
 
     cp(ifc_path, joinpath(outpath, "infile.forceconstant"); force = true)
