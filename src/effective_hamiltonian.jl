@@ -7,8 +7,8 @@ function parse_energies(path)
     # Parse n_atoms and T from header
     f = open(path, "r")
     readline(f) # skip
-    T = parse(Float64, strip(split(readline(f)))[end])
-    n_atoms = parse(Int, strip(split(readline(f)))[end])
+    T = parse(Float64, split(strip(readline(f)))[end])
+    n_atoms = parse(Int, split(strip(readline(f)))[end])
     close(f)
 
     # energies in file are meV / atom, Converts to eV
