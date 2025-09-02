@@ -35,8 +35,14 @@ for (i,T) in enumerate(temperatures)
         F0s[i,j] = data[1] 
         F_terms[i,j,:] = data[2:2:(end - 3 - 2*od)]
         F_terms_SE[i,j,:] = data[3:2:(end - 2 - 2*od)]
-        F_total[i,j] = data[end-1]
-        F_total_SE[i,j] = data[end]
+
+        if order == max_order
+            F_total[i,j] = data[end-1]
+            F_total_SE[i,j] = data[end]
+        else
+            F_total[i,j] = sum(F_terms[i, j, :]) + F0s[i,j]
+            F_total_SE[i,j] = Inf #cannot know in this scenario
+        end
     end
 end
 
