@@ -40,9 +40,13 @@ function cumulants_from_effective_hamiltonian(
     isfile(ifc_path) || throw(ArgumentError("Force constant path is not a file: $(ifc_path)"))
     isfile(ssposcar_path) || throw(ArgumentError("ssposcar path is not a file: $(ssposcar_path)"))
 
-    cp(ifc_path, joinpath(outpath, "infile.forceconstant"); force = true)
-    cp(ucposcar_path, joinpath(outpath, "infile.ucposcar"); force = true)
-    cp(ssposcar_path, joinpath(outpath, "infile.ssposcar"); force = true)
+
+    new_ifc_path = joinpath(outpath, "infile.forceconstant")
+    new_uc_path = joinpath(outpath, "infile.ucposcar")
+    new_ss_path = joinpath(outpath, "infile.ssposcar")
+    isfile(new_ifc_path) || cp(ifc_path, new_ifc_path; force = true)
+    isfile(new_uc_path) || cp(ucposcar_path, new_uc_path; force = true)
+    isfile(new_ss_path) || cp(ssposcar_path, new_ss_path; force = true)
 
     if isnothing(energies_file)
         #! TODO RUN EFFECTIVE HAMILTONIAN
