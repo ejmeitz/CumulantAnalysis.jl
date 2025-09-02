@@ -19,7 +19,7 @@ F_terms_SE = zeros(length(temperatures), length(sizes), order)
 F_total = zeros(length(temperatures), length(sizes))
 F_total_SE = zeros(length(temperatures), length(sizes))
 
-od = max_order = order
+od = max_order - order
 for (i,T) in enumerate(temperatures)
     for (j,s) in enumerate(sizes)
         F_path = joinpath(get_datapath(T,s), "F_mean.txt")
