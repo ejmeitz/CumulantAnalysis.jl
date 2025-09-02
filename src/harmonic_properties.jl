@@ -1,9 +1,9 @@
 
-function harmonic_properties(estim::ThermoEstimator, ω::AbstractVector, normalization)
-    F₀ = F_harmonic(ω, ustrip(estim.temperature), limit(estim)) / normalization
-    S₀ = S_harmonic(ω, ustrip(estim.temperature), limit(estim)) / normalization
-    U₀ = U_harmonic(ω, ustrip(estim.temperature), limit(estim)) / normalization
-    Cᵥ₀ = Cᵥ_harmonic(ω, ustrip(estim.temperature), limit(estim)) / normalization
+function harmonic_properties(T, lim, ω::AbstractVector, normalization)
+    F₀ = F_harmonic(ω, T, lim) / normalization
+    S₀ = S_harmonic(ω, T, lim) / normalization
+    U₀ = U_harmonic(ω, T, lim) / normalization
+    Cᵥ₀ = Cᵥ_harmonic(ω, T, lim) / normalization
 
     return F₀, S₀, U₀, Cᵥ₀
 end
@@ -17,9 +17,8 @@ end
 #     return F₀, S₀, Cᵥ₀
 # end
 
-function harmonic_properties(estim::ThermoEstimator, ifc_dir::String)
-
-    pdr = PhononDispersionRelations(; dumpgrid = true, temperature = Float64(ustrip(estim.temperature)))
+function harmonic_properties(T, limit::Limit, ifc_dir::String)
+     pdr = PhononDispersionRelations(; dumpgrid = true, temperature = Float64(ustrip(T)))
     
     isdir(ifc_dir) || error(ArgumentError("ifc_dir passed to harmonic_properties is not a valid directory: $(ifc_dir)"))
     isfile(joinpath(ifc_dir, "infile.ucposcar")) || error(ArgumentError("Missing infile.ucposcar when attempting to calculate harmonic properties"))
@@ -38,7 +37,11 @@ function harmonic_properties(estim::ThermoEstimator, ifc_dir::String)
     # N_branch / 3 == N_atoms_per_unitcell
     N = N_full_q_point * (N_branch / 3)
 
-    return harmonic_properties(estim, reduce(vcat, freqs_rad_s), N)
+    return harmonic_properties(Float64(ustrip(T)), limit, reduce(vcat, freqs_rad_s), N)
+end
+
+function harmonic_properties(estim::ThermoEstimator, ifc_dir::String)
+    return harmonic_properties(ustrip(estim.temperature), limit(estim), ifc_dir)
 end
 
 #* FIX CONTRIBUTION FROM Zero-Point MOTION ON RIGID TRANSLATION MODES??

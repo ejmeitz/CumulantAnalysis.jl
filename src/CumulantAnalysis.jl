@@ -31,6 +31,6 @@ include("block_averaging.jl")
 include("error_analysis.jl")
 include("cumulant_corrections.jl")
 include("phonon.jl")
-
+include("effective_hamiltonian.jl")
 
 end # CumulantAnalysis

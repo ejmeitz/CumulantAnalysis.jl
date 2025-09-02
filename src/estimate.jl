@@ -1,8 +1,7 @@
 export estimate
 
-function calculate_corrections(e::ThermoEstimator, V, ΔV)
+function calculate_corrections(T, V, ΔV)
 
-    T = ustrip(e.temperature)
     O = order(e)
 
     ΔF = zeros(O); ΔS = zeros(O)
@@ -35,10 +34,10 @@ struct BootstrapCumualantEstimate{O,H}
     unit_str::String
 end
 
-function bootstrap_corrections(e::ThermoEstimator, V, ΔV, n_boot, boot_size, ifc_dir::String, Nat::Int)
-    
+function bootstrap_corrections(T, V, ΔV, n_boot, boot_size, ifc_dir::String, Nat::Int, ::Type{L}) where {L <: Limit}
+
     # these are returned per-atom
-    F₀, S₀, U₀, Cᵥ₀ = harmonic_properties(e, ifc_dir)
+    F₀, S₀, U₀, Cᵥ₀ = harmonic_properties(T, L, ifc_dir)
     O = order(e)
 
     idx_storage = zeros(Int, boot_size)
@@ -49,7 +48,7 @@ function bootstrap_corrections(e::ThermoEstimator, V, ΔV, n_boot, boot_size, if
     p = Progress(n_boot, "Bootstrapping Corrections")
     for i in 1:n_boot
         sample!(1:length(V), idx_storage; replace = true)
-        ΔFs[:,i], ΔSs[:,i], ΔUs[:,i], ΔCᵥs[:,i] = calculate_corrections(e, V[idx_storage], ΔV[idx_storage])
+        ΔFs[:,i], ΔSs[:,i], ΔUs[:,i], ΔCᵥs[:,i] = calculate_corrections(T, V[idx_storage], ΔV[idx_storage])
         next!(p)
     end
     finish!(p)
@@ -221,8 +220,9 @@ function estimate(
         writedlm(f, [header; V V2 ΔV])
     end
 
-    # Use V2 in place of V for derivatives??
-    res = bootstrap_corrections(e, V2, ΔV, n_boot, boot_size, basedir, n_atoms)
+    #! Use V2 in place of V for derivatives??
+    T = Float64(ustrip(e.temperature))
+    res = bootstrap_corrections(T, V2, ΔV, n_boot, boot_size, basedir, n_atoms, limit(e))
 
     wait(t)
 
