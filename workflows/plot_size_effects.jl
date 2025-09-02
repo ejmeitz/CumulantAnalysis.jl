@@ -1,17 +1,25 @@
 using CairoMakie
 using DelimitedFiles
 
-material = "SW_SILICON"
-get_outpath = (T) -> "/mnt/merged/emeitz/CumulantAnalysisTest/sTDEP_SW_size_effects/T$(T)"
-get_datapath = (T,s) -> "/mnt/merged/emeitz/CumulantAnalysisTest/sTDEP_SW_size_effects/T$(T)/$(s)UC"
-temperatures = [100, 1300]
-F_true = [-4.2957902, -4.6756675]
+# material = "SW_SILICON"
+# get_outpath = (T) -> "/mnt/merged/emeitz/CumulantAnalysisTest/sTDEP_SW_size_effects/T$(T)"
+# get_datapath = (T,s) -> "/mnt/merged/emeitz/CumulantAnalysisTest/sTDEP_SW_size_effects/T$(T)/$(s)UC"
+# temperatures = [100, 1300]
+# F_true = [-4.2957902, -4.6756675]
+# F_tol = 1e-3 # eV / atom
+# sizes = [2,3,4,5,6,7,8]
+
+material = "LJ_ARGON"
+get_outpath = (T) -> "/mnt/merged/emeitz/CumulantAnalysisTest/sTDEP_LJ_size_effects/T$(T)"
+get_datapath = (T,s) -> "/mnt/merged/emeitz/CumulantAnalysisTest/sTDEP_LJ_size_effects/T$(T)/$(s)UC"
+temperatures = [10, 80]
+F_true = [-0.0729854, -0.0820714]
 F_tol = 1e-3 # eV / atom
-sizes = [2,3,4,5,6,7,8]
+sizes = [3,4,5,6,7,8]
 
 order = 2 # order to actually use in plots
 max_order = 3
-order_colors =  ["#080808", "#4287f5", "#f7952d", "#259c2f"]
+# order_colors =  ["#080808", "#4287f5", "#f7952d", "#259c2f"]
 
 F0s = zeros(length(temperatures), length(sizes))
 F_terms = zeros(length(temperatures), length(sizes), order)
@@ -31,6 +39,7 @@ for (i,T) in enumerate(temperatures)
         F_total_SE[i,j] = data[end]
     end
 end
+
 
 # breaks down property by term in the cumulant expansion
 # function make_bar_plot(F0_T, F_terms_T, F_total_T, F_total_SE_T, F_true, order_colors, T)
