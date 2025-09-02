@@ -17,7 +17,7 @@ end
 #     return F₀, S₀, Cᵥ₀
 # end
 
-function harmonic_properties(T, limit::Limit, ifc_dir::String)
+function harmonic_properties(T, ::Type{L}, ifc_dir::String) where {L <: Limit}
      pdr = PhononDispersionRelations(; dumpgrid = true, temperature = Float64(ustrip(T)))
     
     isdir(ifc_dir) || error(ArgumentError("ifc_dir passed to harmonic_properties is not a valid directory: $(ifc_dir)"))
@@ -37,7 +37,7 @@ function harmonic_properties(T, limit::Limit, ifc_dir::String)
     # N_branch / 3 == N_atoms_per_unitcell
     N = N_full_q_point * (N_branch / 3)
 
-    return harmonic_properties(Float64(ustrip(T)), limit, reduce(vcat, freqs_rad_s), N)
+    return harmonic_properties(Float64(ustrip(T)), L, reduce(vcat, freqs_rad_s), N)
 end
 
 function harmonic_properties(estim::ThermoEstimator, ifc_dir::String)
