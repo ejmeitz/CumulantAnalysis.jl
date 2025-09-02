@@ -68,6 +68,6 @@ function cumulants_from_effective_hamiltonian(
     ΔV = V3 .+ V4
 
     #! We sampled w.r.t. harmonic so derivatives take V2 as the "reference"
-    return bootstrap_corrections(T, V2, ΔV, n_boot, boot_size, basedir, n_atoms, L)
+    return bootstrap_corrections(T, V2, ΔV, n_boot, boot_size, outpath, n_atoms, L)
 
 end
