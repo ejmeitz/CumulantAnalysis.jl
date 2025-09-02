@@ -2,8 +2,8 @@ using CairoMakie
 using DelimitedFiles
 
 material = "SW_SILICON"
-get_outpath = (T) -> "/mnt/merged/emeitz/CumulantAnalysisTest/sTDEP_SW_TEST/T$(T)"
-get_datapath = (T,s) -> "/mnt/merged/emeitz/CumulantAnalysisTest/sTDEP_SW_TEST/T$(T)/$(s)UC"
+get_outpath = (T) -> "/mnt/merged/emeitz/CumulantAnalysisTest/sTDEP_SW_size_effects/T$(T)"
+get_datapath = (T,s) -> "/mnt/merged/emeitz/CumulantAnalysisTest/sTDEP_SW_size_effects/T$(T)/$(s)UC"
 temperatures = [100, 1300]
 F_true = [-4.2957902, -4.6756675]
 F_tol = 1e-3 # eV / atom
