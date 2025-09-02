@@ -7,7 +7,7 @@ using DelimitedFiles
 # temperatures = [100, 1300]
 # F_true = [-4.2957902, -4.6756675]
 # F_tol = 1e-3 # eV / atom
-# sizes = [2,3,4,5,6,7,8]
+# sizes = [2,3,4,5,6,7]
 
 material = "LJ_ARGON"
 get_outpath = (T) -> "/mnt/merged/emeitz/CumulantAnalysisTest/sTDEP_LJ_size_effects/T$(T)"

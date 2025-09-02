@@ -221,7 +221,8 @@ function estimate(
         writedlm(f, [header; V V2 ΔV])
     end
 
-    res = bootstrap_corrections(e, V, ΔV, n_boot, boot_size, basedir, n_atoms)
+    # Use V2 in place of V for derivatives??
+    res = bootstrap_corrections(e, V2, ΔV, n_boot, boot_size, basedir, n_atoms)
 
     wait(t)
 

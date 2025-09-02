@@ -33,7 +33,6 @@ make_crystal = (s) -> Diamond(5.43u"angstrom", :Si, SVector(s,s,s))
 
 LAMMPS.MPI.Init()
 
-
 for T in temperatures
     for s in sizes
 
