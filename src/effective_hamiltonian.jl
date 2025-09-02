@@ -30,18 +30,20 @@ function cumulants_from_effective_hamiltonian(
         energies_file::Union{String, Nothing} = nothing,
         nconf::Int = 50_000,
         ucposcar_path::String = joinpath(outpath, "infile.ucposcar"),
+        ssposcar_path::String = joinpath(outpath, "infile.ssposcar"),
         ifc2_path::String = joinpath(outpath, "infile.ucposcar"),
         n_boot::Int = 100,
         boot_size::Int = floor(Int, nconf / 5)
     ) where {L <: Limit}
 
-    isfile(ucposcar_path) || throw(ArgumentError("ucposcar_path is not a file: $(ucposcar_path)"))
+    isfile(ucposcar_path) || throw(ArgumentError("ucposcar path is not a file: $(ucposcar_path)"))
     isfile(ifc2_path) || throw(ArgumentError("Force constant path is not a file: $(ifc2_path)"))
+    isfile(ssposcar_path) || throw(ArgumentError("ssposcar path is not a file: $(ssposcar_path)"))
 
     cp(ifc_path, joinpath(outpath, "infile.forceconstant"); force = true)
     cp(ucposcar_path, joinpath(outpath, "infile.ucposcar"); force = true)
+    cp(ssposcar_path, joinpath(outpath, "infile.ssposcar"); force = true)
 
-    
     if isnothing(energies_file)
         #! TODO RUN EFFECTIVE HAMILTONIAN
         error("Not implemented yet")
