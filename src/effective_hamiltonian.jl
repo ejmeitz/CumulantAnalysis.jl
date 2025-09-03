@@ -34,7 +34,8 @@ function cumulants_from_effective_hamiltonian(
         ssposcar_path::String = joinpath(outpath, "infile.ssposcar"),
         ifc_path::String = joinpath(outpath, "infile.forceconstant"),
         n_boot::Int = 100,
-        boot_size::Int = floor(Int, nconf / 5)
+        boot_size::Int = floor(Int, nconf / 5),
+        nthreads::Int = Threads.nthreads()
     ) where {L <: Limit}
 
     isfile(ucposcar_path) || throw(ArgumentError("ucposcar path is not a file: $(ucposcar_path)"))
@@ -50,8 +51,20 @@ function cumulants_from_effective_hamiltonian(
     isfile(new_ss_path) || cp(ssposcar_path, new_ss_path; force = true)
 
     if isnothing(energies_file)
-        #! TODO RUN EFFECTIVE HAMILTONIAN
-        error("Not implemented yet")
+
+        # Check for mpirun
+        res = run(`which mpirun`; wait = false)
+        found_mpirun = success(res)
+        found_mpirun || @warn "Could not find mpirun on path, defaulting to 1 thread."
+
+        quantum_cmd = (L === Quantum) ? "--quantum " : ""
+        mpi_cmd = found_mpirun ? "mpirun -np $(nthreads) " : ""
+        cmd_str = `$(mpi_cmd)effective_hamiltonian --thirdorder --fourthorder $(quantum_cmd)--nconf $(nconf) --temperature $(T)`
+        
+        cd(outpath) do 
+            run(cmd_str)
+        end
+
         energies_file = joinpath(outpath, "outfile.energies")
     end
 
