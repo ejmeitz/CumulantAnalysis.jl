@@ -25,9 +25,8 @@ const ħ = ustrip(u"eV * s", Unitful.ħ)
 
 include("types.jl")
 include("harmonic_properties.jl")
-include("estimate.jl")
-include("error_analysis.jl")
 include("cumulant_corrections.jl")
-include("effective_hamiltonian.jl")
+include("estimate.jl")
+
 
 end # CumulantAnalysis

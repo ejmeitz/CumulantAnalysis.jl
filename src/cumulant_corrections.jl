@@ -1,9 +1,7 @@
-export estimate_thermo_properties, CumulantData
-
 # Various derivatives of ⟨O⟩
-∂A_∂T(A, V, kB, T) = cov(A, V; corrected = false) / (kB * T * T)
-∂AB_∂T(A, B, V, kB, T, dA = ∂A_∂T(A, V, kB, T), dB =  ∂A_∂T(B, V, kB, T)) = (mean(A) * dB) + (mean(B) * dA)
-∂²A_∂T²(A, V, kB, T, dA = ∂A_∂T(A, V, kB, T)) = (-2*dA/T) + ((1/(kB*T*T)) * (∂A_∂T(A.*V, V, kB, T) - ∂AB_∂T(A, V, V, kB, T, dA)))
+∂A_∂T(A, V, T) = cov(A, V; corrected = false) / (kB * T * T)
+∂AB_∂T(A, B, V, T, dA = ∂A_∂T(A, V, T), dB =  ∂A_∂T(B, V, T)) = (mean(A) * dB) + (mean(B) * dA)
+∂²A_∂T²(A, V, T, dA = ∂A_∂T(A, V, T)) = (-2*dA/T) + ((1/(kB*T*T)) * (∂A_∂T(A.*V, V, T) - ∂AB_∂T(A, V, V, T, dA)))
 
 function central_moment(X, n::Int)
     return mean( (X .- mean(X)) .^ n )
@@ -11,19 +9,13 @@ end
 
 skew(X) = central_moment(X, 3)
 
-struct CumulantData{O,A,B,C}
-    κ::A
-    ∂κ_∂T::B
-    ∂²κ_∂T²::C
-end
+## FIRST CUMULANTS ##
+function CumulantData(V, V₂, V₃, V₄, T, ::Val{1}, ce::CumulantEstimator)
 
-order(::CumulantData{O}) where O = O
-
-function CumulantData(V, ΔV, kB, T, ::Val{1})
-
-    t1 = Threads.@spawn mean(ΔV)
-    t2 = Threads.@spawn ∂A_∂T(ΔV, V, kB, T)
-    t3 = Threads.@spawn ∂²A_∂T²(ΔV, V, kB, T)
+    X = X1(ce, V, V₂, V₃, V₄)
+    t1 = Threads.@spawn mean(X)
+    t2 = Threads.@spawn ∂A_∂T(X, V₂, T)
+    t3 = Threads.@spawn ∂²A_∂T²(X, V₂, T)
 
     κ₁ = fetch(t1)
     ∂κ₁_∂T = fetch(t2)
@@ -33,51 +25,59 @@ function CumulantData(V, ΔV, kB, T, ::Val{1})
                             κ₁, ∂κ₁_∂T, ∂²κ₁_∂T²)
 end
 
-function CumulantData(V, ΔV, kB, T, c1::CumulantData{1}, ::Val{2})
+## SECOND CUMULANTS ##
 
-    ΔV² = ΔV .^ 2
+function CumulantData(V, V₂, V₃, V₄, T, c1::CumulantData{1}, ::Val{2}, ce::CumulantEstimator)
 
-    t1 = Threads.@spawn var(ΔV; corrected = false)
-    t2 = Threads.@spawn ∂A_∂T(ΔV², V, kB, T)
-    t3 = Threads.@spawn ∂²A_∂T²(ΔV², V, kB, T)
+    X = X2(ce, V, V₂, V₃, V₄)
+    X² = X .^ 2
+
+    t1 = Threads.@spawn var(X; corrected = false)
+    t2 = Threads.@spawn ∂A_∂T(X², V₂, T)
+    t3 = Threads.@spawn ∂²A_∂T²(X², V₂, T)
 
     κ₂ = fetch(t1)
-    ∂ΔV²_∂T = fetch(t2)
-    ∂²ΔV²_∂T² = fetch(t3)
+    ∂X²_∂T = fetch(t2)
+    ∂²X²_∂T² = fetch(t3)
 
-    ∂κ₂_∂T = ∂ΔV²_∂T - (2*c1.κ*c1.∂κ_∂T)
-    ∂²κ₂_∂T² = ∂²ΔV²_∂T² - 2*(((c1.∂κ_∂T)^2) + (c1.κ*c1.∂²κ_∂T²))
+    ∂κ₂_∂T = ∂X²_∂T - (2*c1.κ*c1.∂κ_∂T)
+    ∂²κ₂_∂T² = ∂²X²_∂T² - 2*(((c1.∂κ_∂T)^2) + (c1.κ*c1.∂²κ_∂T²))
 
     return CumulantData{2, typeof(κ₂), typeof(∂κ₂_∂T), typeof(∂²κ₂_∂T²)}(
                         κ₂, ∂κ₂_∂T, ∂²κ₂_∂T²)
 end
 
-function CumulantData(V, ΔV, kB, T, c1::CumulantData{1}, ::Val{3})
+## THRID CUMULANTS ##
 
-    ΔV² = ΔV .^ 2
-    ΔV³ = ΔV .^ 3
+function CumulantData(V, V₂, V₃, V₄, T, c1::CumulantData{1}, ::Val{3}, ce::CumulantEstimator)
 
-    t1 = Threads.@spawn skew(ΔV)
-    t2 = Threads.@spawn ∂A_∂T(ΔV³, V, kB, T)
-    t3 = Threads.@spawn ∂²A_∂T²(ΔV³, V, kB, T)
-    t4 = Threads.@spawn mean(ΔV²)
+    X = X3(ce, V, V₂, V₃, V₄)
+    X² = X .^ 2
+    X³ = X .^ 3
+
+    t1 = Threads.@spawn skew(X)
+    t2 = Threads.@spawn ∂A_∂T(X³, V_ref, T)
+    t3 = Threads.@spawn ∂²A_∂T²(X³, V_ref, T)
+    t4 = Threads.@spawn mean(X²)
+
     # These are both re calculated from second order
-    t5 = Threads.@spawn ∂A_∂T(ΔV², V, kB, T)
-    t6 = Threads.@spawn ∂²A_∂T²(ΔV², V, kB, T)
+    t5 = Threads.@spawn ∂A_∂T(X², V_ref, T)
+    t6 = Threads.@spawn ∂²A_∂T²(X², V_ref, T)
 
     κ₃ = fetch(t1)
-    ∂ΔV³_∂T = fetch(t2)
-    ∂²ΔV³_∂T² = fetch(t3)
-    μ_ΔV² = fetch(t4)
-    ∂ΔV²_∂T = fetch(t5)
-    ∂²ΔV²_∂T² = fetch(t6)
+    ∂X³_∂T = fetch(t2)
+    ∂²X³_∂T² = fetch(t3)
+    μ_X² = fetch(t4)
+    ∂X²_∂T = fetch(t5)
+    ∂²X²_∂T² = fetch(t6)
 
-    ∂κ₃_∂T = ∂ΔV³_∂T - 3*c1.κ*∂ΔV²_∂T + 3*μ_ΔV²*c1.∂κ_∂T
-    ∂²κ₃_∂T² = ∂²ΔV³_∂T² - 3*(c1.∂κ_∂T*∂ΔV²_∂T + c1.κ*∂²ΔV²_∂T²) + 3*(∂ΔV²_∂T*c1.∂κ_∂T + μ_ΔV²*c1.∂²κ_∂T²)
+    ∂κ₃_∂T = ∂X³_∂T - 3*c1.κ*∂X²_∂T + 3*μ_X²*c1.∂κ_∂T
+    ∂²κ₃_∂T² = ∂²X³_∂T² - 3*(c1.∂κ_∂T*∂X²_∂T + c1.κ*∂²X²_∂T²) + 3*(∂X²_∂T*c1.∂κ_∂T + μ_X²*c1.∂²κ_∂T²)
 
     return CumulantData{3, typeof(κ₃), typeof(∂κ₃_∂T), typeof(∂²κ₃_∂T²)}(
                             κ₃, ∂κ₃_∂T, ∂²κ₃_∂T²)
 end
+
 
 function first_order_corrections(c1::CumulantData{1}, T)
    
@@ -89,7 +89,7 @@ function first_order_corrections(c1::CumulantData{1}, T)
     return F_correction, S_correction, U_correction, Cv_correction
 end
 
-function second_order_corrections(c2::CumulantData{2}, kB, T, stochastic::Bool)
+function second_order_corrections(c2::CumulantData{2}, T, stochastic::Bool)
 
     pref = stochastic ? -1.0 : 1.0
     β = 1 / (kB*T)
@@ -103,7 +103,7 @@ function second_order_corrections(c2::CumulantData{2}, kB, T, stochastic::Bool)
     return F_correction, S_correction, U_correction, Cv_correction
 end
 
-function third_order_corrections(c3::CumulantData{3}, kB, T)
+function third_order_corrections(c3::CumulantData{3}, T)
 
     β = 1 / (kB*T)
     β² = β^2; β³ = β^3
