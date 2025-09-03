@@ -34,11 +34,10 @@ struct BootstrapCumualantEstimate{O,H}
     unit_str::String
 end
 
-function bootstrap_corrections(T, V, ΔV, n_boot, boot_size, ifc_dir::String, Nat::Int, ::Type{L}) where {L <: Limit}
+function bootstrap_corrections(T, V, ΔV, n_boot, boot_size, ifc_dir::String, Nat::Int, O::Int, ::Type{L}) where {L <: Limit}
 
     # these are returned per-atom
     F₀, S₀, U₀, Cᵥ₀ = harmonic_properties(T, L, ifc_dir)
-    O = order(e)
 
     idx_storage = zeros(Int, boot_size)
 
@@ -222,7 +221,7 @@ function estimate(
 
     #! Use V2 in place of V for derivatives??
     T = Float64(ustrip(e.temperature))
-    res = bootstrap_corrections(T, V2, ΔV, n_boot, boot_size, basedir, n_atoms, limit(e))
+    res = bootstrap_corrections(T, V2, ΔV, n_boot, boot_size, basedir, n_atoms, order(e), limit(e))
 
     wait(t)
 

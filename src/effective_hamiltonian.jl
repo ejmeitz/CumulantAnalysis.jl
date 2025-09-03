@@ -27,6 +27,7 @@ function cumulants_from_effective_hamiltonian(
         T::Real, # kelvin
         ::Type{L}, 
         outpath::String;
+        order::Int = 3,
         energies_file::Union{String, Nothing} = nothing,
         nconf::Int = 50_000,
         ucposcar_path::String = joinpath(outpath, "infile.ucposcar"),
@@ -68,6 +69,6 @@ function cumulants_from_effective_hamiltonian(
     ΔV = V3 .+ V4
 
     #! We sampled w.r.t. harmonic so derivatives take V2 as the "reference"
-    return bootstrap_corrections(T, V2, ΔV, n_boot, boot_size, outpath, n_atoms, L)
+    return bootstrap_corrections(T, V2, ΔV, n_boot, boot_size, outpath, n_atoms, order, L)
 
 end

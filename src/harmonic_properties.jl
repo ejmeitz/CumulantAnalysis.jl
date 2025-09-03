@@ -18,7 +18,7 @@ end
 # end
 
 function harmonic_properties(T, ::Type{L}, ifc_dir::String) where {L <: Limit}
-     pdr = PhononDispersionRelations(; dumpgrid = true, temperature = Float64(ustrip(T)))
+    pdr = PhononDispersionRelations(; dumpgrid = true, temperature = Float64(ustrip(T)))
     
     isdir(ifc_dir) || error(ArgumentError("ifc_dir passed to harmonic_properties is not a valid directory: $(ifc_dir)"))
     isfile(joinpath(ifc_dir, "infile.ucposcar")) || error(ArgumentError("Missing infile.ucposcar when attempting to calculate harmonic properties"))
