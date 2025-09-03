@@ -1,8 +1,6 @@
 export estimate
 
-function calculate_corrections(T, V, ΔV)
-
-    O = order(e)
+function calculate_corrections(T, O, V, ΔV, is_stochastic::Bool)
 
     ΔF = zeros(O); ΔS = zeros(O)
     ΔU = zeros(O); ΔCᵥ = zeros(O)
@@ -12,7 +10,7 @@ function calculate_corrections(T, V, ΔV)
 
     if O >= 2
         c2 = CumulantData(V, ΔV, kB, T, c1, Val{2}())
-        ΔF[2], ΔS[2], ΔU[2], ΔCᵥ[2] = second_order_corrections(c2, kB, T, stochastic(e))
+        ΔF[2], ΔS[2], ΔU[2], ΔCᵥ[2] = second_order_corrections(c2, kB, T, is_stochastic)
     end
 
     if O >= 3
@@ -34,7 +32,8 @@ struct BootstrapCumualantEstimate{O,H}
     unit_str::String
 end
 
-function bootstrap_corrections(T, V, ΔV, n_boot, boot_size, ifc_dir::String, Nat::Int, O::Int, ::Type{L}) where {L <: Limit}
+function bootstrap_corrections(T, V, ΔV, n_boot, boot_size, ifc_dir::String,
+                                 Nat::Int, O::Int, is_stochastic::Bool, ::Type{L}) where {L <: Limit}
 
     # these are returned per-atom
     F₀, S₀, U₀, Cᵥ₀ = harmonic_properties(T, L, ifc_dir)
@@ -47,7 +46,7 @@ function bootstrap_corrections(T, V, ΔV, n_boot, boot_size, ifc_dir::String, Na
     p = Progress(n_boot, "Bootstrapping Corrections")
     for i in 1:n_boot
         sample!(1:length(V), idx_storage; replace = true)
-        ΔFs[:,i], ΔSs[:,i], ΔUs[:,i], ΔCᵥs[:,i] = calculate_corrections(T, V[idx_storage], ΔV[idx_storage])
+        ΔFs[:,i], ΔSs[:,i], ΔUs[:,i], ΔCᵥs[:,i] = calculate_corrections(T, O, V[idx_storage], ΔV[idx_storage], is_stochastic)
         next!(p)
     end
     finish!(p)
@@ -221,7 +220,7 @@ function estimate(
 
     #! Use V2 in place of V for derivatives??
     T = Float64(ustrip(e.temperature))
-    res = bootstrap_corrections(T, V2, ΔV, n_boot, boot_size, basedir, n_atoms, order(e), limit(e))
+    res = bootstrap_corrections(T, V2, ΔV, n_boot, boot_size, basedir, n_atoms, order(e), stochastic(e), limit(e))
 
     wait(t)
 
