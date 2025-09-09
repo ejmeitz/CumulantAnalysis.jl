@@ -32,7 +32,7 @@ abstract type CumulantEstimator{O, L <: Limit} end
 
 order(::CumulantEstimator{O}) where O = O
 
-function check_paths(ce::CumulantEstimator)
+function check_ifc_paths(ce::CumulantEstimator)
     for p in ifc_paths(ce)
         isfile(p) || throw(ArgumentError("Force constant path is not a file: $(ifc_path)"))
     end
@@ -62,6 +62,20 @@ ifc_paths(ehe::EffectiveHamiltonianEstimator) = [ehe.ifc2_path, ehe.ifc3_path, e
 needs_true_V(::EffectiveHamiltonianEstimator) = false
 U0(e::EffectiveHamiltonianEstimator, V, V₂, V₃, V₄) = e.U0
 
+function move_ifcs(ehe::EffectiveHamiltonianEstimator, outpath::String)
+
+    check_ifc_paths(ehe)
+
+    new_ifc2_path = joinpath(outpath, "infile.forceconstant")
+    new_ifc3_path = joinpath(outpath, "infile.forceconstant_thirdorder")
+    new_ifc4_path = joinpath(outpath, "infile.forceconstant_fourthorder")
+
+    isfile(new_ifc2_path) || cp(ehe.ifc2_path, new_ifc2_path; force = true)
+    isfile(new_ifc3_path) || cp(ehe.ifc3_path, new_ifc3_path; force = true)
+    isfile(new_ifc4_path) || cp(ehe.ifc4_path, new_ifc4_path; force = true)
+
+end
+
 ########################################
 
 
@@ -84,6 +98,12 @@ X3(he::HarmonicEstimator, V, V₂, V₃, V₄) = rv(he, V, V₂, V₃, V₄)
 ifc_paths(ehe::HarmonicEstimator) = [ehe.ifc2_path]
 needs_true_V(::HarmonicEstimator) = true
 U0(::HarmonicEstimator, V, V₂, V₃, V₄) = mean(V .- V₂)
+
+function move_ifcs(ehe::EffectiveHamiltonianEstimator, outpath::String)
+    check_ifc_paths(ehe)
+    new_ifc2_path = joinpath(outpath, "infile.forceconstant")
+    isfile(new_ifc2_path) || cp(ehe.ifc2_path, new_ifc2_path; force = true)
+end
 
 ########################################
 
@@ -108,3 +128,17 @@ X3(re::ResidualEstimator, V, V₂, V₃, V₄) = rv(re, V, V₂, V₃, V₄)
 ifc_paths(ehe::ResidualEstimator) = [ehe.ifc2_path, ehe.ifc3_path, ehe.ifc4_path]
 needs_true_V(::ResidualEstimator) = true
 U0(::ResidualEstimator, V, V₂, V₃, V₄) = mean(V .- V₂ .- V₃ .- V₄)
+
+function move_ifcs(ehe::EffectiveHamiltonianEstimator, outpath::String)
+
+    check_ifc_paths(ehe)
+
+    new_ifc2_path = joinpath(outpath, "infile.forceconstant")
+    new_ifc3_path = joinpath(outpath, "infile.forceconstant_thirdorder")
+    new_ifc4_path = joinpath(outpath, "infile.forceconstant_fourthorder")
+
+    isfile(new_ifc2_path) || cp(ehe.ifc2_path, new_ifc2_path; force = true)
+    isfile(new_ifc3_path) || cp(ehe.ifc3_path, new_ifc3_path; force = true)
+    isfile(new_ifc4_path) || cp(ehe.ifc4_path, new_ifc4_path; force = true)
+
+end

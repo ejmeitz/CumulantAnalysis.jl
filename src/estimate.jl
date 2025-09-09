@@ -101,27 +101,14 @@ function parse_energies(path)
     return T, n_atoms, E_polar, E_pair , E_triplet, E_quartet
 end
 
-function expected_file_names(ce::CumulantEstimator)
-    ifc_filenames = basename.(ifc_paths(ce))
-    n_files = length(ifc_filenames)
-
-    files = String[]
-
-    n_files >= 1 && push!(files, "infile.forceconstant")
-    n_files >= 2 && push!(files, "infile.forceconstant_thirdorder")
-    n_files >= 3 && push!(files, "infile.forceconstant_fourthorder")
-    
-    return files
-end
-
 function estimate(
         ce::CumulantEstimator{O,L},
         T::Real, # kelvin
         outpath::String;
-        energies_file::Union{String, Nothing} = nothing,
         ucposcar_path::String = joinpath(outpath, "infile.ucposcar"),
         ssposcar_path::String = joinpath(outpath, "infile.ssposcar"),
-        nthreads::Int = Threads.nthreads()
+        nthreads::Int = Threads.nthreads(),
+        tep_energies_path::Union{String, Nothing} = nothing,
     ) where {O, L <: Limit}
 
     isfile(ucposcar_path) || throw(ArgumentError("ucposcar path is not a file: $(ucposcar_path)"))
@@ -132,15 +119,9 @@ function estimate(
     isfile(new_uc_path) || cp(ucposcar_path, new_uc_path; force = true)
     isfile(new_ss_path) || cp(ssposcar_path, new_ss_path; force = true)
 
-    #! assumes files have right name
-    #! e.g. infile.forceconstant
-    for ip in ifc_paths(ce)
-        file_name = basename(ip)
-        new_ifc_path = joinpath(outpath, file_name)
-        isfile(new_ifc_path) || cp(ip, new_ifc_path; force = true)
-    end
+    move_ifcs(ce, outpath)
 
-    if isnothing(energies_file)
+    if isnothing(tep_energies_path)
 
         # Check for mpirun
         res = run(`which mpirun`; wait = false)
@@ -149,16 +130,18 @@ function estimate(
 
         quantum_cmd = (L === Quantum) ? "--quantum " : ""
         mpi_cmd = found_mpirun ? "mpirun -np $(nthreads) " : ""
-        cmd_str = `$(mpi_cmd)effective_hamiltonian --thirdorder --fourthorder $(quantum_cmd)--nconf $(nconf) --temperature $(T)`
-        
+        dump_cfgs_cmd = needs_true_V(ce) ? "--dumpconfigs" : ""
+
+        cmd_str = `$(mpi_cmd)effective_hamiltonian --thirdorder --fourthorder $(quantum_cmd)--nconf $(nconf) --temperature $(T) $(dump_cfgs_cmd)`
+        @info "CMD: $(cmd_str)"
         cd(outpath) do 
             run(cmd_str)
         end
 
-        energies_file = joinpath(outpath, "outfile.energies")
+        tep_energies_path = joinpath(outpath, "outfile.energies")
     end
 
-    T_file, n_atoms, Vₚ, V₂, V₃, V₄ = parse_energies(energies_file)
+    T_file, n_atoms, Vₚ, V₂, V₃, V₄ = parse_energies(tep_energies_path)
 
     if T_file != T
         @warn "You said tempearture was $T, but parsed temperature as $(T_file) from outfile.energies"
@@ -170,9 +153,7 @@ function estimate(
 
     if needs_true_V(ce)
         error("Not implemented yet")
-        #! TODO CALCULATE ENERGIES
-        #! HOW TO DO THIS? DUMPING 
-        #! CONFIGS IS SLOWWW
+        #! TODO CALCULATE ENERGIES FROM HDF5 DUMP
     else
         V = zeros(eltype(V₂), size(V₂))
     end
