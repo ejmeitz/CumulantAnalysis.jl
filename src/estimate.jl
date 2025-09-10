@@ -173,16 +173,13 @@ function estimate(
 
     res = bootstrap_corrections(V, V₂, V₃, V₄, T, outpath, ce, n_atoms)
 
-    save.(res, Ref(outpath))
+    save.(res, Ref(outpath), Ref(ce.n_boot), Ref(ce.boot_size))
 
     return res
 
 end
 
-
-#! TODO SAVE AS 2 LINE FILE
-
-function save(bce::BootstrapCumualantEstimate{L}, outdir::String) where L
+function save(bce::BootstrapCumualantEstimate{L}, outdir::String, n_boot, boot_size) where L
     prop_name = bce.property
     unit_str = bce.unit_str
 
@@ -213,7 +210,7 @@ function save(bce::BootstrapCumualantEstimate{L}, outdir::String) where L
     N = length(header)
     open(outpath_mean("txt"), "w") do f
         println(f, "# $(prop_name) Units: $(unit_str)")
-        println(f, "# Row 1: Values, Row 2: Standard Error estimated from $(bce.n_boot) bootstraps of size $(bce.boot_size)")
+        println(f, "# Row 1: Values, Row 2: Standard Error estimated from $(n_boot) bootstraps of size $(boot_size)")
         println(f, "# " * Printf.format(str_fmt_str(N), header...))
         println(f, Printf.format(float_fmt_str(N), mean_values...))
         println(f, Printf.format(float_fmt_str(N), SE_values...))
