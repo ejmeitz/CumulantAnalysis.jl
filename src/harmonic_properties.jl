@@ -40,9 +40,6 @@ function harmonic_properties(T, ::Type{L}, ifc_dir::String) where {L <: Limit}
     return harmonic_properties(Float64(ustrip(T)), L, reduce(vcat, freqs_rad_s), N)
 end
 
-function harmonic_properties(estim::ThermoEstimator, ifc_dir::String)
-    return harmonic_properties(ustrip(estim.temperature), limit(estim), ifc_dir)
-end
 
 #* FIX CONTRIBUTION FROM Zero-Point MOTION ON RIGID TRANSLATION MODES??
 #* SEE HOW TDEP IMPLEMENTS THINGS LIKE FREE ENERGY

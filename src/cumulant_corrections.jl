@@ -80,7 +80,6 @@ end
 
 function constant_corrections(ce, V, V₂, V₃, V₄, T)
 
-
     V₀ = get_V₀(ce, V, V₂, V₃, V₄)
     #TODO TAKE DERIVATIVES OF OTHER TERMS
     return V₀, 0.0, 0.0, 0.0
