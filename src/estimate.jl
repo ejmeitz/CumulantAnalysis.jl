@@ -189,7 +189,7 @@ function estimate(
     end
 
     if needs_true_V(ce)
-        V = calculate_true_energies(ce.calc, ce.nconf, ssposcar_path, outpath)
+        V = calculate_true_energies(ce.force_calculator, ce.nconf, ssposcar_path, outpath)
     else
         V = zeros(eltype(V₂), size(V₂))
     end
