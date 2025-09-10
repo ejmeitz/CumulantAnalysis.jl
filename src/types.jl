@@ -1,4 +1,9 @@
-export Quantum, Classical
+export 
+    Quantum, 
+    Classical, 
+    EffectiveHamiltonianEstimator, 
+    HarmonicEstimator, 
+    FourthOrderEstimator#, ResidualEstimator
 
 abstract type Limit end
 struct Quantum <: Limit end
@@ -51,6 +56,12 @@ struct EffectiveHamiltonianEstimator{O,L,T} <: CumulantEstimator{O,L}
     boot_size::Int
 end
 
+function EffectiveHamiltonianEstimator(order::Int, lim::L, ifc2_path, ifc3_path, 
+        ifc4_path, V₀_eV, nconf, n_boot, boot_size) where L
+    return EffectiveHamiltonianEstimator{order, L, typeof(V₀_eV)}(lim, ifc2_path,
+        ifc3_path, ifc4_path, V₀_eV, nconf, n_boot, boot_size)
+end
+
 rv(::EffectiveHamiltonianEstimator, V, V₂, V₃, V₄) = V₃ .+ V₄
 
 # Random variable used in nth cumulant
@@ -88,6 +99,12 @@ struct HarmonicEstimator{O,L,C} <: CumulantEstimator{O,L}
     boot_size::Int
 end
 
+function HarmonicEstimator(order::Int, lim::L, calc, ifc2_path,
+                             nconf, n_boot, boot_size) where L
+    return HarmonicEstimator{order, L, typeof(calc)}(lim, calc, 
+                            ifc2_path, nconf, n_boot, boot_size)
+end
+
 rv(::HarmonicEstimator, V, V₂, V₃, V₄) = V .- V₂
 
 # Random variable used in nth cumulant
@@ -118,6 +135,13 @@ struct FourthOrderEstimator{O,L,C} <: CumulantEstimator{O,L}
     n_boot::Int
     boot_size::Int
 end
+
+function FourthOrderEstimator(order::Int, lim::L, calc, ifc2_path, ifc3_path, 
+        ifc4_path, nconf, n_boot, boot_size) where L
+    return FourthOrderEstimator{order, L, typeof(calc)}(lim, calc, ifc2_path,
+        ifc3_path, ifc4_path, nconf, n_boot, boot_size)
+end
+
 
 rv(::FourthOrderEstimator, V, V₂, V₃, V₄) = V .- V₂ .- V₃ .- V₄
 
@@ -155,6 +179,12 @@ struct ResidualEstimator{O,L,C} <: CumulantEstimator{O,L}
     nconf::Int
     n_boot::Int
     boot_size::Int
+end
+
+function ResidualEstimator(order::Int, lim::L, calc, ifc2_path, ifc3_path, 
+        ifc4_path, nconf, n_boot, boot_size) where L
+    return ResidualEstimator{order, L, typeof(calc)}(lim, calc, ifc2_path,
+        ifc3_path, ifc4_path, nconf, n_boot, boot_size)
 end
 
 rv(::ResidualEstimator, V, V₂, V₃, V₄) = V .- V₂ .- get_V₀(re, V, V₂, V₃, V₄) # R + V₃ + V₄
