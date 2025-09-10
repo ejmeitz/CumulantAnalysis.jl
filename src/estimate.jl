@@ -201,7 +201,7 @@ function save(bce::BootstrapCumualantEstimate{L}, outdir::String, n_boot, boot_s
     SE_data[prop_name*"_total_SE"] = bce.total_SE
 
     float_fmt_str = (N) -> Printf.Format(join(fill("%15.7f", N), " "))
-    str_fmt_str = (N) -> Printf.Format(join(fill("%13s", N), " "))
+    str_fmt_str = (N) -> Printf.Format(join(fill("%15s", N), " "))
 
     # Human Readable Version
     header = collect(keys(mean_data))
@@ -211,7 +211,7 @@ function save(bce::BootstrapCumualantEstimate{L}, outdir::String, n_boot, boot_s
     open(outpath_mean("txt"), "w") do f
         println(f, "# $(prop_name) Units: $(unit_str)")
         println(f, "# Row 1: Values, Row 2: Standard Error estimated from $(n_boot) bootstraps of size $(boot_size)")
-        println(f, "# " * Printf.format(str_fmt_str(N), header...))
+        println(f, Printf.format(str_fmt_str(N), header...))
         println(f, Printf.format(float_fmt_str(N), mean_values...))
         println(f, Printf.format(float_fmt_str(N), SE_values...))
     end
@@ -220,7 +220,7 @@ function save(bce::BootstrapCumualantEstimate{L}, outdir::String, n_boot, boot_s
         for (k,v) in mean_data
             write(file, k, v)
         end
-        for (k,v) in SE_values
+        for (k,v) in SE_data
             write(file, k, v)
         end
     end
