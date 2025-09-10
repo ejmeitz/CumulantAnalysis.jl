@@ -78,6 +78,15 @@ function CumulantData(V, V₂, V₃, V₄, T, c1::CumulantData{1}, ::Val{3}, ce:
                             κ₃, ∂κ₃_∂T, ∂²κ₃_∂T²)
 end
 
+function constant_corrections(ce, V, V₂, V₃, V₄, T)
+
+
+    V₀ = get_V₀(ce, V, V₂, V₃, V₄)
+    #TODO TAKE DERIVATIVES OF OTHER TERMS
+    return V₀, 0.0, 0.0, 0.0
+    
+end
+
 
 function first_order_corrections(c1::CumulantData{1}, T)
    

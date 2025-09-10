@@ -45,7 +45,7 @@ struct EffectiveHamiltonianEstimator{O,L,T} <: CumulantEstimator{O,L}
     ifc2_path::String
     ifc3_path::String
     ifc4_path::String
-    U0::T
+    V₀::T # expects eV
     nconf::Int
     n_boot::Int
     boot_size::Int
@@ -60,7 +60,7 @@ X3(ehe::EffectiveHamiltonianEstimator, V, V₂, V₃, V₄) = rv(ehe, V, V₂, V
 
 ifc_paths(ehe::EffectiveHamiltonianEstimator) = [ehe.ifc2_path, ehe.ifc3_path, ehe.ifc4_path]
 needs_true_V(::EffectiveHamiltonianEstimator) = false
-U0(e::EffectiveHamiltonianEstimator, V, V₂, V₃, V₄) = e.U0
+get_V₀(e::EffectiveHamiltonianEstimator, V, V₂, V₃, V₄) = e.V₀
 
 function move_ifcs(ehe::EffectiveHamiltonianEstimator, outpath::String)
 
@@ -97,7 +97,7 @@ X3(he::HarmonicEstimator, V, V₂, V₃, V₄) = rv(he, V, V₂, V₃, V₄)
 
 ifc_paths(ehe::HarmonicEstimator) = [ehe.ifc2_path]
 needs_true_V(::HarmonicEstimator) = true
-U0(::HarmonicEstimator, V, V₂, V₃, V₄) = mean(V .- V₂)
+get_V₀(::HarmonicEstimator, V, V₂, V₃, V₄) = mean(V .- V₂)
 
 function move_ifcs(ehe::EffectiveHamiltonianEstimator, outpath::String)
     check_ifc_paths(ehe)
@@ -118,7 +118,7 @@ struct ResidualEstimator{O,L,C} <: CumulantEstimator{O,L}
     boot_size::Int
 end
 
-rv(::ResidualEstimator, V, V₂, V₃, V₄) = V .- V₂ .- U0(re, V, V₂, V₃, V₄) # R + V₃ + V₄
+rv(::ResidualEstimator, V, V₂, V₃, V₄) = V .- V₂ .- get_V₀(re, V, V₂, V₃, V₄) # R + V₃ + V₄
 
 # Random variable used in nth cumulant
 X1(::ResidualEstimator, V, V₂, V₃, V₄) = V₄
@@ -127,7 +127,7 @@ X3(re::ResidualEstimator, V, V₂, V₃, V₄) = rv(re, V, V₂, V₃, V₄)
 
 ifc_paths(ehe::ResidualEstimator) = [ehe.ifc2_path, ehe.ifc3_path, ehe.ifc4_path]
 needs_true_V(::ResidualEstimator) = true
-U0(::ResidualEstimator, V, V₂, V₃, V₄) = mean(V .- V₂ .- V₃ .- V₄)
+get_V₀(::ResidualEstimator, V, V₂, V₃, V₄) = mean(V .- V₂ .- V₃ .- V₄)
 
 function move_ifcs(ehe::EffectiveHamiltonianEstimator, outpath::String)
 

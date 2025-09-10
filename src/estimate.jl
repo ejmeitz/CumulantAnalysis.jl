@@ -2,20 +2,22 @@ export estimate, save
 
 function calculate_cumulants(V, V₂, V₃, V₄, T, ce::CumulantEstimator{O}) where O
 
-    ΔF = zeros(O); ΔS = zeros(O)
-    ΔU = zeros(O); ΔCᵥ = zeros(O)
+    ΔF = zeros(O+1); ΔS = zeros(O+1)
+    ΔU = zeros(O+1); ΔCᵥ = zeros(O+1)
+
+    ΔF[1], ΔS[1], ΔU[1], ΔCᵥ[1] = constant_corrections(ce,  V, V₂, V₃, V₄, T)
 
     c1 = CumulantData(V, V₂, V₃, V₄, T, Val{1}(), ce)
-    ΔF[1], ΔS[1], ΔU[1], ΔCᵥ[1] = first_order_corrections(c1, T) 
+    ΔF[2], ΔS[2], ΔU[2], ΔCᵥ[2] = first_order_corrections(c1, T) 
 
     if O >= 2
         c2 = CumulantData(V, V₂, V₃, V₄, T, c1, Val{2}(), ce)
-        ΔF[2], ΔS[2], ΔU[2], ΔCᵥ[2] = second_order_corrections(c2, T, true)
+        ΔF[3], ΔS[3], ΔU[3], ΔCᵥ[3] = second_order_corrections(c2, T, true)
     end
 
     if O >= 3
         c3 = CumulantData(V, V₂, V₃, V₄, T, c1, Val{3}(), ce)
-        ΔF[3], ΔS[3], ΔU[3], ΔCᵥ[3] = third_order_corrections(c3, T)
+        ΔF[4], ΔS[4], ΔU[4], ΔCᵥ[4] = third_order_corrections(c3, T)
     end
 
     return ΔF, ΔS, ΔU, ΔCᵥ
@@ -30,8 +32,8 @@ function bootstrap_corrections(V, V₂, V₃, V₄, T,
 
     is = zeros(Int, ce.boot_size)
 
-    ΔFs = zeros(O, ce.n_boot); ΔSs = zeros(O, ce.n_boot)
-    ΔUs = zeros(O, ce.n_boot); ΔCᵥs = zeros(O, ce.n_boot)
+    ΔFs = zeros(O+1, ce.n_boot); ΔSs = zeros(O+1, ce.n_boot)
+    ΔUs = zeros(O+1, ce.n_boot); ΔCᵥs = zeros(O+1, ce.n_boot)
 
     p = Progress(ce.n_boot, "Bootstrapping Corrections")
     for i in 1:ce.n_boot
@@ -40,6 +42,7 @@ function bootstrap_corrections(V, V₂, V₃, V₄, T,
         next!(p)
     end
     finish!(p)
+
 
     F_totals = sum(ΔFs, dims = 1) .+ (F₀*Nat)
     S_totals = sum(ΔSs, dims = 1) .+ (S₀*Nat)
@@ -55,7 +58,7 @@ function bootstrap_corrections(V, V₂, V₃, V₄, T,
     kBNat = ustrip(CumulantAnalysis.kB) * Nat
 
     F = BootstrapCumualantEstimate(
-        F₀, SVector(ΔF...) ./ Nat, SVector(F_SEs...) ./ Nat,
+        F₀, SVector(ΔF...) ./ Nat, SVector(V₀_SE, F_SEs...) ./ Nat,
         mean(F_totals) / Nat, std(F_totals) / Nat, "F", "[eV/atom]"
     )
 
@@ -109,6 +112,7 @@ function estimate(
         ssposcar_path::String = joinpath(outpath, "infile.ssposcar"),
         nthreads::Int = Threads.nthreads(),
         tep_energies_path::Union{String, Nothing} = nothing,
+        calc = nothing
     ) where {O, L <: Limit}
 
     isfile(ucposcar_path) || throw(ArgumentError("ucposcar path is not a file: $(ucposcar_path)"))
@@ -153,6 +157,7 @@ function estimate(
 
     if needs_true_V(ce)
         error("Not implemented yet")
+        isnothing(calc) && raise(ArgumentError("This CumulantEstimator requires a calculator for energies, but `calc` was nothing."))
         #! TODO CALCULATE ENERGIES FROM HDF5 DUMP
     else
         V = zeros(eltype(V₂), size(V₂))
@@ -161,22 +166,35 @@ function estimate(
     #!TODO VARIANCE ANALYSIS ON RANDOM VARIABLE
 
     res = bootstrap_corrections(V, V₂, V₃, V₄, T, ce, n_atoms)
+    V₀ = get_V₀(ce, V, V₂, V₃, V₄) / n_atoms
 
-    return res
+    #! WHAT TO DO WITH V₀ ON OTHER TERMS?
+    #! NORMALIZE by kB for Cv and S terms
+    constants_vec = [V₀, 0.0, 0.0, 0.0]
+    constant_units = ["eV/atom", "", "", ""]
+
+    save.(res, constants_vec, Ref(outpath))
+
+    return res, constants_vec
 
 end
 
 
-function save(cc::BootstrapCumualantEstimate{ORDER}, outdir::String) where ORDER
+function save(cc::BootstrapCumualantEstimate{ORDER}, V₀, V₀_units, outdir::String) where ORDER
     prop_name = cc.property
     unit_str = cc.unit_str
 
     outpath_mean = (ext) -> joinpath(outdir, prop_name * "_mean.$(ext)")
     mean_data = OrderedDict(prop_name*"0 $(unit_str)" => cc.harmonic)
 
-    for order in 1:ORDER
-        mean_data[prop_name * "$(order) $(unit_str)"] = cc.corrections[order]
-        mean_data[prop_name * "$(order)_SE"] = cc.correction_SEs[order]
+    for order in 0:ORDER
+        if order == 0
+            mean_data[prop_name * "_offset $(unit_str)"] = cc.corrections[order]
+            mean_data[prop_name * "_offset_SE"] = cc.correction_SEs[order]
+        else
+            mean_data[prop_name * "$(order) $(unit_str)"] = cc.corrections[order]
+            mean_data[prop_name * "$(order)_SE"] = cc.correction_SEs[order]
+        end
     end
 
     mean_data[prop_name*"_total $(unit_str)"] = cc.total
@@ -194,5 +212,5 @@ function save(cc::BootstrapCumualantEstimate{ORDER}, outdir::String) where ORDER
         println(f, Printf.format(float_fmt_str(N), mean_values...))
     end
     # Save to HDF5
-    save(outpath_mean("h5"), mean_data)
+    FileIO.save(outpath_mean("h5"), mean_data)
 end
