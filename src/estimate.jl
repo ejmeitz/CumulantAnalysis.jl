@@ -182,37 +182,42 @@ end
 
 #! TODO SAVE AS 2 LINE FILE
 
-function save(cc::BootstrapCumualantEstimate{L}, outdir::String) where L
-    prop_name = cc.property
-    unit_str = cc.unit_str
+function save(bce::BootstrapCumualantEstimate{L}, outdir::String) where L
+    prop_name = bce.property
+    unit_str = bce.unit_str
 
     outpath_mean = (ext) -> joinpath(outdir, prop_name * "_mean.$(ext)")
-    mean_data = OrderedDict(prop_name*"0 $(unit_str)" => cc.harmonic)
+    mean_data = OrderedDict(prop_name*"0" => bce.harmonic)
+    SE_data = OrderedDict(prop_name*"0" => 0.0)
 
     for order in 0:(L-1)
         if order == 0
-            mean_data[prop_name * "_offset $(unit_str)"] = cc.corrections[order]
-            mean_data[prop_name * "_offset_SE"] = cc.correction_SEs[order]
+            mean_data[prop_name * "_offset"] = bce.corrections[order+1]
+            SE_data[prop_name * "_offset_SE"] = bce.correction_SEs[order+1]
         else
-            mean_data[prop_name * "$(order) $(unit_str)"] = cc.corrections[order]
-            mean_data[prop_name * "$(order)_SE"] = cc.correction_SEs[order]
+            mean_data[prop_name * "$(order)"] = bce.corrections[order+1]
+            SE_data[prop_name * "$(order)_SE"] = bce.correction_SEs[order+1]
         end
     end
 
-    mean_data[prop_name*"_total $(unit_str)"] = cc.total
-    mean_data[prop_name*"_total_SE"] = cc.total_SE
+    mean_data[prop_name*"_total"] = bce.total
+    SE_data[prop_name*"_total_SE"] = bce.total_SE
 
     float_fmt_str = (N) -> Printf.Format(join(fill("%15.7f", N), " "))
     str_fmt_str = (N) -> Printf.Format(join(fill("%15s", N), " "))
 
     # Human Readable Version
-    mean_header = collect(keys(mean_data))
+    header = collect(keys(mean_data))
     mean_values = collect(values(mean_data))
+    SE_values = collect(values(SE_data))
     N = length(mean_header)
     open(outpath_mean("txt"), "w") do f
-        println(f, Printf.format(str_fmt_str(N), mean_header...))
+        println(f, "# Units: $(unit_str)")
+        println(f, "# Row 1: Values, Row 2: Standard Error estimated from $(bce.n_boot) bootstraps of size $(bce.boot_size)")
+        println(f, "# " * Printf.format(str_fmt_str(N), header...))
         println(f, Printf.format(float_fmt_str(N), mean_values...))
+        println(f, Printf.format(float_fmt_str(N), SE_values...))
     end
     # Save to HDF5
-    FileIO.save(outpath_mean("h5"), mean_data)
+    FileIO.save(outpath_mean("h5"), mean_data, SE_data)
 end
