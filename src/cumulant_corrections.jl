@@ -56,13 +56,13 @@ function CumulantData(V, V₂, V₃, V₄, T, c1::CumulantData{1}, ::Val{3}, ce:
     X³ = X .^ 3
 
     t1 = Threads.@spawn skew(X)
-    t2 = Threads.@spawn ∂A_∂T(X³, V_ref, T)
-    t3 = Threads.@spawn ∂²A_∂T²(X³, V_ref, T)
+    t2 = Threads.@spawn ∂A_∂T(X³, V₂, T)
+    t3 = Threads.@spawn ∂²A_∂T²(X³, V₂, T)
     t4 = Threads.@spawn mean(X²)
 
     # These are both re calculated from second order
-    t5 = Threads.@spawn ∂A_∂T(X², V_ref, T)
-    t6 = Threads.@spawn ∂²A_∂T²(X², V_ref, T)
+    t5 = Threads.@spawn ∂A_∂T(X², V₂, T)
+    t6 = Threads.@spawn ∂²A_∂T²(X², V₂, T)
 
     κ₃ = fetch(t1)
     ∂X³_∂T = fetch(t2)
