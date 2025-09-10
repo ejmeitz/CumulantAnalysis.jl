@@ -201,7 +201,7 @@ function save(bce::BootstrapCumualantEstimate{L}, outdir::String, n_boot, boot_s
     SE_data[prop_name*"_total_SE"] = bce.total_SE
 
     float_fmt_str = (N) -> Printf.Format(join(fill("%15.7f", N), " "))
-    str_fmt_str = (N) -> Printf.Format(join(fill("%15s", N), " "))
+    str_fmt_str = (N) -> Printf.Format(join(fill("%13s", N), " "))
 
     # Human Readable Version
     header = collect(keys(mean_data))
