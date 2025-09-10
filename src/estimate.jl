@@ -216,5 +216,12 @@ function save(bce::BootstrapCumualantEstimate{L}, outdir::String, n_boot, boot_s
         println(f, Printf.format(float_fmt_str(N), SE_values...))
     end
     # Save to HDF5
-    FileIO.save(outpath_mean("h5"), mean_data, SE_data)
+    h5open(outpath_mean("h5"), "w") do file
+        for (k,v) in mean_data
+            write(file, k, v)
+        end
+        for (k,v) in SE_values
+            write(file, k, v)
+        end
+    end
 end
