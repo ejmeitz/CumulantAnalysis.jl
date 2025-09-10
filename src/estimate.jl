@@ -131,12 +131,14 @@ function estimate(
         found_mpirun = success(res)
         found_mpirun || @warn "Could not find mpirun on path, defaulting to 1 thread."
 
+        options = ""
+
         quantum_cmd = (L === Quantum) ? "--quantum " : ""
         mpi_cmd = found_mpirun ? "mpirun -np $(nthreads) " : ""
         dump_cfgs_cmd = needs_true_V(ce) ? "--dumpconfigs" : ""
 
-        cmd_str = `$(mpi_cmd)effective_hamiltonian --thirdorder --fourthorder $(quantum_cmd)--nconf $(ce.nconf) --temperature $(T) $(dump_cfgs_cmd)`
-        @info "CMD: $(cmd_str)"
+        cmd = `$(mpi_cmd)effective_hamiltonian --thirdorder --fourthorder $(quantum_cmd)--nconf $(ce.nconf) --temperature $(T) $(dump_cfgs_cmd)`
+        @info cmd
         cd(outpath) do 
             run(cmd_str)
         end
