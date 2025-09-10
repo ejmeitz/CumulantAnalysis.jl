@@ -43,7 +43,6 @@ function bootstrap_corrections(V, V₂, V₃, V₄, T,
     end
     finish!(p)
 
-
     F_totals = sum(ΔFs, dims = 1) .+ (F₀*Nat)
     S_totals = sum(ΔSs, dims = 1) .+ (S₀*Nat)
     U_totals = sum(ΔUs, dims = 1) .+ (U₀*Nat)
@@ -136,7 +135,7 @@ function estimate(
         mpi_cmd = found_mpirun ? "mpirun -np $(nthreads) " : ""
         dump_cfgs_cmd = needs_true_V(ce) ? "--dumpconfigs" : ""
 
-        cmd_str = `$(mpi_cmd)effective_hamiltonian --thirdorder --fourthorder $(quantum_cmd)--nconf $(nconf) --temperature $(T) $(dump_cfgs_cmd)`
+        cmd_str = `$(mpi_cmd)effective_hamiltonian --thirdorder --fourthorder $(quantum_cmd)--nconf $(ce.nconf) --temperature $(T) $(dump_cfgs_cmd)`
         @info "CMD: $(cmd_str)"
         cd(outpath) do 
             run(cmd_str)
