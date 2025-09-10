@@ -112,7 +112,7 @@ function calculate_true_energies(calc, nconf, ssposcar_path, outpath)
     sys_ss = TDEPSystem(ssposcar_path)
     V = zeros(nconf)
 
-    p = Progress(cc.nconf, desc = "Calculating True Energies")
+    p = Progress(nconf, desc = "Calculating True Energies")
     L = typeof(1.0u"Å")
     for i in 1:nconf   
         filepath = get_filepath(i)
