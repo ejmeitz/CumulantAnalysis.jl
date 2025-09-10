@@ -189,6 +189,10 @@ function save(cc::BootstrapCumualantEstimate{ORDER}, outdir::String) where ORDER
     outpath_mean = (ext) -> joinpath(outdir, prop_name * "_mean.$(ext)")
     mean_data = OrderedDict(prop_name*"0 $(unit_str)" => cc.harmonic)
 
+
+    println(ORDER)
+    println(prop_name)
+    println(cc.corrections)
     for order in 0:(ORDER)
         if order == 0
             mean_data[prop_name * "_offset $(unit_str)"] = cc.corrections[order+1]
