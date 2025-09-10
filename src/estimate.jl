@@ -24,11 +24,11 @@ function calculate_cumulants(V, V₂, V₃, V₄, T, ce::CumulantEstimator{O}) w
 
 end
 
-function bootstrap_corrections(V, V₂, V₃, V₄, T, 
+function bootstrap_corrections(V, V₂, V₃, V₄, T, outpath,
                                 ce::CumulantEstimator{O, L}, Nat::Int) where {O, L <: Limit}
 
     # these are returned per-atom
-    F₀, S₀, U₀, Cᵥ₀ = harmonic_properties(T, L, dirname(ce.ifc2_path))
+    F₀, S₀, U₀, Cᵥ₀ = harmonic_properties(T, L, outpath)
 
     is = zeros(Int, ce.boot_size)
 
@@ -168,22 +168,16 @@ function estimate(
 
     #!TODO VARIANCE ANALYSIS ON RANDOM VARIABLE
 
-    res = bootstrap_corrections(V, V₂, V₃, V₄, T, ce, n_atoms)
-    V₀ = get_V₀(ce, V, V₂, V₃, V₄) / n_atoms
+    res = bootstrap_corrections(V, V₂, V₃, V₄, T, outpath, ce, n_atoms)
 
-    #! WHAT TO DO WITH V₀ ON OTHER TERMS?
-    #! NORMALIZE by kB for Cv and S terms
-    constants_vec = [V₀, 0.0, 0.0, 0.0]
-    constant_units = ["eV/atom", "", "", ""]
+    save.(res, Ref(outpath))
 
-    save.(res, constants_vec, Ref(outpath))
-
-    return res, constants_vec
+    return res
 
 end
 
 
-function save(cc::BootstrapCumualantEstimate{ORDER}, V₀, V₀_units, outdir::String) where ORDER
+function save(cc::BootstrapCumualantEstimate{ORDER}, outdir::String) where ORDER
     prop_name = cc.property
     unit_str = cc.unit_str
 

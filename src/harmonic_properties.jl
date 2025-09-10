@@ -17,17 +17,19 @@ end
 #     return F₀, S₀, Cᵥ₀
 # end
 
-function harmonic_properties(T, ::Type{L}, ifc_dir::String) where {L <: Limit}
+function harmonic_properties(T, ::Type{L}, dir::String) where {L <: Limit}
     pdr = PhononDispersionRelations(; dumpgrid = true, temperature = Float64(ustrip(T)))
     
-    isdir(ifc_dir) || error(ArgumentError("ifc_dir passed to harmonic_properties is not a valid directory: $(ifc_dir)"))
-    isfile(joinpath(ifc_dir, "infile.ucposcar")) || error(ArgumentError("Missing infile.ucposcar when attempting to calculate harmonic properties"))
-    
-    cd(ifc_dir) do
-        execute(pdr, ifc_dir, Threads.nthreads(), false)
+    isdir(dir) || error(ArgumentError("dir passed to harmonic_properties is not a valid directory: $(dir)"))
+    isfile(joinpath(dir, "infile.ucposcar")) || error(ArgumentError("Missing infile.ucposcar when attempting to calculate harmonic properties"))
+    isfile(joinpath(dir, "infile.forceconstant")) || error(ArgumentError("Missing infile.forceconstant when attempting to calculate harmonic properties"))
+
+
+    cd(dir) do
+        execute(pdr, dir, Threads.nthreads(), false)
     end
 
-    p = joinpath(ifc_dir, "outfile.grid_dispersions.hdf5")
+    p = joinpath(dir, "outfile.grid_dispersions.hdf5")
     isfile(p) || error("Could not find grid dispersion file to calculate harmonic properties")
     freqs_rad_s = h5read(p, "frequencies")
 
