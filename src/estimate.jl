@@ -185,7 +185,7 @@ function save(bce::BootstrapCumualantEstimate{L}, outdir::String, n_boot, boot_s
 
     outpath_mean = (ext) -> joinpath(outdir, prop_name * "_mean.$(ext)")
     mean_data = OrderedDict(prop_name*"0" => bce.harmonic)
-    SE_data = OrderedDict(prop_name*"0" => 0.0)
+    SE_data = OrderedDict(prop_name*"0_SE" => 0.0)
 
     for order in 0:(L-1)
         if order == 0
