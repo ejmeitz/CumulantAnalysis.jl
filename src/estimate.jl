@@ -106,8 +106,8 @@ function parse_energies(path)
 end
 
 function calculate_true_energies(calc, nconf, ssposcar_path, outpath)
-    isnothing(calc) && raise(ArgumentError("This CumulantEstimator requires a calculator for energies, but `calc` was nothing."))
-    (AtomsCalculators.energy_unit(calc) != u"eV") && raise(ArgumentError("Expected calculator with eV energy units. Got $(AtomsCalculators.energy_unit(calc)) "))
+    isnothing(calc) && throw(ArgumentError("This CumulantEstimator requires a calculator for energies, but `calc` was nothing."))
+    (AtomsCalculators.energy_unit(calc) != u"eV") && throw(ArgumentError("Expected calculator with eV energy units. Got $(AtomsCalculators.energy_unit(calc)) "))
 
     sys_ss = TDEPSystem(ssposcar_path)
     V = zeros(nconf)
@@ -141,7 +141,6 @@ function estimate(
         ssposcar_path::String = joinpath(outpath, "infile.ssposcar"),
         nthreads::Int = Threads.nthreads(),
         tep_energies_path::Union{String, Nothing} = nothing,
-        calc = nothing
     ) where {O, L <: Limit}
 
     isfile(ucposcar_path) || throw(ArgumentError("ucposcar path is not a file: $(ucposcar_path)"))
@@ -190,7 +189,7 @@ function estimate(
     end
 
     if needs_true_V(ce)
-        V = calculate_true_energies(calc, ce.nconf, ssposcar_path, outpath)
+        V = calculate_true_energies(ce.calc, ce.nconf, ssposcar_path, outpath)
     else
         V = zeros(eltype(V₂), size(V₂))
     end
