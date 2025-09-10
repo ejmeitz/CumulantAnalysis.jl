@@ -57,7 +57,7 @@ function bootstrap_corrections(V, V₂, V₃, V₄, T, outpath,
     kBNat = ustrip(CumulantAnalysis.kB) * Nat
 
     F = BootstrapCumualantEstimate(
-        F₀, SVector(ΔF...) ./ Nat, SVector(V₀_SE, F_SEs...) ./ Nat,
+        F₀, SVector(ΔF...) ./ Nat, SVector(F_SEs...) ./ Nat,
         mean(F_totals) / Nat, std(F_totals) / Nat, "F", "[eV/atom]"
     )
 
@@ -148,6 +148,7 @@ function estimate(
         tep_energies_path = joinpath(outpath, "outfile.energies")
     end
 
+    @info "Parsing Energies"
     T_file, n_atoms, Vₚ, V₂, V₃, V₄ = parse_energies(tep_energies_path)
 
     if T_file != T
