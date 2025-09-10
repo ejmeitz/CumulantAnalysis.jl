@@ -95,10 +95,10 @@ function parse_energies(path)
     # energies in file are meV / atom, Converts to eV
     conv = n_atoms / 1000
     
-    @views E_polar = data[:, 2] .* conv
-    @views E_pair = data[:, 3] .* conv
-    @views E_triplet = data[:, 4] .* conv
-    @views E_quartet = data[:, 5] .* conv
+    @views E_polar = data[:, 3] .* conv
+    @views E_pair = data[:, 4] .* conv
+    @views E_triplet = data[:, 5] .* conv
+    @views E_quartet = data[:, 6] .* conv
 
     return T, n_atoms, E_polar, E_pair , E_triplet, E_quartet
 end
