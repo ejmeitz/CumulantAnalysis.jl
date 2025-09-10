@@ -105,6 +105,34 @@ function parse_energies(path)
     return T, n_atoms, E_polar, E_pair , E_triplet, E_quartet
 end
 
+function calculate_true_energies(calc, nconf, ssposcar_path, outpath)
+    isnothing(calc) && raise(ArgumentError("This CumulantEstimator requires a calculator for energies, but `calc` was nothing."))
+    (AtomsCalculators.energy_unit(calc) != u"eV") && raise(ArgumentError("Expected calculator with eV energy units. Got $(AtomsCalculators.energy_unit(calc)) "))
+
+    sys_ss = TDEPSystem(ssposcar_path)
+    V = zeros(nconf)
+
+    p = Progress(cc.nconf, desc = "Calculating True Energies")
+    L = typeof(1.0u"Å")
+    for i in 1:nconf   
+        filepath = get_filepath(i)
+        TDEP.read_poscar_positions!(posns, filepath; n_atoms = n_atoms)
+        
+        new_sys = TDEPSystem(sys_ss, vec(collect(reinterpret(SVector{3, L}, posns))))
+
+        V[i] = ustrip(AtomsCalculators.potential_energy(new_sys, calc))
+
+        next!(p)
+    end
+    finish!(p)
+    
+    open(joinpath(outpath, "outfile.true_potential_energy"), "w") do f
+        writedlm(f, [V])
+    end
+
+    return V
+end
+
 function estimate(
         ce::CumulantEstimator{O,L},
         T::Real, # kelvin
@@ -162,9 +190,7 @@ function estimate(
     end
 
     if needs_true_V(ce)
-        error("Not implemented yet")
-        isnothing(calc) && raise(ArgumentError("This CumulantEstimator requires a calculator for energies, but `calc` was nothing."))
-        #! TODO CALCULATE ENERGIES FROM HDF5 DUMP
+        V = calculate_true_energies(calc, ce.nconf, ssposcar_path, outpath)
     else
         V = zeros(eltype(V₂), size(V₂))
     end

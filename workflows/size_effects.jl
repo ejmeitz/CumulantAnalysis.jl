@@ -43,19 +43,6 @@ for T in temperatures
 
         crys = make_crystal(s)
 
-        e = EffectiveHamiltonianEstimator(
-            expansion_order,
-            limit, 
-            ifc2_path(T),
-            ifc3_path(T),
-            ifc4_path(T),
-            U0[T] * length(crys),
-            samples,
-            n_boot,
-            boot_size
-        )
-
-
         outpath = make_outpath(T,s)
 
         @info "Temperature: $(T), Supercell: $(s)x$(s)x$(s)"
@@ -64,8 +51,21 @@ for T in temperatures
         ssposcar_path = joinpath(outpath, "infile.ssposcar")
         to_ssposcar(crys, ssposcar_path)
 
-        # s = TDEPSystem(ssposcar_path)
-        # calc = LAMMPSCalculator(s, pot_cmds)
+        s = TDEPSystem(ssposcar_path)
+        calc = LAMMPSCalculator(s, pot_cmds)
+        
+        e = FourthOrderEstimator(
+            expansion_order,
+            limit, 
+            calc,
+            ifc2_path(T),
+            ifc3_path(T),
+            ifc4_path(T),
+            U0[T] * length(crys),
+            samples,
+            n_boot,
+            boot_size
+        )
         
         estimate(
             e,

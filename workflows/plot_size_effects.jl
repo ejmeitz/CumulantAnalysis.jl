@@ -1,5 +1,6 @@
 using CairoMakie
 using DelimitedFiles
+using HDF5
 
 # material = "SW_SILICON"
 # get_outpath = (T) -> "/mnt/merged/emeitz/CumulantAnalysisTest/sTDEP_SW_size_effects/T$(T)"
@@ -9,16 +10,46 @@ using DelimitedFiles
 # F_tol = 1e-3 # eV / atom
 # sizes = [2,3,4,5,6,7]
 
+# SW:
+# <V> @ 100K  = -933.9152951740965
+# <V> @ 1300K = -898.2383308713825
+
+# LJ
+# <V> @ 10K = -451.404009
+# <V> @ 80K = -401.9778595676087
+
+
+ground_truths = Dict(
+    "F" => Dict(100 => -4.2957902, 1300 => -4.6756675), #eV / atom
+    "F_tol" => 1e-3, #eV / atom
+    "U" => Dict(100 => -4.31081576, 1300 => -3.9912508), #eV / atom
+    "U_tol" => missing, #eV / atom
+    "Cv" => Dict(100 => 3.0162458, 1300 => 3.2265268), # eV / kB * atom
+    "Cv_tol" => missing, # 1% of DP -- eV / kB * atom
+    "S" => Dict(100 => -1.7436438, 1300 => 6.10948172), # just from S = (U - F) / T
+    "S_tol" => missing, # eV / kB * atom
+)
+
 material = "LJ_ARGON"
 get_outpath = (T) -> "/mnt/merged/emeitz/CumulantAnalysisTest/sTDEP_LJ_size_effects/T$(T)"
 get_datapath = (T,s) -> "/mnt/merged/emeitz/CumulantAnalysisTest/sTDEP_LJ_size_effects/T$(T)/$(s)UC"
 temperatures = [10, 80]
-F_true = [-0.0729854, -0.0820714]
-F_tol = 1e-3 # eV / atom
+
+ground_truths = Dict(
+    "F" => Dict(10 => -0.0729854, 80 => -0.0820714), #eV / atom
+    "F_tol" => 1e-3, #eV / atom
+    "U" => Dict(10 => -0.07517623, 80 => -0.057791034), #eV / atom
+    "U_tol" => missing, #eV / atom
+    "Cv" => Dict(10 => 2.9662821, 80 => 2.829351244), # eV / kB * atom
+    "Cv_tol" => 0.0, # eV / kB * atom
+    "S" => Dict(10 => -0.11024685, 80 => 0.15272945), # just from S = (U - F) / T
+    "S_tol" => missing, # eV / kB * atom
+)
+
 sizes = [3,4,5,6,7,8]
 
 order = 2 # order to actually use in plots
-max_order = 3
+# max_order = 2
 # order_colors =  ["#080808", "#4287f5", "#f7952d", "#259c2f"]
 
 F0s = zeros(length(temperatures), length(sizes))
@@ -27,22 +58,74 @@ F_terms_SE = zeros(length(temperatures), length(sizes), order)
 F_total = zeros(length(temperatures), length(sizes))
 F_total_SE = zeros(length(temperatures), length(sizes))
 
-od = max_order - order
-for (i,T) in enumerate(temperatures)
-    for (j,s) in enumerate(sizes)
-        F_path = joinpath(get_datapath(T,s), "F_mean.txt")
-        data = readdlm(F_path, skipstart = 1)
-        F0s[i,j] = data[1] 
-        F_terms[i,j,:] = data[2:2:(end - 3 - 2*od)]
-        F_terms_SE[i,j,:] = data[3:2:(end - 2 - 2*od)]
 
-        if order == max_order
-            F_total[i,j] = data[end-1]
-            F_total_SE[i,j] = data[end]
-        else
-            F_total[i,j] = sum(F_terms[i, j, :]) + F0s[i,j]
-            F_total_SE[i,j] = Inf #cannot know in this scenario
+function parse_totals(prop, order)
+    # harmonic = zeros(length(temperatures), length(sizes))
+    # offsets = zeros(length(temperatures), length(sizes))
+    # offsets_SE = zeros(length(temperatures), length(sizes))
+    # terms = zeros(length(temperatures), length(sizes), order)
+    # terms_SE = zeros(length(temperatures), length(sizes), order)
+    total = zeros(length(temperatures), length(sizes))
+    total_SE = zeros(length(temperatures), length(sizes))
+
+    for (i,T) in enumerate(temperatures)
+        for (j,s) in enumerate(sizes)
+            path = joinpath(get_datapath(T,s), "F_mean.txt")
+            file = h5open(path, "r")
+
+            # harmonic[i,j] = read(file, "$(prop)0")
+
+            # offsets[i,j] = read(file, "$(prop)_offset")
+            # offsets_SE[i,j] = read(file, "$(prop)_offset_SE")
+
+            total[i,j] = read(file, "$(prop)_total")
+            total_SE[i,j] = read(file, "$(prop)_total_SE")
+
+            close(file)
         end
+    end
+
+    return total, total_SE
+
+end
+
+
+# compares bulk to ground truth
+function make_line_plot(sizes, total, total_SE, truth, tol, T, prop)
+    size_in_inches = (3, 2.25)
+    dpi = 300
+    size_in_pixels = size_in_inches .* dpi
+
+    f = Figure(resolution = size_in_pixels);
+    ax = Axis(f[1,1], xlabel = "Number of Conventional Cells (N x N x N)", ylabel = "F [eV / atom]",
+        ylabelsize = 40, xlabelsize = 40, yticklabelsize = 30, xticklabelsize = 30,
+        xticks = sizes, xgridvisible = false, ygridvisible = false, xticksmirrored = true,
+        yticksmirrored = true, xticklabelpad = 4, xtickalign=1, ytickalign = 1)
+
+    xmin = minimum(sizes) - 1
+    xmax = maximum(sizes) + 1
+    xlims!(xmin, xmax)
+    ylims!(minimum([total; truth]) - 0.01, maximum([total; truth]) + 0.01)
+
+    h = hlines!(truth, xmin, xmax, color = "#b31041", linestyle = :dash, linewidth = 4);
+    band!(xmin:0.1:xmax, truth - tol, truth + tol, color= "#b31041", alpha = 0.4);
+    s1 = errorbars!(sizes, total, total_SE, total_SE, markersize = 30, color = :black, whiskerwidth = 10);
+
+    axislegend(ax, [[h], [s1]], [["Ground Truth"], ["Cumulant Expansion, Order $(order)"]],
+                position = :lt, labelsize = 35, orientation = :horizontal, framevisible = false, nbanks = 2, 
+                labelhalign = :left, colgap = 25, patchlabelgap = 12)
+
+    save(joinpath(get_outpath(T),"$(prop)_SZ_EFF_$(material)_T$(T)_ORDER$(order).svg"), f)
+    save(joinpath(get_outpath(T),"$(prop)_SZ_EFF_$(material)_T$(T)_ORDER$(order).png"), f)
+end
+
+
+for (i,T) in enumerate(temperatures)
+    for prop in ("F", "S", "Cv", "U")
+        total, total_SE = parse_totals(prop, order)
+        tol = ground_truths["$(prop)_tol"]
+        truth = ground_truths["$(prop)"][T]
+        make_line_plot(sizes, total, total_SE, truth, tol, T, prop)
     end
 end
 
@@ -113,38 +196,3 @@ end
 #     save(joinpath(get_outpath(T),"SIZE_EFFECTS_$(material)_T$(T)_ORDER$(order)_COMPS.svg"), f)
 #     save(joinpath(get_outpath(T),"SIZE_EFFECTS_$(material)_T$(T)_ORDER$(order)_COMPS.png"), f)
 # end
-
-# compares bulk to ground truth
-function make_line_plot(sizes, F_total, F_true, T)
-    size_in_inches = (3, 2.25)
-    dpi = 300
-    size_in_pixels = size_in_inches .* dpi
-
-    f = Figure(resolution = size_in_pixels);
-    ax = Axis(f[1,1], xlabel = "Number of Conventional Cells (N x N x N)", ylabel = "F [eV / atom]",
-        ylabelsize = 40, xlabelsize = 40, yticklabelsize = 30, xticklabelsize = 30,
-        xticks = sizes, xgridvisible = false, ygridvisible = false, xticksmirrored = true,
-        yticksmirrored = true, xticklabelpad = 4, xtickalign=1, ytickalign = 1)
-
-    xmin = minimum(sizes) - 1
-    xmax = maximum(sizes) + 1
-    xlims!(xmin, xmax)
-    ylims!(minimum([F_total; F_true]) - 0.01, maximum([F_total; F_true]) + 0.01)
-
-    h = hlines!(F_true, xmin, xmax, color = "#b31041", linestyle = :dash, linewidth = 4);
-    band!(xmin:0.1:xmax, F_true - F_tol, F_true + F_tol, color= "#b31041", alpha = 0.4);
-    s1 = scatter!(sizes, F_total, markersize = 30, color = :black);
-
-    axislegend(ax, [[h], [s1]], [["Ground Truth"], ["Cumulant Expansion, Order $(order)"]],
-                position = :lt, labelsize = 35, orientation = :horizontal, framevisible = false, nbanks = 2, 
-                labelhalign = :left, colgap = 25, patchlabelgap = 12)
-
-    save(joinpath(get_outpath(T),"SIZE_EFFECTS_$(material)_T$(T)_ORDER$(order).svg"), f)
-    save(joinpath(get_outpath(T),"SIZE_EFFECTS_$(material)_T$(T)_ORDER$(order).png"), f)
-end
-
-
-for (i,T) in enumerate(temperatures)
-    @views make_line_plot(sizes, F_total[i,:], F_true[i], T)
-    # @views make_bar_plot(F0s[i,:], F_terms[i, :, :], F_total[i,:], F_total_SE[i], F_true[i], order_colors[1:order], T)
-end
