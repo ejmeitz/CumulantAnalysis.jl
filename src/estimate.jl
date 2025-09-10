@@ -182,24 +182,20 @@ end
 
 #! TODO SAVE AS 2 LINE FILE
 
-function save(cc::BootstrapCumualantEstimate{ORDER}, outdir::String) where ORDER
+function save(cc::BootstrapCumualantEstimate{L}, outdir::String) where L
     prop_name = cc.property
     unit_str = cc.unit_str
 
     outpath_mean = (ext) -> joinpath(outdir, prop_name * "_mean.$(ext)")
     mean_data = OrderedDict(prop_name*"0 $(unit_str)" => cc.harmonic)
 
-
-    println(ORDER)
-    println(prop_name)
-    println(cc.corrections)
-    for order in 0:(ORDER)
+    for order in 0:(L-1)
         if order == 0
-            mean_data[prop_name * "_offset $(unit_str)"] = cc.corrections[order+1]
-            mean_data[prop_name * "_offset_SE"] = cc.correction_SEs[order+1]
+            mean_data[prop_name * "_offset $(unit_str)"] = cc.corrections[order]
+            mean_data[prop_name * "_offset_SE"] = cc.correction_SEs[order]
         else
-            mean_data[prop_name * "$(order) $(unit_str)"] = cc.corrections[order+1]
-            mean_data[prop_name * "$(order)_SE"] = cc.correction_SEs[order+1]
+            mean_data[prop_name * "$(order) $(unit_str)"] = cc.corrections[order]
+            mean_data[prop_name * "$(order)_SE"] = cc.correction_SEs[order]
         end
     end
 
