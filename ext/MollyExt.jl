@@ -1,16 +1,16 @@
 module MollyExt
 
-using Molly
-using CumulantAnalysis
+# using Molly
+# using CumulantAnalysis
 
 
 
 
 
-function CumulantAnalysis.estimate(
-    e::MollyEstimator
-)
-    #TODO
-end
+# function CumulantAnalysis.estimate(
+#     e::MollyEstimator
+# )
+#     #TODO
+# end
 
 end
