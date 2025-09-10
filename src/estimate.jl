@@ -210,9 +210,9 @@ function save(bce::BootstrapCumualantEstimate{L}, outdir::String) where L
     header = collect(keys(mean_data))
     mean_values = collect(values(mean_data))
     SE_values = collect(values(SE_data))
-    N = length(mean_header)
+    N = length(header)
     open(outpath_mean("txt"), "w") do f
-        println(f, "# Units: $(unit_str)")
+        println(f, "# $(prop_name) Units: $(unit_str)")
         println(f, "# Row 1: Values, Row 2: Standard Error estimated from $(bce.n_boot) bootstraps of size $(bce.boot_size)")
         println(f, "# " * Printf.format(str_fmt_str(N), header...))
         println(f, Printf.format(float_fmt_str(N), mean_values...))
