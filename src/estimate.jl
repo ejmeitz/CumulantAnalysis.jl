@@ -28,7 +28,9 @@ function bootstrap_corrections(V, V₂, V₃, V₄, T, outpath,
                                 ce::CumulantEstimator{O, L}, Nat::Int) where {O, L <: Limit}
 
     # these are returned per-atom
+    @info "Calculating Harmonic Properties"
     F₀, S₀, U₀, Cᵥ₀ = harmonic_properties(T, L, outpath)
+    @info "Calculated Harmonic Properties"
 
     is = zeros(Int, ce.boot_size)
 
@@ -185,7 +187,7 @@ function save(cc::BootstrapCumualantEstimate{ORDER}, outdir::String) where ORDER
     outpath_mean = (ext) -> joinpath(outdir, prop_name * "_mean.$(ext)")
     mean_data = OrderedDict(prop_name*"0 $(unit_str)" => cc.harmonic)
 
-    for order in 0:ORDER
+    for order in 1:(ORDER+1)
         if order == 0
             mean_data[prop_name * "_offset $(unit_str)"] = cc.corrections[order]
             mean_data[prop_name * "_offset_SE"] = cc.correction_SEs[order]
