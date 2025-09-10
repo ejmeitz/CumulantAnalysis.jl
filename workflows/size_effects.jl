@@ -61,7 +61,7 @@ for T in temperatures
             ifc2_path(T),
             ifc3_path(T),
             ifc4_path(T),
-            U0[T] * length(crys),
+            # U0[T] * length(crys),
             samples,
             n_boot,
             boot_size
