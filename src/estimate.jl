@@ -83,7 +83,7 @@ function bootstrap_corrections(V, V₂, V₃, V₄, T, outpath,
 end
 
 
-function parse_energies(path)
+function parse_energies(path, is_hdf5::Val{false})
 
     data = readdlm(path, comments = true)
 
@@ -97,12 +97,29 @@ function parse_energies(path)
     # energies in file are meV / atom, Converts to eV
     conv = n_atoms / 1000
     
-    @views E_polar = data[:, 3] .* conv
-    @views E_pair = data[:, 4] .* conv
-    @views E_triplet = data[:, 5] .* conv
-    @views E_quartet = data[:, 6] .* conv
+    @views Vₚ = data[:, 3] .* conv
+    @views V₂ = data[:, 4] .* conv
+    @views V₃ = data[:, 5] .* conv
+    @views V₄ = data[:, 6] .* conv
 
-    return T, n_atoms, E_polar, E_pair , E_triplet, E_quartet
+    return T, n_atoms, Vₚ, V₂ , V₃, V₄
+end
+
+function parse_energies(path, is_hdf5::Val{true})
+
+    f = h5open(path, "r")
+
+    Vₚ = read(f, "polar_potential_energy")
+    V₂ = read(f, "secondorder_potential_energy")
+    V₃ = read(f, "thirdorder_potential_energy")
+    V₄ = read(f, "fourthorder_potential_energy")
+
+    T = attrs(f)["temperature_thermostat"]
+    n_atoms = attrs(f)["number_of_atoms"]
+
+    close(f)
+    
+    return T, n_atoms, Vₚ, V₂, V₃, V₄
 end
 
 function calculate_true_energies(calc, nconf, ssposcar_path, outpath)
@@ -116,11 +133,11 @@ function calculate_true_energies(calc, nconf, ssposcar_path, outpath)
     L = typeof(1.0u"Å")
 
     configs_path = joinpath(outpath, "outfile.canonical_configs.hdf5")
-    configs = h5read(configs_path, "data/positions")
-    #!TODO OPEN THIS AND READ FROM IT
+    configs = h5read(configs_path, "positions")
 
     for i in 1:nconf   
         @views c = configs[:,:,i]
+        #! CAN I REMOVE THIS ALLOCATION?
         new_sys = TDEPSystem(sys_ss, vec(collect(reinterpret(SVector{3, L}, c))))
 
         V[i] = ustrip(AtomsCalculators.potential_energy(new_sys, calc))
@@ -177,11 +194,16 @@ function estimate(
             run(cmd_str)
         end
 
-        tep_energies_path = joinpath(outpath, "outfile.energies")
+        # Need to use the HDF5 output, this gurantees
+        # order of positions and energies matches.
+        tep_energies_path = joinpath(outpath, "outfile.canonical_configs.h5")
+        is_hdf5 = Val{true}()
+    else
+        is_hdf5 = Val{false}()
     end
 
     @info "Parsing Energies"
-    T_file, n_atoms, Vₚ, V₂, V₃, V₄ = parse_energies(tep_energies_path)
+    T_file, n_atoms, Vₚ, V₂, V₃, V₄ = parse_energies(tep_energies_path, is_hdf5)
 
     if T_file != T
         @warn "You said tempearture was $T, but parsed temperature as $(T_file) from outfile.energies"
