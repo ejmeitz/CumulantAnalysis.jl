@@ -196,7 +196,7 @@ function estimate(
 
         # Need to use the HDF5 output, this gurantees
         # order of positions and energies matches.
-        tep_energies_path = joinpath(outpath, "outfile.canonical_configs.h5")
+        tep_energies_path = joinpath(outpath, "outfile.canonical_configs.hdf5")
         is_hdf5 = Val{true}()
     else
         is_hdf5 = Val{false}()
