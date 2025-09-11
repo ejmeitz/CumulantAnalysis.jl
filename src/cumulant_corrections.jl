@@ -98,7 +98,7 @@ function constant_corrections(ce, V, V₂, V₃, V₄, T)
 
     F_corr = V₀
     S_corr = -∂V₀
-    U_corr = V₀ - (∂V₀*T/(kB*kB))
+    U_corr = V₀ - T*∂V₀
     Cv_corr = -T * ∂²V₀
 
     return F_corr, S_corr, U_corr, Cv_corr
