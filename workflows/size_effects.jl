@@ -5,7 +5,7 @@ using SimpleCrystals
 using SimpleCrystals
 
 
-expansion_order = 2
+expansion_order = 3
 limit = Classical()
 # just pick a big number, havent looked at effect of nsteps yet
 # probably needs to be bigger for LJ than SW
@@ -24,7 +24,7 @@ boot_size = 10_000
 
 # Stillinger-Weber Silicon
 make_outpath = (T,s) -> "/mnt/merged/emeitz/CumulantAnalysisTest/sTDEP_SW_size_effects/T$(ustrip(T))/$(s)UC"
-temperatures = [100, 1300]
+temperatures = [1300] #[100,1300]
 sizes = [2,3,4,5,6,7]
 ucposcar_path = "/home/emeitz/scripts/TDEP/SW/infile.ucposcar2"
 ifc2_path = (T) -> "/mnt/merged/emeitz/SW_IFC_NODES/IFCs/T$(T)_0/infile.forceconstant"
