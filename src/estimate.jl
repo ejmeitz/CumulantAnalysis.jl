@@ -114,11 +114,14 @@ function calculate_true_energies(calc, nconf, ssposcar_path, outpath)
 
     p = Progress(nconf, desc = "Calculating True Energies")
     L = typeof(1.0u"Å")
+
+    configs_path = joinpath(outpath, "outfile.canonical_configs.hdf5")
+    configs = h5read(configs_path, "data/positions")
+    #!TODO OPEN THIS AND READ FROM IT
+
     for i in 1:nconf   
-        filepath = get_filepath(i)
-        TDEP.read_poscar_positions!(posns, filepath; n_atoms = n_atoms)
-        
-        new_sys = TDEPSystem(sys_ss, vec(collect(reinterpret(SVector{3, L}, posns))))
+        @views c = configs[:,:,i]
+        new_sys = TDEPSystem(sys_ss, vec(collect(reinterpret(SVector{3, L}, c))))
 
         V[i] = ustrip(AtomsCalculators.potential_energy(new_sys, calc))
 
