@@ -114,8 +114,8 @@ function parse_energies(path, is_hdf5::Val{true})
     V₃ = read(f, "thirdorder_potential_energy")
     V₄ = read(f, "fourthorder_potential_energy")
 
-    T = attrs(f)["temperature_thermostat"]
-    n_atoms = attrs(f)["number_of_atoms"]
+    T = Float64(attrs(f)["temperature_thermostat"][1])
+    n_atoms = Int64(attrs(f)["number_of_atoms"][1])
 
     close(f)
     
