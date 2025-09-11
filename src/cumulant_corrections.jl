@@ -80,9 +80,28 @@ end
 
 function constant_corrections(ce, V, V₂, V₃, V₄, T)
 
-    V₀ = get_V₀(ce, V, V₂, V₃, V₄)
-    #TODO TAKE DERIVATIVES OF OTHER TERMS
-    return V₀, 0.0, 0.0, 0.0
+    if ce isa EffectiveHamiltonianEstimator
+        @warn "Cannot estimate derivatives of V₀ for EffectiveHamiltonianEstimator."
+        V₀ = get_V₀(ce, V, V₂, V₃, V₄)
+        return V₀, NaN, NaN, NaN
+    end
+
+    X = V₀_rv(ce, V, V₂, V₃, V₄)
+
+    t1 = get_V₀(ce, V, V₂, V₃, V₄)
+    t2 = Threads.@spawn ∂A_∂T(X, V₂, T)
+    t3 = Threads.@spawn ∂²A_∂T²(X, V₂, T)
+
+    V₀ = fetch(t1)
+    ∂V₀ = fetch(t2)
+    ∂²V₀ = fetch(t3)
+
+    F_corr = V₀
+    S_corr = -∂V₀
+    U_corr = V₀ - (∂V₀*T/(kB*kB))
+    Cv_corr = -T * ∂²V₀
+
+    return F_corr, S_corr, U_corr, Cv_corr
     
 end
 

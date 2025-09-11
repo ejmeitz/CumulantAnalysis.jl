@@ -106,6 +106,8 @@ function HarmonicEstimator(order::Int, lim::L, calc, ifc2_path,
 end
 
 rv(::HarmonicEstimator, V, V₂, V₃, V₄) = V .- V₂
+V₀_rv(he::HarmonicEstimator, V, V₂, V₃, V₄) = rv(he, V, V₂, V₃, V₄)
+
 
 # Random variable used in nth cumulant
 X1(::HarmonicEstimator, V, V₂, V₃, V₄) = zero.(V₄)
@@ -114,7 +116,7 @@ X3(he::HarmonicEstimator, V, V₂, V₃, V₄) = rv(he, V, V₂, V₃, V₄)
 
 ifc_paths(ehe::HarmonicEstimator) = [ehe.ifc2_path]
 needs_true_V(::HarmonicEstimator) = true
-get_V₀(::HarmonicEstimator, V, V₂, V₃, V₄) = mean(V .- V₂)
+get_V₀(he::HarmonicEstimator, V, V₂, V₃, V₄) = mean(V₀_rv(he, V, V₂, V₃, V₄))
 
 function move_ifcs(ehe::HarmonicEstimator, outpath::String)
     check_ifc_paths(ehe)
@@ -144,6 +146,7 @@ end
 
 
 rv(::FourthOrderEstimator, V, V₂, V₃, V₄) = V .- V₂ .- V₃ .- V₄
+V₀_rv(foe::FourthOrderEstimator, V, V₂, V₃, V₄) = rv(foe, V, V₂, V₃, V₄)
 
 # Random variable used in nth cumulant
 X1(::FourthOrderEstimator, V, V₂, V₃, V₄) = zero.(V₄)
@@ -152,7 +155,7 @@ X3(he::FourthOrderEstimator, V, V₂, V₃, V₄) = rv(he, V, V₂, V₃, V₄)
 
 ifc_paths(foe::FourthOrderEstimator) = [foe.ifc2_path, foe.ifc3_path, foe.ifc4_path]
 needs_true_V(::FourthOrderEstimator) = true
-get_V₀(::FourthOrderEstimator, V, V₂, V₃, V₄) = mean(V .- V₂ .- V₃ .- V₄)
+get_V₀(foe::FourthOrderEstimator, V, V₂, V₃, V₄) = mean(V₀_rv(foe, V, V₂, V₃, V₄))
 
 function move_ifcs(foe::FourthOrderEstimator, outpath::String)
 
@@ -170,44 +173,44 @@ end
 
 ########################################
 
-struct ResidualEstimator{O,L,C} <: CumulantEstimator{O,L}
-    lim::L
-    force_calculator::C
-    ifc2_path::String
-    ifc3_path::String
-    ifc4_path::String
-    nconf::Int
-    n_boot::Int
-    boot_size::Int
-end
+# struct ResidualEstimator{O,L,C} <: CumulantEstimator{O,L}
+#     lim::L
+#     force_calculator::C
+#     ifc2_path::String
+#     ifc3_path::String
+#     ifc4_path::String
+#     nconf::Int
+#     n_boot::Int
+#     boot_size::Int
+# end
 
-function ResidualEstimator(order::Int, lim::L, calc, ifc2_path, ifc3_path, 
-        ifc4_path, nconf, n_boot, boot_size) where L
-    return ResidualEstimator{order, L, typeof(calc)}(lim, calc, ifc2_path,
-        ifc3_path, ifc4_path, nconf, n_boot, boot_size)
-end
+# function ResidualEstimator(order::Int, lim::L, calc, ifc2_path, ifc3_path, 
+#         ifc4_path, nconf, n_boot, boot_size) where L
+#     return ResidualEstimator{order, L, typeof(calc)}(lim, calc, ifc2_path,
+#         ifc3_path, ifc4_path, nconf, n_boot, boot_size)
+# end
 
-rv(::ResidualEstimator, V, V₂, V₃, V₄) = V .- V₂ .- get_V₀(re, V, V₂, V₃, V₄) # R + V₃ + V₄
+# rv(::ResidualEstimator, V, V₂, V₃, V₄) = V .- V₂ .- get_V₀(re, V, V₂, V₃, V₄) # R + V₃ + V₄
 
-# Random variable used in nth cumulant
-X1(::ResidualEstimator, V, V₂, V₃, V₄) = V₄
-X2(re::ResidualEstimator, V, V₂, V₃, V₄) = rv(re, V, V₂, V₃, V₄)
-X3(re::ResidualEstimator, V, V₂, V₃, V₄) = rv(re, V, V₂, V₃, V₄)
+# # Random variable used in nth cumulant
+# X1(::ResidualEstimator, V, V₂, V₃, V₄) = V₄
+# X2(re::ResidualEstimator, V, V₂, V₃, V₄) = rv(re, V, V₂, V₃, V₄)
+# X3(re::ResidualEstimator, V, V₂, V₃, V₄) = rv(re, V, V₂, V₃, V₄)
 
-ifc_paths(re::ResidualEstimator) = [re.ifc2_path, re.ifc3_path, re.ifc4_path]
-needs_true_V(::ResidualEstimator) = true
-get_V₀(::ResidualEstimator, V, V₂, V₃, V₄) = mean(V .- V₂ .- V₃ .- V₄)
+# ifc_paths(re::ResidualEstimator) = [re.ifc2_path, re.ifc3_path, re.ifc4_path]
+# needs_true_V(::ResidualEstimator) = true
+# get_V₀(::ResidualEstimator, V, V₂, V₃, V₄) = mean(V .- V₂ .- V₃ .- V₄)
 
-function move_ifcs(re::ResidualEstimator, outpath::String)
+# function move_ifcs(re::ResidualEstimator, outpath::String)
 
-    check_ifc_paths(re)
+#     check_ifc_paths(re)
 
-    new_ifc2_path = joinpath(outpath, "infile.forceconstant")
-    new_ifc3_path = joinpath(outpath, "infile.forceconstant_thirdorder")
-    new_ifc4_path = joinpath(outpath, "infile.forceconstant_fourthorder")
+#     new_ifc2_path = joinpath(outpath, "infile.forceconstant")
+#     new_ifc3_path = joinpath(outpath, "infile.forceconstant_thirdorder")
+#     new_ifc4_path = joinpath(outpath, "infile.forceconstant_fourthorder")
 
-    isfile(new_ifc2_path) || cp(re.ifc2_path, new_ifc2_path; force = true)
-    isfile(new_ifc3_path) || cp(re.ifc3_path, new_ifc3_path; force = true)
-    isfile(new_ifc4_path) || cp(re.ifc4_path, new_ifc4_path; force = true)
+#     isfile(new_ifc2_path) || cp(re.ifc2_path, new_ifc2_path; force = true)
+#     isfile(new_ifc3_path) || cp(re.ifc3_path, new_ifc3_path; force = true)
+#     isfile(new_ifc4_path) || cp(re.ifc4_path, new_ifc4_path; force = true)
 
-end
+# end
