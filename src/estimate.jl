@@ -126,7 +126,7 @@ function bootstrap_cumulants(ce, outpath, V, V₂, V₃, V₄, T)
     str_fmt_str = (N) -> Printf.Format("%7s"*join(fill("%15s", N-1), " "))
     header = ["N" "k1" "k2" "k3" "k1_SE" "k2_SE" "k3_SE"]
 
-    open(joinpath(outpath, "TEST.rv_moments"), "w") do f
+    open(joinpath(outpath, "outfile.rv_moments"), "w") do f
         println(f, "# Standard Error estimated from $(ce.n_boot) bootstraps of size N from origianl dataset with $(length(X)) samples")
         println(f, "# Each cumulant is non-dimensionalized by pre-muiltiing a factor of thermodynamic beta")
         println(f, Printf.format(str_fmt_str(length(header)), header...))
