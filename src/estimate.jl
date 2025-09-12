@@ -83,7 +83,7 @@ function bootstrap_corrections(V, V₂, V₃, V₄, T, outpath,
 end
 
 # Potentially useful for gauging convergence of different approaches
-function bootstrap_cumulants(ce, outpath, V, V₂, V₃, V₄, T)
+function bootstrap_cumulants(ce, outpath, V, V₂, V₃, V₄, T, n_atoms)
 
     β = 1 / (kB*T)
     min_samples = (length(V) < 500) ? 10 : 100
@@ -113,22 +113,22 @@ function bootstrap_cumulants(ce, outpath, V, V₂, V₃, V₄, T)
     end
     finish!(p)
 
-    κ1_estimates = β .* mean(κ1s; dims = 2)
-    κ2_estimates = β^2 .* mean(κ2s; dims = 2)
-    κ3_estimates = β^3 .* mean(κ3s; dims = 2)
+    κ1_estimates = β .* mean(κ1s; dims = 2) ./ n_atoms
+    κ2_estimates = β^2 .* mean(κ2s; dims = 2) ./ n_atoms
+    κ3_estimates = β^3 .* mean(κ3s; dims = 2) ./ n_atoms
 
-    κ1_SEs = β .* std(κ1s; dims = 2)
-    κ2_SEs = β^2 .* std(κ2s; dims = 2)
-    κ3_SEs = β^3 .* std(κ3s; dims = 2)
+    κ1_SEs = β .* std(κ1s; dims = 2) ./ n_atoms
+    κ2_SEs = β^2 .* std(κ2s; dims = 2) ./ n_atoms
+    κ3_SEs = β^3 .* std(κ3s; dims = 2) ./ n_atoms
 
     data_fmt_str = (N) -> Printf.Format("%7d"*join(fill("%15.8f", N), " "))
     d_fmt = data_fmt_str(6)
     str_fmt_str = (N) -> Printf.Format("%7s"*join(fill("%15s", N-1), " "))
     header = ["N" "k1" "k1_SE" "k2" "k2_SE" "k3" "k3_SE"]
 
-    open(joinpath(outpath, "outfile.rv_moments"), "w") do f
+    open(joinpath(outpath, "outfile.size_study"), "w") do f
         println(f, "# Standard Error estimated from $(ce.n_boot) bootstraps of size N from origianl dataset with $(length(X)) samples")
-        println(f, "# Each cumulant is non-dimensionalized by pre-muiltiing a factor of thermodynamic beta")
+        println(f, "# Each cumulant is non-dimensionalized by pre-muiltiing a factor of thermodynamic beta and normalized by number of atoms")
         println(f, Printf.format(str_fmt_str(length(header)), header...))
         for i in eachindex(Ns)
             println(f, Printf.format(d_fmt, Ns[i], κ1_estimates[i], κ1_SEs[i], κ2_estimates[i], κ2_SEs[i], κ3_estimates[i], κ3_SEs[i]))
@@ -282,7 +282,7 @@ function estimate(
     save.(res, Ref(outpath), Ref(ce.n_boot), Ref(ce.boot_size))
 
     # Compute some statistics to assess convergence with N
-    bootstrap_cumulants(ce, outpath, V, V₂, V₃, V₄, T)
+    bootstrap_cumulants(ce, outpath, V, V₂, V₃, V₄, T, n_atoms)
 
     return res
 
