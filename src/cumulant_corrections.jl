@@ -81,7 +81,7 @@ end
 function constant_corrections(ce, V, V₂, V₃, V₄, T)
 
     if ce isa EffectiveHamiltonianEstimator
-        @warn maxlog=1 "Cannot estimate derivatives of V₀ for EffectiveHamiltonianEstimator."
+        @warn "Cannot estimate derivatives of V₀ for EffectiveHamiltonianEstimator." maxlog=1
         V₀ = get_V₀(ce, V, V₂, V₃, V₄)
         return V₀, NaN, NaN, NaN
     end
