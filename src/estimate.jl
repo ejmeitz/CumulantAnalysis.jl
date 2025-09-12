@@ -181,13 +181,14 @@ function estimate(
         found_mpirun || @warn "Could not find mpirun on path, defaulting to 1 thread."
 
         flags = ""
+        flags *= (ce isa HarmonicEstimator) ? "" : "--thirdorder --fourthorder"
         flags *= (L === Quantum) ? "--quantum " : ""
         flags *= needs_true_V(ce) ? "--dumpconfigs" : ""
 
         if found_mpirun
-            cmd_str = `mpirun -np $(nthreads) effective_hamiltonian --thirdorder --fourthorder --nconf $(ce.nconf) --temperature $(T) $(flags)`
+            cmd_str = `mpirun -np $(nthreads) effective_hamiltonian --nconf $(ce.nconf) --temperature $(T) $(flags)`
         else
-            cmd_str = `effective_hamiltonian --thirdorder --fourthorder --nconf $(ce.nconf) --temperature $(T) $(flags)`
+            cmd_str = `effective_hamiltonian --nconf $(ce.nconf) --temperature $(T) $(flags)`
         end
         @info cmd_str
         cd(outpath) do 

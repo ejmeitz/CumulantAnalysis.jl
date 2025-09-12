@@ -54,14 +54,24 @@ for T in temperatures
         s = TDEPSystem(ssposcar_path)
         calc = LAMMPSCalculator(s, pot_cmds)
         
-        e = FourthOrderEstimator(
+        # e = FourthOrderEstimator(
+        #     expansion_order,
+        #     limit, 
+        #     calc,
+        #     ifc2_path(T),
+        #     ifc3_path(T),
+        #     ifc4_path(T),
+        #     # U0[T] * length(crys),
+        #     samples,
+        #     n_boot,
+        #     boot_size
+        # )
+
+        e = HarmonicEstimator(
             expansion_order,
             limit, 
             calc,
             ifc2_path(T),
-            ifc3_path(T),
-            ifc4_path(T),
-            # U0[T] * length(crys),
             samples,
             n_boot,
             boot_size
