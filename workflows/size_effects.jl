@@ -40,7 +40,7 @@ make_crystal = (s) -> Diamond(5.43u"angstrom", :Si, SVector(s,s,s))
 names_dict = Dict(
     EffectiveHamiltonianEstimator => "MDV0",
     HarmonicEstimator => "HarmV0",
-    FourthOrderEstimator, "QuarticV0"
+    FourthOrderEstimator => "QuarticV0"
 )
 
 function make_estimator(::Type{EffectiveHamiltonianEstimator}, calc, T, n_atoms)
