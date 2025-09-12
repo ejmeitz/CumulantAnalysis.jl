@@ -82,6 +82,54 @@ function bootstrap_corrections(V, V₂, V₃, V₄, T, outpath,
 
 end
 
+# Potentially useful for gauging convergence of different approaches
+function bootstrap_rv_moments(ce, outpath, V, V₂, V₃, V₄)
+
+    min_samples = (length(V) < 500) ? 10 : 100
+
+    X = rv(ce, V, V₂, V₃, V₄)
+
+    lg_pts = range(log10(min_samples), log10(length(X)), length = 12)
+    Ns = round.(Int, 10 .^ lg_pts)
+
+    means = zeros(length(Ns), ce.n_boot)
+    vars = zeros(length(Ns), ce.n_boot)
+    skews = zeros(length(Ns), ce.n_boot)
+
+    p = Progress(length(Ns) * ce.n_boot, "Bootstrapping Estimator Moments")
+    for (i,N) in enumerate(Ns)
+        idxs = zeros(Int, N)
+        for j in 1:ce.n_boot
+            sample!(1:length(X), idxs; replace = true)
+
+            subset = X[idxs]
+            means[i,j] = mean(subset)
+            vars[i,j] = var(subset)
+            skews[i,j] = skew(subset)
+
+            next!(p)
+        end
+    end
+    finish!(p)
+
+    mean_estimates = mean(means; dims = 2)
+    var_estimates = mean(vars; dims = 2)
+    skew_estimates = mean(skews; dims = 2)
+
+    mean_SEs = std(means; dims = 2)
+    var_SEs = std(vars; dims = 2)
+    skew_SEs = std(skews; dims = 2)
+
+    str_fmt_str = (N) -> Printf.Format(join(fill("%16s", N), " "))
+    header = ["N" "Mean" "Var" "Skew" "Mean_SE" "Var_SE" "Skew_SE"]
+
+    open(joinpath(outpath, "outfile.rv_moments"), "w") do f
+        println(f, "# Standard Error estimated from $(ce.n_boot) bootstraps of size N from origianl dataset with $(length(X)) samples")
+        println(f, Printf.format(str_fmt_str(length(header)), header...))
+        writedlm(f, [Ns mean_estimates mean_SEs var_estimates var_SEs skew_estimates skew_SEs])
+    end
+
+end
 
 function parse_energies(path, is_hdf5::Val{false})
 
@@ -147,7 +195,7 @@ function calculate_true_energies(calc, nconf, ssposcar_path, outpath)
     finish!(p)
     
     open(joinpath(outpath, "outfile.true_potential_energy"), "w") do f
-        writedlm(f, [V])
+        writedlm(f, V)
     end
 
     return V
@@ -161,6 +209,7 @@ function estimate(
         ssposcar_path::String = joinpath(outpath, "infile.ssposcar"),
         nthreads::Int = Threads.nthreads(),
         tep_energies_path::Union{String, Nothing} = nothing,
+        rm_configs::Bool = true
     ) where {O, L <: Limit}
 
     isfile(ucposcar_path) || throw(ArgumentError("ucposcar path is not a file: $(ucposcar_path)"))
@@ -220,11 +269,15 @@ function estimate(
         V = zeros(eltype(V₂), size(V₂))
     end
 
-    #!TODO VARIANCE ANALYSIS ON RANDOM VARIABLE
-
+    if rm_configs
+        rm(joinpath(outpath, "outfile.canonical_configs.hdf5"); force = true)
+    end
     res = bootstrap_corrections(V, V₂, V₃, V₄, T, outpath, ce, n_atoms)
 
     save.(res, Ref(outpath), Ref(ce.n_boot), Ref(ce.boot_size))
+
+    # Compute some statistics on random variable
+    bootstrap_rv_moments(ce, outpath, V, V₂, V₃, V₄)
 
     return res
 
