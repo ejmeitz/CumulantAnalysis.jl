@@ -83,8 +83,9 @@ function bootstrap_corrections(V, V₂, V₃, V₄, T, outpath,
 end
 
 # Potentially useful for gauging convergence of different approaches
-function bootstrap_rv_moments(ce, outpath, V, V₂, V₃, V₄)
+function bootstrap_cumulants(ce, outpath, V, V₂, V₃, V₄, T)
 
+    β = 1 / (kB*T)
     min_samples = (length(V) < 500) ? 10 : 100
 
     X = rv(ce, V, V₂, V₃, V₄)
@@ -92,9 +93,9 @@ function bootstrap_rv_moments(ce, outpath, V, V₂, V₃, V₄)
     lg_pts = range(log10(min_samples), log10(length(X)), length = 12)
     Ns = round.(Int, 10 .^ lg_pts)
 
-    means = zeros(length(Ns), ce.n_boot)
-    vars = zeros(length(Ns), ce.n_boot)
-    skews = zeros(length(Ns), ce.n_boot)
+    κ1s = zeros(length(Ns), ce.n_boot)
+    κ2s = zeros(length(Ns), ce.n_boot)
+    κ3s = zeros(length(Ns), ce.n_boot)
 
     p = Progress(length(Ns) * ce.n_boot, "Bootstrapping Estimator Moments")
     for (i,N) in enumerate(Ns)
@@ -103,30 +104,35 @@ function bootstrap_rv_moments(ce, outpath, V, V₂, V₃, V₄)
             sample!(1:length(X), idxs; replace = true)
 
             subset = X[idxs]
-            means[i,j] = mean(subset)
-            vars[i,j] = var(subset)
-            skews[i,j] = skew(subset)
+            κ1s[i,j] = mean(subset)
+            κ2s[i,j] = var(subset)
+            κ3s[i,j] = skew(subset)
 
             next!(p)
         end
     end
     finish!(p)
 
-    mean_estimates = mean(means; dims = 2)
-    var_estimates = mean(vars; dims = 2)
-    skew_estimates = mean(skews; dims = 2)
+    κ1_estimates = β .* mean(κ1s; dims = 2)
+    κ2_estimates = β^2 .* mean(κ2s; dims = 2)
+    κ3_estimates = β^3 .* mean(κ3s; dims = 2)
 
-    mean_SEs = std(means; dims = 2)
-    var_SEs = std(vars; dims = 2)
-    skew_SEs = std(skews; dims = 2)
+    κ1_SEs = β .* std(κ1s; dims = 2)
+    κ2_SEs = β^2 .* std(κ2s; dims = 2)
+    κ3_SEs = β^3 .* std(κ3s; dims = 2)
 
-    str_fmt_str = (N) -> Printf.Format(join(fill("%16s", N), " "))
-    header = ["N" "Mean" "Var" "Skew" "Mean_SE" "Var_SE" "Skew_SE"]
+    data_fmt_str = (N) -> Printf.Format("%7d"*join(fill("%15.8f", N), " "))
+    d_fmt = data_fmt_str(6)
+    str_fmt_str = (N) -> Printf.Format("%7s"*join(fill("%15s", N-1), " "))
+    header = ["N" "k1" "k2" "k3" "k1_SE" "k2_SE" "k3_SE"]
 
-    open(joinpath(outpath, "outfile.rv_moments"), "w") do f
+    open(joinpath(outpath, "TEST.rv_moments"), "w") do f
         println(f, "# Standard Error estimated from $(ce.n_boot) bootstraps of size N from origianl dataset with $(length(X)) samples")
+        println(f, "# Each cumulant is non-dimensionalized by pre-muiltiing a factor of thermodynamic beta")
         println(f, Printf.format(str_fmt_str(length(header)), header...))
-        writedlm(f, [Ns mean_estimates mean_SEs var_estimates var_SEs skew_estimates skew_SEs])
+        for i in eachindex(Ns)
+            println(f, Printf.format(d_fmt, Ns[i], κ1_estimates[i], κ1_SEs[i], κ2_estimates[i], κ2_SEs[i], κ3_estimates[i], κ3_SEs[i]))
+        end
     end
 
 end
@@ -275,8 +281,8 @@ function estimate(
 
     save.(res, Ref(outpath), Ref(ce.n_boot), Ref(ce.boot_size))
 
-    # Compute some statistics on random variable
-    bootstrap_rv_moments(ce, outpath, V, V₂, V₃, V₄)
+    # Compute some statistics to assess convergence with N
+    bootstrap_cumulants(ce, outpath, V, V₂, V₃, V₄)
 
     return res
 
