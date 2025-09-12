@@ -14,7 +14,7 @@ n_boot = 500
 boot_size = 10_000
 
 # Lennard-Jones Argon
-# make_outpath = (CT, T,s) -> "/mnt/merged/emeitz/CumulantAnalysisTest/LJ_size_effects_(CT)/T$(ustrip(T))/$(s)UC"
+# make_outpath = (CT, T,s) -> "/mnt/merged/emeitz/CumulantAnalysisTest/LJ_size_effects_$(CT)/T$(ustrip(T))/$(s)UC"
 # temperatures = [10, 80]
 # sizes = [3,4,5,6,7]
 # U0 = Dict(10 => -0.0777399947, 80 => -0.0780397902)
@@ -24,7 +24,7 @@ boot_size = 10_000
 # make_crystal = (s) -> FCC(5.2468u"angstrom", :Ar, SVector(s,s,s))
 
 # Stillinger-Weber Silicon
-make_outpath = (CT, T,s) -> "/mnt/merged/emeitz/CumulantAnalysisTest/SW_size_effects_(CT)/T$(ustrip(T))/$(s)UC"
+make_outpath = (CT, T,s) -> "/mnt/merged/emeitz/CumulantAnalysisTest/SW_size_effects_$(CT)/T$(ustrip(T))/$(s)UC"
 temperatures = [100, 1300]
 sizes = [2,3,4,5,6]
 ucposcar_path = "/home/emeitz/scripts/TDEP/SW/infile.ucposcar2"
