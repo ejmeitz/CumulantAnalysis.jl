@@ -129,6 +129,7 @@ function bootstrap_cumulants(ce, outpath, V, V₂, V₃, V₄, T, n_atoms)
     open(joinpath(outpath, "outfile.size_study"), "w") do f
         println(f, "# Standard Error estimated from $(ce.n_boot) bootstraps of size N from origianl dataset with $(length(X)) samples")
         println(f, "# Each cumulant is non-dimensionalized by pre-muiltiing a factor of thermodynamic beta and normalized by number of atoms")
+        println(f, "# Temperature $(T), N_atoms $(n_atoms)")
         println(f, Printf.format(str_fmt_str(length(header)), header...))
         for i in eachindex(Ns)
             println(f, Printf.format(d_fmt, Ns[i], κ1_estimates[i], κ1_SEs[i], κ2_estimates[i], κ2_SEs[i], κ3_estimates[i], κ3_SEs[i]))
