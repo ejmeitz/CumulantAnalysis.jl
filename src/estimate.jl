@@ -208,7 +208,6 @@ function estimate(
         ucposcar_path::String = joinpath(outpath, "infile.ucposcar"),
         ssposcar_path::String = joinpath(outpath, "infile.ssposcar"),
         nthreads::Int = Threads.nthreads(),
-        tep_energies_path::Union{String, Nothing} = nothing,
         rm_configs::Bool = true
     ) where {O, L <: Limit}
 
@@ -222,33 +221,33 @@ function estimate(
 
     move_ifcs(ce, outpath)
 
-    if isnothing(tep_energies_path)
+    # Check for mpirun
+    res = run(`which mpirun`; wait = false)
+    found_mpirun = success(res)
+    found_mpirun || @warn "Could not find mpirun on path, defaulting to 1 thread."
 
-        # Check for mpirun
-        res = run(`which mpirun`; wait = false)
-        found_mpirun = success(res)
-        found_mpirun || @warn "Could not find mpirun on path, defaulting to 1 thread."
+    flags = ""
+    flags *= (ce isa HarmonicEstimator) ? "" : "--thirdorder --fourthorder"
+    flags *= (L === Quantum) ? "--quantum " : ""
+    flags *= needs_true_V(ce) ? "--dumpconfigs" : ""
 
-        flags = ""
-        flags *= (ce isa HarmonicEstimator) ? "" : "--thirdorder --fourthorder"
-        flags *= (L === Quantum) ? "--quantum " : ""
-        flags *= needs_true_V(ce) ? "--dumpconfigs" : ""
+    if found_mpirun
+        cmd_str = `mpirun -np $(nthreads) effective_hamiltonian --nconf $(ce.nconf) --temperature $(T) $(split(flags))`
+    else
+        cmd_str = `effective_hamiltonian --nconf $(ce.nconf) --temperature $(T) $(split(flags))`
+    end
+    @info cmd_str
+    cd(outpath) do 
+        run(cmd_str)
+    end
 
-        if found_mpirun
-            cmd_str = `mpirun -np $(nthreads) effective_hamiltonian --nconf $(ce.nconf) --temperature $(T) $(split(flags))`
-        else
-            cmd_str = `effective_hamiltonian --nconf $(ce.nconf) --temperature $(T) $(split(flags))`
-        end
-        @info cmd_str
-        cd(outpath) do 
-            run(cmd_str)
-        end
-
-        # Need to use the HDF5 output, this gurantees
-        # order of positions and energies matches.
+    # If configs are dumped to calculate V, use HDF5
+    # this gurantees order of positions and energies matches.
+    if needs_true_V(ce)
         tep_energies_path = joinpath(outpath, "outfile.canonical_configs.hdf5")
         is_hdf5 = Val{true}()
     else
+        tep_energies_path = joinpath(outpath, "outfile.energies")
         is_hdf5 = Val{false}()
     end
 
