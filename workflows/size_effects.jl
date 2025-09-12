@@ -91,7 +91,7 @@ for CE_TYPE in (EffectiveHamiltonianEstimator, HarmonicEstimator, FourthOrderEst
 
             crys = make_crystal(s)
 
-            outpath = make_outpath(names_dict(CE_TYPE), T, s)
+            outpath = make_outpath(names_dict[CE_TYPE], T, s)
 
             @info "Temperature: $(T), Supercell: $(s)x$(s)x$(s)"
             mkpath(outpath)
