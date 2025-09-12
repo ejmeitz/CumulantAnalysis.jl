@@ -126,9 +126,9 @@ function bootstrap_cumulants(ce, outpath, V, V₂, V₃, V₄, T, n_atoms)
     str_fmt_str = (N) -> Printf.Format("%7s"*join(fill("%15s", N-1), " "))
     header = ["N" "k1" "k1_SE" "k2" "k2_SE" "k3" "k3_SE"]
 
-    open(joinpath(outpath, "outfile.size_study"), "w") do f
+    open(joinpath(outpath, "outfile.nsamples_study"), "w") do f
         println(f, "# Standard Error estimated from $(ce.n_boot) bootstraps of size N from origianl dataset with $(length(X)) samples")
-        println(f, "# Each cumulant is non-dimensionalized by pre-muiltiing a factor of thermodynamic beta and normalized by number of atoms")
+        println(f, "# Each cumulant is non-dimensionalized by beta^(order) / n_atoms")
         println(f, "# Temperature $(T), N_atoms $(n_atoms)")
         println(f, Printf.format(str_fmt_str(length(header)), header...))
         for i in eachindex(Ns)
@@ -234,9 +234,9 @@ function estimate(
     found_mpirun || @warn "Could not find mpirun on path, defaulting to 1 thread."
 
     flags = ""
-    flags *= (ce isa HarmonicEstimator) ? "" : "--thirdorder --fourthorder"
+    flags *= (ce isa HarmonicEstimator) ? "" : "--thirdorder --fourthorder "
     flags *= (L === Quantum) ? "--quantum " : ""
-    flags *= needs_true_V(ce) ? "--dumpconfigs" : ""
+    flags *= needs_true_V(ce) ? "--dumpconfigs " : ""
 
     if found_mpirun
         cmd_str = `mpirun -np $(nthreads) effective_hamiltonian --nconf $(ce.nconf) --temperature $(T) $(split(flags))`

@@ -2,13 +2,28 @@ using CairoMakie
 using DelimitedFiles
 using HDF5
 
+order = 2
+
+get_outpath = (M,T) -> joinpath(get_basepath(M), "T$(T)")
+get_datapath = (M,T,s) -> joinpath(get_outpath(M, T), "(s)UC")
+
+unit_map = Dict(
+    "F" => "eV / atom",
+    "S" => "kB / atom",
+    "U" => "eV / atom",
+    "Cᵥ" => "kB / atom",
+)
+
+method_colors = ["#4287f5", "#f59b3b", "#fa144d"]
+true_color = "#b31041"
+
+
 # material = "SW_SILICON"
-# get_outpath = (T) -> "/mnt/merged/emeitz/CumulantAnalysisTest/sTDEP_SW_size_effects/T$(T)"
-# get_datapath = (T,s) -> "/mnt/merged/emeitz/CumulantAnalysisTest/sTDEP_SW_size_effects/T$(T)/$(s)UC"
+# get_basepath = (M) -> "/mnt/merged/emeitz/CumulantAnalysisTest/$(M)_LJ_size_effects"
 # temperatures = [100, 1300]
 # F_true = [-4.2957902, -4.6756675]
 # F_tol = 1e-3 # eV / atom
-# sizes = [2,3,4,5,6,7]
+# sizes = [2,3,4,5,6]
 
 # SW:
 # <V> @ 100K  = -933.9152951740965
@@ -19,21 +34,22 @@ using HDF5
 # <V> @ 80K = -401.9778595676087
 
 
-ground_truths = Dict(
-    "F" => Dict(100 => -4.2957902, 1300 => -4.6756675), #eV / atom
-    "F_tol" => 1e-3, #eV / atom
-    "U" => Dict(100 => -4.31081576, 1300 => -3.9912508), #eV / atom
-    "U_tol" => missing, #eV / atom
-    "Cv" => Dict(100 => 3.0162458, 1300 => 3.2265268), # eV / kB * atom
-    "Cv_tol" => missing, # 1% of DP -- eV / kB * atom
-    "S" => Dict(100 => -1.7436438, 1300 => 6.10948172), # just from S = (U - F) / T
-    "S_tol" => missing, # eV / kB * atom
-)
+# ground_truths = Dict(
+#     "F" => Dict(100 => -4.2957902, 1300 => -4.6756675), #eV / atom
+#     "F_tol" => 1e-3, #eV / atom
+#     "U" => Dict(100 => -4.31081576, 1300 => -3.9912508), #eV / atom
+#     "U_tol" => missing, #eV / atom
+#     "Cv" => Dict(100 => 3.0162458, 1300 => 3.2265268), # eV / kB * atom
+#     "Cv_tol" => missing, # 1% of DP -- eV / kB * atom
+#     "S" => Dict(100 => -1.7436438, 1300 => 6.10948172), # just from S = (U - F) / T
+#     "S_tol" => missing, # eV / kB * atom
+# )
 
 material = "LJ_ARGON"
-get_outpath = (T) -> "/mnt/merged/emeitz/CumulantAnalysisTest/sTDEP_LJ_size_effects/T$(T)"
-get_datapath = (T,s) -> "/mnt/merged/emeitz/CumulantAnalysisTest/sTDEP_LJ_size_effects/T$(T)/$(s)UC"
+get_basepath = (M) -> "/mnt/merged/emeitz/CumulantAnalysisTest/$(M)_LJ_size_effects"
 temperatures = [10, 80]
+sizes = [3,4,5,6,7]
+
 
 ground_truths = Dict(
     "F" => Dict(10 => -0.0729854, 80 => -0.0820714), #eV / atom
@@ -46,58 +62,59 @@ ground_truths = Dict(
     "S_tol" => missing, # eV / kB * atom
 )
 
-sizes = [3,4,5,6,7,8]
 
-order = 2 # order to actually use in plots
-# max_order = 2
-# order_colors =  ["#080808", "#4287f5", "#f7952d", "#259c2f"]
+function parse_totals_per_size(prop, M, T)
 
-F0s = zeros(length(temperatures), length(sizes))
-F_terms = zeros(length(temperatures), length(sizes), order)
-F_terms_SE = zeros(length(temperatures), length(sizes), order)
-F_total = zeros(length(temperatures), length(sizes))
-F_total_SE = zeros(length(temperatures), length(sizes))
+    total = zeros(length(sizes))
+    total_SE = zeros(length(sizes))
 
+    for (j,s) in enumerate(sizes)
+        path = joinpath(get_datapath(M,T,s), "$(prop)_mean.txt")
+        file = h5open(path, "r")
 
-function parse_totals(prop, order)
-    # harmonic = zeros(length(temperatures), length(sizes))
-    # offsets = zeros(length(temperatures), length(sizes))
-    # offsets_SE = zeros(length(temperatures), length(sizes))
-    # terms = zeros(length(temperatures), length(sizes), order)
-    # terms_SE = zeros(length(temperatures), length(sizes), order)
-    total = zeros(length(temperatures), length(sizes))
-    total_SE = zeros(length(temperatures), length(sizes))
+        total[j] = read(file, "$(prop)_total")
+        total_SE[j] = read(file, "$(prop)_total_SE")
 
-    for (i,T) in enumerate(temperatures)
-        for (j,s) in enumerate(sizes)
-            path = joinpath(get_datapath(T,s), "F_mean.txt")
-            file = h5open(path, "r")
-
-            # harmonic[i,j] = read(file, "$(prop)0")
-
-            # offsets[i,j] = read(file, "$(prop)_offset")
-            # offsets_SE[i,j] = read(file, "$(prop)_offset_SE")
-
-            total[i,j] = read(file, "$(prop)_total")
-            total_SE[i,j] = read(file, "$(prop)_total_SE")
-
-            close(file)
-        end
+        close(file)
     end
 
     return total, total_SE
 
 end
 
+function parse_nsamples_study_per_size(M, T)
+
+    N = nothing
+    k1s = Float64[]
+    k1_SEs = Float64[]
+    k2s = Float64[]
+    k2_SEs = Float64[]
+    k3s = Float64[]
+    k3_SEs = Float64[]
+
+
+    for s in sizes
+        data = readdlm(joinpath(get_datapath(M, T, s), "outfile.size_study"))
+        N = Int.(data[:,1])
+        push!(k1s, data[:,2])
+        push!(k1_SEs, data[:,3])
+        push!(k2s, data[:,4])
+        push!(k2_SEs, data[:,5])
+        push!(k3s, data[:,6])
+        push!(k3_SEs, data[:,7])
+    end
+    return N, k1s, k1_SEs, k2s, k2_SEs, k3s, k3_SEs
+end
 
 # compares bulk to ground truth
-function make_line_plot(sizes, total, total_SE, truth, tol, T, prop)
+function make_line_plot(sizes, total, total_SE, truth, tol, T, 
+                            prop, mthd, study_type::String, xlabel)
     size_in_inches = (3, 2.25)
     dpi = 300
     size_in_pixels = size_in_inches .* dpi
 
     f = Figure(resolution = size_in_pixels);
-    ax = Axis(f[1,1], xlabel = "Number of Conventional Cells (N x N x N)", ylabel = "F [eV / atom]",
+    ax = Axis(f[1,1], xlabel = xlabel, ylabel = "$(prop) [$(unit_map[prop])]",
         ylabelsize = 40, xlabelsize = 40, yticklabelsize = 30, xticklabelsize = 30,
         xticks = sizes, xgridvisible = false, ygridvisible = false, xticksmirrored = true,
         yticksmirrored = true, xticklabelpad = 4, xtickalign=1, ytickalign = 1)
@@ -115,19 +132,92 @@ function make_line_plot(sizes, total, total_SE, truth, tol, T, prop)
                 position = :lt, labelsize = 35, orientation = :horizontal, framevisible = false, nbanks = 2, 
                 labelhalign = :left, colgap = 25, patchlabelgap = 12)
 
-    save(joinpath(get_outpath(T),"$(prop)_SZ_EFF_$(material)_T$(T)_ORDER$(order).svg"), f)
-    save(joinpath(get_outpath(T),"$(prop)_SZ_EFF_$(material)_T$(T)_ORDER$(order).png"), f)
+    save(joinpath(get_outpath(mthd,T),"$(mthd)_$(prop)_$(study_type)_$(material)_T$(T)_ORDER$(order).svg"), f)
+    save(joinpath(get_outpath(mthd,T),"$(mthd)_$(prop)_$(study_type)_$(material)_T$(T)_ORDER$(order).png"), f)
 end
 
+function make_nsamples_plot(N, total, total_SE, T, 
+                            prop, unit_str, mthd, study_type::String, xlabel)
+    size_in_inches = (3, 2.25)
+    dpi = 300
+    size_in_pixels = size_in_inches .* dpi
 
-for (i,T) in enumerate(temperatures)
-    for prop in ("F", "S", "Cv", "U")
-        total, total_SE = parse_totals(prop, order)
-        tol = ground_truths["$(prop)_tol"]
-        truth = ground_truths["$(prop)"][T]
-        make_line_plot(sizes, total, total_SE, truth, tol, T, prop)
+    f = Figure(resolution = size_in_pixels);
+    ax = Axis(f[1,1], xlabel = "Number of Samples", ylabel = "$(prop) [$(unit_str)]",
+        ylabelsize = 40, xlabelsize = 40, yticklabelsize = 30, xticklabelsize = 30,
+        xticks = N, xgridvisible = false, ygridvisible = false, xticksmirrored = true,
+        yticksmirrored = true, xticklabelpad = 4, xtickalign=1, ytickalign = 1)
+
+    s1 = errorbars!(N, total, total_SE, total_SE, markersize = 30, color = :black, whiskerwidth = 10);
+
+    axislegend(ax, [s1], ["Cumulant Expansion, Order $(order)"],
+                position = :lt, labelsize = 35, orientation = :horizontal, framevisible = false, nbanks = 2, 
+                labelhalign = :left, colgap = 25, patchlabelgap = 12)
+
+    save(joinpath(get_outpath(mthd,T),"$(mthd)_$(prop)_$(study_type)_$(material)_T$(T)_ORDER$(order).svg"), f)
+    save(joinpath(get_outpath(mthd,T),"$(mthd)_$(prop)_$(study_type)_$(material)_T$(T)_ORDER$(order).png"), f)
+end
+
+function make_method_comp_barplot(vals, val_SE, truth, tol, colors, T, prop, mthd_labels::AbstractVector{String})
+    size_in_inches = (3, 2.25)
+    dpi = 300
+    size_in_pixels = size_in_inches .* dpi
+
+    f = Figure(resolution = size_in_pixels);
+    ax = Axis(f[1,1], xticks = (1:3, mthd_labels), ylabel = "$(prop) [$(unit_map[prop])]",
+        ylabelsize = 40, xlabelsize = 40, yticklabelsize = 30, xticklabelsize = 30,
+        xgridvisible = false, ygridvisible = false, xticksmirrored = true,
+        yticksmirrored = true, xticklabelpad = 4, xtickalign=1, ytickalign = 1)
+
+    xlims!(0, 4)
+
+    barplot!(1:3, vals, color = colors)
+    errorbars!(1:3, vals, val_SE, val_SE; color = :black, linewidth = 4, overdraw = true, whiskerwidth = 8)
+    hlines!(truth, 0, 4, color = true_color, linestyle = :dash, linewidth = 4);
+    band!(0:0.1:4, truth - tol, truth + tol, color= true_color, alpha = 0.4);
+
+    eh = PolyElement(color = true_color, alpha = 0.4)
+
+    axislegend(ax, [eh], ["Ground Truth"], position = :rb, labelsize = 35, orientation = :vertical, 
+                framevisible = false, nbanks = 4, labelhalign = :center, 
+                colgap = 25, patchlabelgap = 12)
+
+    save(joinpath(get_outpath(T),"MTHD_COMP_$(prop)_$(material)_T$(T)_ORDER$(order).svg"), f)
+    save(joinpath(get_outpath(T),"MTHD_COMP_$(prop)_$(material)_T$(T)_ORDER$(order).png"), f)
+
+end
+
+for mthd in ("MDV0", "HarmV0", "QuarticV0")
+    for (i,T) in enumerate(temperatures)
+        for prop in ("F", "S", "Cv", "U")
+            tol = ground_truths["$(prop)_tol"]
+            truth = ground_truths["$(prop)"][T]
+            
+            all_totals = []; all_total_SEs = []; 
+            all_k1 = []; all_k1_SEs = [];
+            all_k2 = []; all_k2_SEs = [];
+            N = nothing
+
+            mthd_labels = ["MDV0", "HarmV0", "QuarticV0"]
+            for mthd in mthd_labels
+                total, total_SE = parse_totals_per_size(prop, order, T)
+                push!(all_totals, total); push!(all_total_SEs, total_SE)
+                make_line_plot(sizes, total, total_SE, truth, tol, T, prop, mthd,
+                                "SIZE_EFF", "Number of Conventional Cells (N x N x N)")
+
+                N, k1s, k1_SEs, k2s, k2_SEs, k3s, k3_SEs = parse_nsamples_study_per_size(mthd, T)
+                make_nsamples_plot(N, k1s, k1_SEs, T, "β * κ₁", "dimensionless", mthd, "")
+
+                #! PLOT of F,S,U,Cv vs N not just cumulants
+            end
+
+            make_method_comp_barplot(all_totals, all_total_SEs, truth, tol, method_colors, T, prop, mthd_labels)
+        end
     end
 end
+
+
+
 
 
 # breaks down property by term in the cumulant expansion
