@@ -282,7 +282,7 @@ function estimate(
     save.(res, Ref(outpath), Ref(ce.n_boot), Ref(ce.boot_size))
 
     # Compute some statistics to assess convergence with N
-    bootstrap_cumulants(ce, outpath, V, V₂, V₃, V₄)
+    bootstrap_cumulants(ce, outpath, V, V₂, V₃, V₄, T)
 
     return res
 
