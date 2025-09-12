@@ -124,7 +124,7 @@ function bootstrap_cumulants(ce, outpath, V, V₂, V₃, V₄, T)
     data_fmt_str = (N) -> Printf.Format("%7d"*join(fill("%15.8f", N), " "))
     d_fmt = data_fmt_str(6)
     str_fmt_str = (N) -> Printf.Format("%7s"*join(fill("%15s", N-1), " "))
-    header = ["N" "k1" "k2" "k3" "k1_SE" "k2_SE" "k3_SE"]
+    header = ["N" "k1" "k1_SE" "k2" "k2_SE" "k3" "k3_SE"]
 
     open(joinpath(outpath, "outfile.rv_moments"), "w") do f
         println(f, "# Standard Error estimated from $(ce.n_boot) bootstraps of size N from origianl dataset with $(length(X)) samples")
