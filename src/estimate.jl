@@ -235,9 +235,9 @@ function estimate(
         flags *= needs_true_V(ce) ? "--dumpconfigs" : ""
 
         if found_mpirun
-            cmd_str = `mpirun -np $(nthreads) effective_hamiltonian --nconf $(ce.nconf) --temperature $(T) $(flags)`
+            cmd_str = `mpirun -np $(nthreads) effective_hamiltonian --nconf $(ce.nconf) --temperature $(T) $(split(flags))`
         else
-            cmd_str = `effective_hamiltonian --nconf $(ce.nconf) --temperature $(T) $(flags)`
+            cmd_str = `effective_hamiltonian --nconf $(ce.nconf) --temperature $(T) $(split(flags))`
         end
         @info cmd_str
         cd(outpath) do 
