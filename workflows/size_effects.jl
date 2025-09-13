@@ -16,7 +16,7 @@ boot_size = 10_000
 # Lennard-Jones Argon
 make_outpath = (CT, T,s) -> "/mnt/merged/emeitz/CumulantAnalysisTest/LJ_size_effects_$(CT)/T$(ustrip(T))/$(s)UC"
 temperatures = [10, 80]
-sizes = [3,4,5,6,7]
+sizes = [3,4,5,6]
 U0 = Dict(10 => -0.0777399947, 80 => -0.0780397902)
 ucposcar_path = "/home/emeitz/scripts/TDEP/LJ/infile.ucposcar_oneatom"
 ifc2_path = (T) -> "/mnt/merged/emeitz/LJ_IFC_INTERPOLATION_NODES_FINE/IFCs/T$(T)_0/infile.forceconstant"
