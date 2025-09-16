@@ -97,17 +97,19 @@ function do_size_study(ce::CumulantEstimator{O}, outpath, V, V₂, V₃, V₄, T
     ∂²κs = zeros(length(Ns), O+1, ce.n_boot)
 
     p = Progress(length(Ns) * ce.n_boot, "Bootstrapping Estimator Moments")
-    for (i,N) in enumerate(Ns)
-        idxs = zeros(Int, N)
-        for co in 0:O
-            for j in 1:ce.n_boot
-                sample!(1:length(V), idxs; replace = true)
 
-                V_subset = V[idxs]
-                V₂_subset = V₂[idxs]
-                V₃_subset = V₃[idxs]
-                V₄_subset = V₄[idxs]
-                
+    for j in 1:ce.n_boot
+        for (i,N) in enumerate(Ns)
+
+            idxs = zeros(Int, N)
+            sample!(1:length(V), idxs; replace = true)
+            
+            V_subset = V[idxs]
+            V₂_subset = V₂[idxs]
+            V₃_subset = V₃[idxs]
+            V₄_subset = V₄[idxs]
+
+            for co in 0:O                
                 if co == 0
                     if ce isa EffectiveHamiltonianEstimator
                         κs[i, co + 1, j] = NaN
