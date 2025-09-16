@@ -98,16 +98,23 @@ function do_size_study(ce::CumulantEstimator{O}, outpath, V, V₂, V₃, V₄, T
 
     p = Progress(length(Ns) * ce.n_boot, "Bootstrapping Estimator Moments")
 
-    for j in 1:ce.n_boot
-        for (i,N) in enumerate(Ns)
+    
+    for (i,N) in enumerate(Ns)
+        # pre-allocate things
+        idxs = zeros(Int, N)
+        V_subset = similar(V, size(idxs))
+        V₂_subset = similar(V₂, size(idxs))
+        V₃_subset = similar(V₃, size(idxs))
+        V₄_subset = similar(V₄, size(idxs))
+        
+        for j in 1:ce.n_boot
 
-            idxs = zeros(Int, N)
             sample!(1:length(V), idxs; replace = true)
-            
-            V_subset = V[idxs]
-            V₂_subset = V₂[idxs]
-            V₃_subset = V₃[idxs]
-            V₄_subset = V₄[idxs]
+
+            V_subset .= V[idxs]
+            V₂_subset .= V₂[idxs]
+            V₃_subset .= V₃[idxs]
+            V₄_subset .= V₄[idxs]
 
             for co in 0:O                
                 if co == 0
