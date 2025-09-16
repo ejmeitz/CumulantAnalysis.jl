@@ -83,56 +83,80 @@ function bootstrap_corrections(V, V₂, V₃, V₄, T, outpath,
 end
 
 # Potentially useful for gauging convergence of different approaches
-function bootstrap_cumulants(ce, outpath, V, V₂, V₃, V₄, T, n_atoms)
+# Bootstrap estimates error on kappa and its derivatives for all orders
+function do_size_study(ce::CumulantEstimator{O}, outpath, V, V₂, V₃, V₄, T, n_atoms) where O
 
     β = 1 / (kB*T)
     min_samples = (length(V) < 500) ? 10 : 100
 
-    X = rv(ce, V, V₂, V₃, V₄)
-
-    lg_pts = range(log10(min_samples), log10(length(X)), length = 12)
+    lg_pts = range(log10(min_samples), log10(length(V)), length = 12)
     Ns = round.(Int, 10 .^ lg_pts)
 
-    κ1s = zeros(length(Ns), ce.n_boot)
-    κ2s = zeros(length(Ns), ce.n_boot)
-    κ3s = zeros(length(Ns), ce.n_boot)
+    κs = zeros(length(Ns), O+1, ce.n_boot)
+    ∂κs = zeros(length(Ns), O+1, ce.n_boot)
+    ∂²κs = zeros(length(Ns), O+1, ce.n_boot)
 
     p = Progress(length(Ns) * ce.n_boot, "Bootstrapping Estimator Moments")
     for (i,N) in enumerate(Ns)
         idxs = zeros(Int, N)
-        for j in 1:ce.n_boot
-            sample!(1:length(X), idxs; replace = true)
+        for co in 0:O
+            for j in 1:ce.n_boot
+                sample!(1:length(V), idxs; replace = true)
 
-            subset = X[idxs]
-            κ1s[i,j] = mean(subset)
-            κ2s[i,j] = var(subset)
-            κ3s[i,j] = skew(subset)
+                V_subset = V[idxs]
+                V₂_subset = V₂[idxs]
+                V₃_subset = V₃[idxs]
+                V₄_subset = V₄[idxs]
+                
+                if co == 0
+                    if ce isa EffectiveHamiltonianEstimator
+                        κs[i, co + 1, j] = NaN
+                        ∂κs[i, co + 1, j] = NaN
+                        ∂²κs[i, co + 1, j] = NaN
+                    else
+                        X = V₀_rv(ce, V_subset, V₂_subset, V₃_subset, V₄_subset)
+                        κs[i, co + 1, j] = X
+                        ∂κs[i, co + 1, j] = ∂A_∂T(X, V₂, T)
+                        ∂²κs[i, co + 1, j] = ∂²A_∂T²(X, V₂, T) 
+                    end
+                else
+                    cd = CumulantData(V_subset, V₂_subset, V₃_subset, V₄_subset, T, Val{O}(), ce)
+                    κs[i, co + 1, j] = cd.κ
+                    ∂κs[i, co + 1, j] = cd.∂κ_∂T
+                    ∂²κs[i, co + 1, j] = cd.∂²κ_∂T²
+                end
 
-            next!(p)
+                next!(p)
+            end
         end
     end
     finish!(p)
 
-    κ1_estimates = β .* mean(κ1s; dims = 2) ./ n_atoms
-    κ2_estimates = β^2 .* mean(κ2s; dims = 2) ./ n_atoms
-    κ3_estimates = β^3 .* mean(κ3s; dims = 2) ./ n_atoms
+    #! TODO NON-DIMENSONALIZE
+    κ_estimates = mean(κs; dims = 3) ./ n_atoms
+    ∂κ_estimates = mean(∂κs; dims = 3) ./ n_atoms
+    ∂²κ_estimates = mean(∂²κs; dims = 3) ./ n_atoms
 
-    κ1_SEs = β .* std(κ1s; dims = 2) ./ n_atoms
-    κ2_SEs = β^2 .* std(κ2s; dims = 2) ./ n_atoms
-    κ3_SEs = β^3 .* std(κ3s; dims = 2) ./ n_atoms
+    κ_SEs = std(κs; dims = 3) ./ n_atoms
+    ∂κ_SEs = std(∂κs; dims = 3) ./ n_atoms
+    ∂²κ_SEs = std(∂²κs; dims = 3) ./ n_atoms
 
     data_fmt_str = (N) -> Printf.Format("%7d"*join(fill("%15.8f", N), " "))
     d_fmt = data_fmt_str(6)
     str_fmt_str = (N) -> Printf.Format("%7s"*join(fill("%15s", N-1), " "))
-    header = ["N" "k1" "k1_SE" "k2" "k2_SE" "k3" "k3_SE"]
 
-    open(joinpath(outpath, "outfile.nsamples_study"), "w") do f
-        println(f, "# Standard Error estimated from $(ce.n_boot) bootstraps of size N from origianl dataset with $(length(X)) samples")
-        println(f, "# Each cumulant is non-dimensionalized by beta^(order) / n_atoms")
-        println(f, "# Temperature $(T), N_atoms $(n_atoms)")
-        println(f, Printf.format(str_fmt_str(length(header)), header...))
-        for i in eachindex(Ns)
-            println(f, Printf.format(d_fmt, Ns[i], κ1_estimates[i], κ1_SEs[i], κ2_estimates[i], κ2_SEs[i], κ3_estimates[i], κ3_SEs[i]))
+    for co in 0:O
+        header = ["N" "k" "k_SE" "dk_dT" "dk_dT_SE" "d2k_dT2" "d2k_dT2_SE"]
+
+        open(joinpath(outpath, "outfile.nsamples_study_order$(current_order)"), "w") do f
+            println(f, "# Standard Error estimated from $(ce.n_boot) bootstraps of size N from origianl dataset with $(length(V)) samples")
+            println(f, "# Temperature $(T), N_atoms $(n_atoms)")
+            println(f, Printf.format(str_fmt_str(length(header)), header...))
+            for i in eachindex(Ns)
+                println(f, Printf.format(d_fmt, Ns[i], κ_estimates[i, co], κ_SEs[i, co],
+                                                       ∂κ_estimates[i, co], ∂κ_SEs[i, co], 
+                                                       ∂²κ_estimates[i, co], ∂²κ_SEs[i, co]))
+            end
         end
     end
 
@@ -283,7 +307,7 @@ function estimate(
     save.(res, Ref(outpath), Ref(ce.n_boot), Ref(ce.boot_size))
 
     # Compute some statistics to assess convergence with N
-    bootstrap_cumulants(ce, outpath, V, V₂, V₃, V₄, T, n_atoms)
+    do_size_study(ce, outpath, V, V₂, V₃, V₄, T, n_atoms)
 
     return res
 
