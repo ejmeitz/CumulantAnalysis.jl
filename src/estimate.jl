@@ -116,33 +116,31 @@ function do_size_study(ce::CumulantEstimator{O}, outpath, V, V₂, V₃, V₄, T
             V₃_subset .= V₃[idxs]
             V₄_subset .= V₄[idxs]
 
+            X = V₀_rv(ce, V_subset, V₂_subset, V₃_subset, V₄_subset)
+            c1 = CumulantData(V_subset, V₂_subset, V₃_subset, V₄_subset, T, Val{1}(), ce)
+            c2 = CumulantData(V_subset, V₂_subset, V₃_subset, V₄_subset, T, c1, Val{2}(), ce)
+            c3 = CumulantData(V_subset, V₂_subset, V₃_subset, V₄_subset, T, c1, Val{3}(), ce)
+
+            cds = (c1, c2, c3)
+
             for co in 0:O         
-                c1 = CumulantData(0,0,0)       
                 if co == 0
                     if ce isa EffectiveHamiltonianEstimator
                         κs[i, co + 1, j] = NaN
                         ∂κs[i, co + 1, j] = NaN
                         ∂²κs[i, co + 1, j] = NaN
                     else
-                        X = V₀_rv(ce, V_subset, V₂_subset, V₃_subset, V₄_subset)
                         κs[i, co + 1, j] = mean(X)
                         ∂κs[i, co + 1, j] = ∂A_∂T(X, V₂_subset, T)
                         ∂²κs[i, co + 1, j] = ∂²A_∂T²(X, V₂_subset, T) 
                     end
                 else
-                    if c0 == 1
-                        cd = CumulantData(V_subset, V₂_subset, V₃_subset, V₄_subset, T, Val{O}(), ce)
-                        c1 = cd
-                    else
-                        cd = CumulantData(V_subset, V₂_subset, V₃_subset, V₄_subset, c1, T, Val{O}(), ce)
-                    end
-                    κs[i, co + 1, j] = cd.κ
-                    ∂κs[i, co + 1, j] = cd.∂κ_∂T
-                    ∂²κs[i, co + 1, j] = cd.∂²κ_∂T²
+                    κs[i, co + 1, j] = cds[co].κ
+                    ∂κs[i, co + 1, j] = cds[co].∂κ_∂T
+                    ∂²κs[i, co + 1, j] = cds[co].∂²κ_∂T²
                 end
-
-                next!(p)
             end
+            next!(p)
         end
     end
     finish!(p)
