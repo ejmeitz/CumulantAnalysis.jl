@@ -116,7 +116,8 @@ function do_size_study(ce::CumulantEstimator{O}, outpath, V, V₂, V₃, V₄, T
             V₃_subset .= V₃[idxs]
             V₄_subset .= V₄[idxs]
 
-            for co in 0:O                
+            for co in 0:O         
+                c1 = CumulantData(0,0,0)       
                 if co == 0
                     if ce isa EffectiveHamiltonianEstimator
                         κs[i, co + 1, j] = NaN
@@ -129,7 +130,12 @@ function do_size_study(ce::CumulantEstimator{O}, outpath, V, V₂, V₃, V₄, T
                         ∂²κs[i, co + 1, j] = ∂²A_∂T²(X, V₂_subset, T) 
                     end
                 else
-                    cd = CumulantData(V_subset, V₂_subset, V₃_subset, V₄_subset, T, Val{O}(), ce)
+                    if c0 == 1
+                        cd = CumulantData(V_subset, V₂_subset, V₃_subset, V₄_subset, T, Val{O}(), ce)
+                        c1 = cd
+                    else
+                        cd = CumulantData(V_subset, V₂_subset, V₃_subset, V₄_subset, c1, T, Val{O}(), ce)
+                    end
                     κs[i, co + 1, j] = cd.κ
                     ∂κs[i, co + 1, j] = cd.∂κ_∂T
                     ∂²κs[i, co + 1, j] = cd.∂²κ_∂T²
