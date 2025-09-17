@@ -125,8 +125,8 @@ function do_size_study(ce::CumulantEstimator{O}, outpath, V, V₂, V₃, V₄, T
                     else
                         X = V₀_rv(ce, V_subset, V₂_subset, V₃_subset, V₄_subset)
                         κs[i, co + 1, j] = mean(X)
-                        ∂κs[i, co + 1, j] = ∂A_∂T(X, V₂, T)
-                        ∂²κs[i, co + 1, j] = ∂²A_∂T²(X, V₂, T) 
+                        ∂κs[i, co + 1, j] = ∂A_∂T(X, V₂_subset, T)
+                        ∂²κs[i, co + 1, j] = ∂²A_∂T²(X, V₂_subset, T) 
                     end
                 else
                     cd = CumulantData(V_subset, V₂_subset, V₃_subset, V₄_subset, T, Val{O}(), ce)
