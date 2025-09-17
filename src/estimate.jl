@@ -106,7 +106,7 @@ function do_size_study(ce::CumulantEstimator{O}, outpath, V, V₂, V₃, V₄, T
         V₂_subset = similar(V₂, size(idxs))
         V₃_subset = similar(V₃, size(idxs))
         V₄_subset = similar(V₄, size(idxs))
-        
+
         for j in 1:ce.n_boot
 
             sample!(1:length(V), idxs; replace = true)
@@ -124,7 +124,7 @@ function do_size_study(ce::CumulantEstimator{O}, outpath, V, V₂, V₃, V₄, T
                         ∂²κs[i, co + 1, j] = NaN
                     else
                         X = V₀_rv(ce, V_subset, V₂_subset, V₃_subset, V₄_subset)
-                        κs[i, co + 1, j] = X
+                        κs[i, co + 1, j] = mean(X)
                         ∂κs[i, co + 1, j] = ∂A_∂T(X, V₂, T)
                         ∂²κs[i, co + 1, j] = ∂²A_∂T²(X, V₂, T) 
                     end
