@@ -166,9 +166,9 @@ function do_size_study(ce::CumulantEstimator{O}, outpath, V, V₂, V₃, V₄, T
             println(f, "# Temperature $(T), N_atoms $(n_atoms)")
             println(f, Printf.format(str_fmt_str(length(header)), header...))
             for i in eachindex(Ns)
-                println(f, Printf.format(d_fmt, Ns[i], κ_estimates[i, co], κ_SEs[i, co],
-                                                       ∂κ_estimates[i, co], ∂κ_SEs[i, co], 
-                                                       ∂²κ_estimates[i, co], ∂²κ_SEs[i, co]))
+                println(f, Printf.format(d_fmt, Ns[i], κ_estimates[i, co+1], κ_SEs[i, co+1],
+                                                       ∂κ_estimates[i, co+1], ∂κ_SEs[i, co+1], 
+                                                       ∂²κ_estimates[i, co+1], ∂²κ_SEs[i, co+1]))
             end
         end
     end
