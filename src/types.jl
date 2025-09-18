@@ -217,8 +217,8 @@ function move_ifcs(me::MixedEstimator, outpath::String)
     new_ifc3_path = joinpath(outpath, "infile.forceconstant_thirdorder")
     new_ifc4_path = joinpath(outpath, "infile.forceconstant_fourthorder")
 
-    isfile(new_ifc2_path) || cp(foe.ifc2_path, new_ifc2_path; force = true)
-    isfile(new_ifc3_path) || cp(foe.ifc3_path, new_ifc3_path; force = true)
-    isfile(new_ifc4_path) || cp(foe.ifc4_path, new_ifc4_path; force = true)
+    isfile(new_ifc2_path) || cp(me.ifc2_path, new_ifc2_path; force = true)
+    isfile(new_ifc3_path) || cp(me.ifc3_path, new_ifc3_path; force = true)
+    isfile(new_ifc4_path) || cp(me.ifc4_path, new_ifc4_path; force = true)
 
 end
