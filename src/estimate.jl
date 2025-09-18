@@ -130,7 +130,7 @@ function do_size_study(ce::CumulantEstimator{O}, outpath, V, V₂, V₃, V₄, T
                         ∂κs[i, co + 1, j] = NaN
                         ∂²κs[i, co + 1, j] = NaN
                     else
-                        κs[i, co + 1, j] = mean(X)
+                        κs[i, co + 1, j] = get_V₀(ce, V, V₂, V₃, V₄) #* DO NOT SET TO mean(X), BREAKS MixedEstimator
                         ∂κs[i, co + 1, j] = ∂A_∂T(X, V₂_subset, T)
                         ∂²κs[i, co + 1, j] = ∂²A_∂T²(X, V₂_subset, T) 
                     end
