@@ -43,7 +43,8 @@ make_crystal = (s) -> FCC(5.2468u"angstrom", :Ar, SVector(s,s,s))
 names_dict = Dict(
     EffectiveHamiltonianEstimator => "MDV0",
     HarmonicEstimator => "HarmV0",
-    FourthOrderEstimator => "QuarticV0"
+    FourthOrderEstimator => "QuarticV0",
+    MixedEstimator => "MixedV0"
 )
 
 function make_estimator(::Type{EffectiveHamiltonianEstimator}, calc, T, n_atoms)
@@ -86,9 +87,24 @@ function make_estimator(::Type{FourthOrderEstimator}, calc, T, n_atoms)
         )
 end
 
+function make_estimator(::Type{MixedEstimator}, calc, T, n_atoms)
+    return MixedEstimator(
+            expansion_order, 
+            limit, 
+            calc,
+            ifc2_path(T), 
+            ifc3_path(T), 
+            ifc4_path(T), 
+            U0[T] * n_atoms,
+            samples,
+            n_boot,
+            boot_size
+        )
+end
+
 LAMMPS.MPI.Init()
 
-for CE_TYPE in (EffectiveHamiltonianEstimator, HarmonicEstimator, FourthOrderEstimator)
+for CE_TYPE in (MixedEstimator, ) #(MixedEstimator, EffectiveHamiltonianEstimator, HarmonicEstimator, FourthOrderEstimator)
     for T in temperatures
         for s in sizes
 

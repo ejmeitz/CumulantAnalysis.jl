@@ -88,7 +88,7 @@ function constant_corrections(ce, V, V₂, V₃, V₄, T)
 
     X = V₀_rv(ce, V, V₂, V₃, V₄)
 
-    t1 = get_V₀(ce, V, V₂, V₃, V₄)
+    t1 = get_V₀(ce, V, V₂, V₃, V₄) #* DO NOT SET TO mean(X), BREAKS MixedEstimator, EffectiveHamiltonianEstimator
     t2 = Threads.@spawn ∂A_∂T(X, V₂, T)
     t3 = Threads.@spawn ∂²A_∂T²(X, V₂, T)
 
