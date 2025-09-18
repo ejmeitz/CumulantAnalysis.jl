@@ -3,7 +3,8 @@ export
     Classical, 
     EffectiveHamiltonianEstimator, 
     HarmonicEstimator, 
-    FourthOrderEstimator#, ResidualEstimator
+    FourthOrderEstimator,
+    MixedEstimator
 
 abstract type Limit end
 struct Quantum <: Limit end
