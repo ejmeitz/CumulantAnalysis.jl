@@ -192,7 +192,7 @@ end
 
 function MixedEstimator(order::Int, lim::L, calc, ifc2_path, ifc3_path, 
         ifc4_path, V0::T, nconf, n_boot, boot_size) where {L,T}
-    return MixedEstimator{order, L, typeof(calc)}(lim, calc, ifc2_path,
+    return MixedEstimator{order, L, typeof(calc), T}(lim, calc, ifc2_path,
         ifc3_path, ifc4_path, V0, nconf, n_boot, boot_size)
 end
 
