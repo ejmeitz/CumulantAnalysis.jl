@@ -10,14 +10,21 @@ expansion_order = 2
 limit = Classical()
 samples = 100_000 
 n_boot = 500
-boot_size = 10_000
+boot_size = 1_000
 
 # Lennard-Jones Argon
 make_outpath = (CT, T,s) -> "/mnt/merged/emeitz/CumulantAnalysisTest/LJ_size_effects_$(CT)/T$(ustrip(T))/$(s)UC"
 make_outpath = (CT, T, s) -> "/mnt/merged/emeitz/CumulantAnalysisTest/LJ_TEST_$(CT)/T$(ustrip(T))/$(s)UC"
-temperatures = [10, 80]
-sizes = [3,4,5,6]
-U0 = Dict(10 => -0.0777399947, 80 => -0.0780397902)
+temperatures = [10, 20, 30, 40, 50, 60, 70, 80]
+sizes = [6] #[3,4,5,6]
+U0 = Dict(10 => -0.0777399947,
+          20 => -0.0777546430,
+          30 => -0.0777791822,
+          40 => -0.077816103, 
+          50 => -0.07786644832, 
+          60 => -0.077919898, 
+          70 => -0.077986377, 
+          80 => -0.0780397902)
 ucposcar_path = "/home/emeitz/scripts/TDEP/LJ/infile.ucposcar_oneatom"
 ifc2_path = (T) -> "/mnt/merged/emeitz/LJ_IFC_INTERPOLATION_NODES_FINE/IFCs/T$(T)_0/infile.forceconstant"
 ifc3_path = (T) -> "/mnt/merged/emeitz/LJ_IFC_INTERPOLATION_NODES_FINE/IFCs/T$(T)_0/infile.forceconstant_thirdorder"
@@ -104,7 +111,7 @@ end
 
 LAMMPS.MPI.Init()
 
-for CE_TYPE in (MixedEstimator, ) #(MixedEstimator, EffectiveHamiltonianEstimator, HarmonicEstimator, FourthOrderEstimator)
+for CE_TYPE in (EffectiveHamiltonianEstimator, ) #(MixedEstimator, EffectiveHamiltonianEstimator, HarmonicEstimator, FourthOrderEstimator)
     for T in temperatures
         for s in sizes
 
