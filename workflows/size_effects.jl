@@ -16,7 +16,7 @@ boot_size = 1_000
 make_outpath = (CT, T,s) -> "/mnt/merged/emeitz/CumulantAnalysisTest/LJ_size_effects_$(CT)/T$(ustrip(T))/$(s)UC"
 make_outpath = (CT, T, s) -> "/mnt/merged/emeitz/CumulantAnalysisTest/LJ_TEST_$(CT)/T$(ustrip(T))/$(s)UC"
 temperatures = [10, 20, 30, 40, 50, 60, 70, 80]
-sizes = [6] #[3,4,5,6]
+sizes = [4] #[3,4,5,6]
 U0 = Dict(10 => -0.0777399947,
           20 => -0.0777546430,
           30 => -0.0777791822,
@@ -111,7 +111,7 @@ end
 
 LAMMPS.MPI.Init()
 
-for CE_TYPE in (EffectiveHamiltonianEstimator, ) #(MixedEstimator, EffectiveHamiltonianEstimator, HarmonicEstimator, FourthOrderEstimator)
+for CE_TYPE in (MixedEstimator, ) #(MixedEstimator, EffectiveHamiltonianEstimator, HarmonicEstimator, FourthOrderEstimator)
     for T in temperatures
         for s in sizes
 
