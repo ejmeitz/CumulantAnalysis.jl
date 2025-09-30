@@ -14,8 +14,8 @@ boot_size = 1_000
 
 # Lennard-Jones Argon
 make_outpath = (CT, T,s) -> "/mnt/merged/emeitz/CumulantAnalysisTest/LJ_size_effects_$(CT)/T$(ustrip(T))/$(s)UC"
-make_outpath = (CT, T, s) -> "/mnt/merged/emeitz/CumulantAnalysisTest/LJ_TEST_$(CT)/T$(ustrip(T))/$(s)UC"
-temperatures = [10, 20, 30, 40, 50, 60, 70, 80]
+make_outpath = (CT, T, s) -> "/mnt/merged/emeitz/CumulantAnalysisTest/LJ_TESTDATA_$(CT)/T$(ustrip(T))/$(s)UC"
+temperatures = [80]
 sizes = [4] #[3,4,5,6]
 U0 = Dict(10 => -0.0777399947,
           20 => -0.0777546430,
@@ -63,8 +63,7 @@ function make_estimator(::Type{EffectiveHamiltonianEstimator}, calc, T, n_atoms)
             ifc4_path(T), 
             U0[T] * n_atoms,
             samples,
-            n_boot,
-            boot_size
+            n_boot
         )
 end
 
@@ -75,8 +74,7 @@ function make_estimator(::Type{HarmonicEstimator}, calc, T, n_atoms)
             calc,
             ifc2_path(T),
             samples,
-            n_boot,
-            boot_size
+            n_boot
         )
 end
 
@@ -89,8 +87,7 @@ function make_estimator(::Type{FourthOrderEstimator}, calc, T, n_atoms)
             ifc3_path(T),
             ifc4_path(T),
             samples,
-            n_boot,
-            boot_size
+            n_boot
         )
 end
 
@@ -104,8 +101,7 @@ function make_estimator(::Type{MixedEstimator}, calc, T, n_atoms)
             ifc4_path(T), 
             U0[T] * n_atoms,
             samples,
-            n_boot,
-            boot_size
+            n_boot
         )
 end
 
