@@ -54,13 +54,12 @@ struct EffectiveHamiltonianEstimator{O,L,T} <: CumulantEstimator{O,L}
     V₀::T # expects eV
     nconf::Int
     n_boot::Int
-    boot_size::Int
 end
 
 function EffectiveHamiltonianEstimator(order::Int, lim::L, ifc2_path, ifc3_path, 
-        ifc4_path, V₀_eV, nconf, n_boot, boot_size) where L
+        ifc4_path, V₀_eV, nconf, n_boot) where L
     return EffectiveHamiltonianEstimator{order, L, typeof(V₀_eV)}(lim, ifc2_path,
-        ifc3_path, ifc4_path, V₀_eV, nconf, n_boot, boot_size)
+        ifc3_path, ifc4_path, V₀_eV, nconf, n_boot)
 end
 
 rv(::EffectiveHamiltonianEstimator, V, V₂, V₃, V₄) = V₃ .+ V₄
@@ -97,13 +96,12 @@ struct HarmonicEstimator{O,L,C} <: CumulantEstimator{O,L}
     ifc2_path::String
     nconf::Int
     n_boot::Int
-    boot_size::Int
 end
 
 function HarmonicEstimator(order::Int, lim::L, calc, ifc2_path,
-                             nconf, n_boot, boot_size) where L
+                             nconf, n_boot) where L
     return HarmonicEstimator{order, L, typeof(calc)}(lim, calc, 
-                            ifc2_path, nconf, n_boot, boot_size)
+                            ifc2_path, nconf, n_boot)
 end
 
 rv(::HarmonicEstimator, V, V₂, V₃, V₄) = V .- V₂
@@ -136,13 +134,12 @@ struct FourthOrderEstimator{O,L,C} <: CumulantEstimator{O,L}
     ifc4_path::String
     nconf::Int
     n_boot::Int
-    boot_size::Int
 end
 
 function FourthOrderEstimator(order::Int, lim::L, calc, ifc2_path, ifc3_path, 
-        ifc4_path, nconf, n_boot, boot_size) where L
+        ifc4_path, nconf, n_boot) where L
     return FourthOrderEstimator{order, L, typeof(calc)}(lim, calc, ifc2_path,
-        ifc3_path, ifc4_path, nconf, n_boot, boot_size)
+        ifc3_path, ifc4_path, nconf, n_boot)
 end
 
 
@@ -187,13 +184,12 @@ struct MixedEstimator{O,L,C,T} <: CumulantEstimator{O,L}
     V0::T
     nconf::Int
     n_boot::Int
-    boot_size::Int
 end
 
 function MixedEstimator(order::Int, lim::L, calc, ifc2_path, ifc3_path, 
-        ifc4_path, V0::T, nconf, n_boot, boot_size) where {L,T}
+        ifc4_path, V0::T, nconf, n_boot) where {L,T}
     return MixedEstimator{order, L, typeof(calc), T}(lim, calc, ifc2_path,
-        ifc3_path, ifc4_path, V0, nconf, n_boot, boot_size)
+        ifc3_path, ifc4_path, V0, nconf, n_boot)
 end
 
 

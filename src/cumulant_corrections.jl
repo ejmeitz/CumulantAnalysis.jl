@@ -1,8 +1,9 @@
 # Various derivatives of ⟨O⟩
-∂A_∂T(A, V, T) = cov(A, V; corrected = false) / (kB * T * T)
+∂A_∂T(A, V, T) = cov(A, V) / (kB * T * T)
 ∂AB_∂T(A, B, V, T, dA = ∂A_∂T(A, V, T), dB =  ∂A_∂T(B, V, T)) = (mean(A) * dB) + (mean(B) * dA)
 ∂²A_∂T²(A, V, T, dA = ∂A_∂T(A, V, T)) = (-2*dA/T) + ((1/(kB*T*T)) * (∂A_∂T(A.*V, V, T) - ∂AB_∂T(A, V, V, T, dA)))
 
+# probably biased
 function central_moment(X, n::Int)
     return mean( (X .- mean(X)) .^ n )
 end
@@ -32,7 +33,7 @@ function CumulantData(V, V₂, V₃, V₄, T, c1::CumulantData{1}, ::Val{2}, ce:
     X = X2(ce, V, V₂, V₃, V₄)
     X² = X .^ 2
 
-    t1 = Threads.@spawn var(X; corrected = false)
+    t1 = Threads.@spawn var(X)
     t2 = Threads.@spawn ∂A_∂T(X², V₂, T)
     t3 = Threads.@spawn ∂²A_∂T²(X², V₂, T)
 

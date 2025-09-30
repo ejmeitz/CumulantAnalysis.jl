@@ -5,7 +5,7 @@ function calculate_cumulants(V, V₂, V₃, V₄, T, ce::CumulantEstimator{O}) w
     ΔF = zeros(O+1); ΔS = zeros(O+1)
     ΔU = zeros(O+1); ΔCᵥ = zeros(O+1)
 
-    ΔF[1], ΔS[1], ΔU[1], ΔCᵥ[1] = constant_corrections(ce,  V, V₂, V₃, V₄, T)
+    ΔF[1], ΔS[1], ΔU[1], ΔCᵥ[1] = constant_corrections(ce, V, V₂, V₃, V₄, T)
 
     c1 = CumulantData(V, V₂, V₃, V₄, T, Val{1}(), ce)
     ΔF[2], ΔS[2], ΔU[2], ΔCᵥ[2] = first_order_corrections(c1, T) 
@@ -32,7 +32,7 @@ function bootstrap_corrections(V, V₂, V₃, V₄, T, outpath,
     F₀, S₀, U₀, Cᵥ₀ = harmonic_properties(T, L, outpath)
     @info "Calculated Harmonic Properties"
 
-    is = zeros(Int, ce.boot_size)
+    is = zeros(Int, length(V))
 
     ΔFs = zeros(O+1, ce.n_boot); ΔSs = zeros(O+1, ce.n_boot)
     ΔUs = zeros(O+1, ce.n_boot); ΔCᵥs = zeros(O+1, ce.n_boot)
@@ -317,7 +317,7 @@ function estimate(
     end
     res = bootstrap_corrections(V, V₂, V₃, V₄, T, outpath, ce, n_atoms)
 
-    save.(res, Ref(outpath), Ref(ce.n_boot), Ref(ce.boot_size))
+    save.(res, Ref(outpath), Ref(ce.n_boot))
 
     # Compute some statistics to assess convergence with N
     do_size_study(ce, outpath, V, V₂, V₃, V₄, T, n_atoms)
@@ -326,7 +326,7 @@ function estimate(
 
 end
 
-function save(bce::BootstrapCumualantEstimate{L}, outdir::String, n_boot, boot_size) where L
+function save(bce::BootstrapCumualantEstimate{L}, outdir::String, n_boot) where L
     prop_name = bce.property
     unit_str = bce.unit_str
 
@@ -357,7 +357,7 @@ function save(bce::BootstrapCumualantEstimate{L}, outdir::String, n_boot, boot_s
     N = length(header)
     open(outpath_mean("txt"), "w") do f
         println(f, "# $(prop_name) Units: $(unit_str)")
-        println(f, "# Row 1: Values, Row 2: Standard Error estimated from $(n_boot) bootstraps of size $(boot_size)")
+        println(f, "# Row 1: Values, Row 2: Standard Error estimated from $(n_boot) bootstraps")
         println(f, Printf.format(str_fmt_str(N), header...))
         println(f, Printf.format(float_fmt_str(N), mean_values...))
         println(f, Printf.format(float_fmt_str(N), SE_values...))

@@ -14,6 +14,7 @@ using TDEP
 using FileIO
 using Printf
 using OrderedCollections
+using Random
 
 @static if !CumulantAnalysis.TDEP.TDEP_jll.is_available()
     @warn "Could not load TDEP on this platform. Try Linux or MacOs"
@@ -25,8 +26,8 @@ const ħ = ustrip(u"eV * s", Unitful.ħ)
 
 include("types.jl")
 include("harmonic_properties.jl")
+include("control_variates.jl")
 include("cumulant_corrections.jl")
 include("estimate.jl")
-
 
 end # CumulantAnalysis
