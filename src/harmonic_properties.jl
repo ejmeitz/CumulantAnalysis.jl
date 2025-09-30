@@ -38,7 +38,6 @@ function harmonic_properties(T, ::Type{L}, dir::String) where {L <: Limit}
     # Converts it to per-atom
     # N_branch / 3 == N_atoms_per_unitcell
     N = Int(N_full_q_point * (N_branch / 3))
-    println("HARMONIC PROPERTIES FOUND N AS $(N)")
 
     return harmonic_properties(Float64(ustrip(T)), L, reduce(vcat, freqs_rad_s), N)
 end

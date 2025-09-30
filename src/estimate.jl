@@ -32,8 +32,15 @@ function bootstrap_corrections(V, V₂, V₃, V₄, T, outpath,
     F₀, S₀, U₀, Cᵥ₀ = harmonic_properties(T, L, outpath)
     @info "Calculated Harmonic Properties"
 
-    is = zeros(Int, length(V))
+    # Get point estimate of corrections
+    ΔF, ΔS, ΔU, ΔCᵥ = calculate_cumulants(V, V₂, V₃, V₄, T, ce)
+    F_total_point = sum(ΔF) + (F₀*Nat)
+    S_total_point = sum(ΔS) + (S₀*Nat)
+    U_total_point = sum(ΔU) + (U₀*Nat)
+    Cᵥ_total_point = sum(ΔCᵥ) + (Cᵥ₀*Nat)
 
+    # Estimate standard error by bootstrapping
+    is = zeros(Int, length(V))
     ΔFs = zeros(O+1, ce.n_boot); ΔSs = zeros(O+1, ce.n_boot)
     ΔUs = zeros(O+1, ce.n_boot); ΔCᵥs = zeros(O+1, ce.n_boot)
 
@@ -49,9 +56,6 @@ function bootstrap_corrections(V, V₂, V₃, V₄, T, outpath,
     S_totals = sum(ΔSs, dims = 1) .+ (S₀*Nat)
     U_totals = sum(ΔUs, dims = 1) .+ (U₀*Nat)
     Cᵥ_totals = sum(ΔCᵥs, dims = 1) .+ (Cᵥ₀*Nat)
-
-    ΔF = mean(ΔFs, dims = 2); ΔS = mean(ΔSs, dims = 2)
-    ΔU = mean(ΔUs, dims = 2); ΔCᵥ = mean(ΔCᵥs, dims = 2)
     
     F_SEs = std(ΔFs, dims = 2); S_SEs = std(ΔSs, dims = 2)
     U_SEs = std(ΔUs, dims = 2); Cᵥ_SEs = std(ΔCᵥs, dims = 2)
@@ -60,22 +64,22 @@ function bootstrap_corrections(V, V₂, V₃, V₄, T, outpath,
 
     F = BootstrapCumualantEstimate(
         F₀, SVector(ΔF...) ./ Nat, SVector(F_SEs...) ./ Nat,
-        mean(F_totals) / Nat, std(F_totals) / Nat, "F", "[eV/atom]"
+        F_total_point / Nat, std(F_totals) / Nat, "F", "[eV/atom]"
     )
 
     S = BootstrapCumualantEstimate(
         S₀ / kB, SVector(ΔS...) ./ kBNat, SVector(S_SEs...) ./ kBNat,
-        mean(S_totals) / kBNat, std(S_totals) / kBNat, "S", "[kB / atom]"
+        S_total_point / kBNat, std(S_totals) / kBNat, "S", "[kB / atom]"
     )
 
     U = BootstrapCumualantEstimate(
         U₀, SVector(ΔU...) ./ Nat, SVector(U_SEs...) ./ Nat,
-        mean(U_totals) / Nat, std(U_totals) / Nat, "U", "[eV/atom]"
+        U_total_point / Nat, std(U_totals) / Nat, "U", "[eV/atom]"
     )
 
     Cᵥ = BootstrapCumualantEstimate(
         Cᵥ₀ / kB, SVector(ΔCᵥ...) ./ kBNat, SVector(Cᵥ_SEs...) ./ kBNat,
-        mean(Cᵥ_totals) / kBNat, std(Cᵥ_totals) / kBNat, "Cv", "[kB / atom]"
+        Cᵥ_total_point / kBNat, std(Cᵥ_totals) / kBNat, "Cv", "[kB / atom]"
     )
 
     return F, S, U, Cᵥ
