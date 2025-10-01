@@ -18,7 +18,7 @@ function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{1}, ce::CumulantEst
     # t2 = Threads.@spawn ∂A_∂T(X, V₂, T)
     # t3 = Threads.@spawn ∂²A_∂T²(X, V₂, T)
 
-    κ₁, ∂κ₁_∂T, ∂²κ₁_∂T² = get_cv_estimates(X, V2, T, n_atoms)
+    κ₁, ∂κ₁_∂T, ∂²κ₁_∂T² = get_cv_estimates(X, V₂, T, n_atoms)
 
     # κ₁ = fetch(t1)
     # ∂κ₁_∂T = fetch(t2)
@@ -43,7 +43,7 @@ function CumulantData(V, V₂, V₃, V₄, T, n_atoms, c1::CumulantData{1}, ::Va
     # ∂X²_∂T = fetch(t2)
     # ∂²X²_∂T² = fetch(t3)
 
-    κ₂, ∂X²_∂T, ∂²X²_∂T² = get_cv_estimates(X², V2, T, n_atoms)
+    κ₂, ∂X²_∂T, ∂²X²_∂T² = get_cv_estimates(X², V₂, T, n_atoms)
 
     ∂κ₂_∂T = ∂X²_∂T - (2*c1.κ*c1.∂κ_∂T)
     ∂²κ₂_∂T² = ∂²X²_∂T² - 2*(((c1.∂κ_∂T)^2) + (c1.κ*c1.∂²κ_∂T²))
@@ -101,7 +101,7 @@ function constant_corrections(ce, V, V₂, V₃, V₄, T, n_atoms)
     # ∂V₀ = fetch(t2)
     # ∂²V₀ = fetch(t3)
 
-    V₀, ∂V₀, ∂²V₀ = get_cv_estimates(X, V2, T, n_atoms)
+    V₀, ∂V₀, ∂²V₀ = get_cv_estimates(X, V₂, T, n_atoms)
 
     # This estimator uses a user provided V0
     if ce isa MixedEstimator
