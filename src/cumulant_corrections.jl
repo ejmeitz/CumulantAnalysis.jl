@@ -35,7 +35,7 @@ function CumulantData(V, V₂, V₃, V₄, T, n_atoms, c1::CumulantData{1}, ::Va
     X = X2(ce, V, V₂, V₃, V₄)
     X² = X .^ 2
 
-    # t1 = Threads.@spawn var(X)
+    t1 = Threads.@spawn var(X)
     # t2 = Threads.@spawn ∂A_∂T(X², V₂, T)
     # t3 = Threads.@spawn ∂²A_∂T²(X², V₂, T)
 
@@ -43,7 +43,8 @@ function CumulantData(V, V₂, V₃, V₄, T, n_atoms, c1::CumulantData{1}, ::Va
     # ∂X²_∂T = fetch(t2)
     # ∂²X²_∂T² = fetch(t3)
 
-    κ₂, ∂X²_∂T, ∂²X²_∂T² = get_cv_estimates(X², V₂, T, n_atoms)
+    μX², ∂X²_∂T, ∂²X²_∂T² = get_cv_estimates(X², V₂, T, n_atoms)
+    κ₂ =  μX² - c1.κ^2
 
     ∂κ₂_∂T = ∂X²_∂T - (2*c1.κ*c1.∂κ_∂T)
     ∂²κ₂_∂T² = ∂²X²_∂T² - 2*(((c1.∂κ_∂T)^2) + (c1.κ*c1.∂²κ_∂T²))
