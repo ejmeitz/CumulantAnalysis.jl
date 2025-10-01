@@ -1,24 +1,24 @@
 export estimate, save
 
-function calculate_cumulants(V, V₂, V₃, V₄, T, ce::CumulantEstimator{O}) where O
+function calculate_cumulants(V, V₂, V₃, V₄, T, n_atoms, ce::CumulantEstimator{O}) where O
 
     ΔF = zeros(O+1); ΔS = zeros(O+1)
     ΔU = zeros(O+1); ΔCᵥ = zeros(O+1)
 
-    ΔF[1], ΔS[1], ΔU[1], ΔCᵥ[1] = constant_corrections(ce, V, V₂, V₃, V₄, T)
+    ΔF[1], ΔS[1], ΔU[1], ΔCᵥ[1] = constant_corrections(ce, V, V₂, V₃, V₄, T, n_atoms)
 
-    c1 = CumulantData(V, V₂, V₃, V₄, T, Val{1}(), ce)
+    c1 = CumulantData(V, V₂, V₃, V₄, T, n_atoms, Val{1}(), ce)
     ΔF[2], ΔS[2], ΔU[2], ΔCᵥ[2] = first_order_corrections(c1, T) 
 
     if O >= 2
-        c2 = CumulantData(V, V₂, V₃, V₄, T, c1, Val{2}(), ce)
+        c2 = CumulantData(V, V₂, V₃, V₄, T, n_atoms, c1, Val{2}(), ce)
         ΔF[3], ΔS[3], ΔU[3], ΔCᵥ[3] = second_order_corrections(c2, T, true)
     end
 
-    if O >= 3
-        c3 = CumulantData(V, V₂, V₃, V₄, T, c1, Val{3}(), ce)
-        ΔF[4], ΔS[4], ΔU[4], ΔCᵥ[4] = third_order_corrections(c3, T)
-    end
+    # if O >= 3
+    #     c3 = CumulantData(V, V₂, V₃, V₄, T, n_atoms, c1, Val{3}(), ce)
+    #     ΔF[4], ΔS[4], ΔU[4], ΔCᵥ[4] = third_order_corrections(c3, T)
+    # end
 
     return ΔF, ΔS, ΔU, ΔCᵥ
 
@@ -33,7 +33,7 @@ function bootstrap_corrections(V, V₂, V₃, V₄, T, outpath,
     @info "Calculated Harmonic Properties"
 
     # Get point estimate of corrections
-    ΔF, ΔS, ΔU, ΔCᵥ = calculate_cumulants(V, V₂, V₃, V₄, T, ce)
+    ΔF, ΔS, ΔU, ΔCᵥ = calculate_cumulants(V, V₂, V₃, V₄, T, Nat, ce)
     F_total_point = sum(ΔF) + (F₀*Nat)
     S_total_point = sum(ΔS) + (S₀*Nat)
     U_total_point = sum(ΔU) + (U₀*Nat)
@@ -47,7 +47,7 @@ function bootstrap_corrections(V, V₂, V₃, V₄, T, outpath,
     p = Progress(ce.n_boot, "Bootstrapping Corrections")
     for i in 1:ce.n_boot
         sample!(1:length(V), is; replace = true)
-        ΔFs[:,i], ΔSs[:,i], ΔUs[:,i], ΔCᵥs[:,i] = calculate_cumulants(V[is], V₂[is], V₃[is], V₄[is], T, ce)
+        ΔFs[:,i], ΔSs[:,i], ΔUs[:,i], ΔCᵥs[:,i] = calculate_cumulants(V[is], V₂[is], V₃[is], V₄[is], T, n_atoms, ce)
         next!(p)
     end
     finish!(p)
@@ -102,27 +102,35 @@ function do_size_study(ce::CumulantEstimator{O}, outpath, V, V₂, V₃, V₄, T
 
     p = Progress(length(Ns) * ce.n_boot, "Sampling Study")
 
+    κ_point = zeros(length(Ns))
+    ∂κ_point = zeros(length(Ns))
+    ∂²κ_point = zeros(length(Ns))
     
     for (i,N) in enumerate(Ns)
         # pre-allocate things
         idxs = zeros(Int, N)
-        V_subset = similar(V, size(idxs))
-        V₂_subset = similar(V₂, size(idxs))
-        V₃_subset = similar(V₃, size(idxs))
-        V₄_subset = similar(V₄, size(idxs))
+
+        # Samples are IID so our "fake" smaller dataset we'll
+        # just take as the first N samples 
+        V_sub  = @views V[1:N]
+        V₂_sub = @views V₂[1:N]
+        V₃_sub = @views V₃[1:N]
+        V₄_sub = @views V₄[1:N]
+
+        #!DO POINT ESTIMATE
 
         for j in 1:ce.n_boot
 
-            sample!(1:length(V), idxs; replace = true)
+            sample!(1:N, idxs; replace = true)
 
-            V_subset .= V[idxs]
-            V₂_subset .= V₂[idxs]
-            V₃_subset .= V₃[idxs]
-            V₄_subset .= V₄[idxs]
+            V_samples = V_sub[idxs]
+            V₂_samples = V₂_sub[idxs]
+            V₃_samples = V₃_sub[idxs]
+            V₄_samples = V₄_sub[idxs]
 
-            c1 = CumulantData(V_subset, V₂_subset, V₃_subset, V₄_subset, T, Val{1}(), ce)
-            c2 = CumulantData(V_subset, V₂_subset, V₃_subset, V₄_subset, T, c1, Val{2}(), ce)
-            c3 = CumulantData(V_subset, V₂_subset, V₃_subset, V₄_subset, T, c1, Val{3}(), ce)
+            c1 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, T, n_atoms, Val{1}(), ce)
+            c2 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, T, n_atoms, c1, Val{2}(), ce)
+            c3 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, T, n_atoms, c1, Val{3}(), ce)
 
             cds = (c1, c2, c3)
 
@@ -133,10 +141,10 @@ function do_size_study(ce::CumulantEstimator{O}, outpath, V, V₂, V₃, V₄, T
                         ∂κs[i, co + 1, j] = NaN
                         ∂²κs[i, co + 1, j] = NaN
                     else
-                        X = V₀_rv(ce, V_subset, V₂_subset, V₃_subset, V₄_subset)
+                        X = V₀_rv(ce, V_samples, V₂_samples, V₃_samples, V₄_samples)
                         κs[i, co + 1, j] = get_V₀(ce, V, V₂, V₃, V₄) #* DO NOT SET TO mean(X), BREAKS MixedEstimator
-                        ∂κs[i, co + 1, j] = ∂A_∂T(X, V₂_subset, T)
-                        ∂²κs[i, co + 1, j] = ∂²A_∂T²(X, V₂_subset, T) 
+                        ∂κs[i, co + 1, j] = ∂A_∂T(X, V₂_samples, T)
+                        ∂²κs[i, co + 1, j] = ∂²A_∂T²(X, V₂_samples, T) 
                     end
                 else
                     κs[i, co + 1, j] = cds[co].κ
@@ -150,6 +158,7 @@ function do_size_study(ce::CumulantEstimator{O}, outpath, V, V₂, V₃, V₄, T
     finish!(p)
 
     #! TODO NON-DIMENSONALIZE
+    #! TODO REPLACE WITH POINT ESTIMATE
     κ_estimates = mean(κs; dims = 3) ./ n_atoms
     ∂κ_estimates = mean(∂κs; dims = 3) ./ n_atoms
     ∂²κ_estimates = mean(∂²κs; dims = 3) ./ n_atoms

@@ -90,6 +90,7 @@ V = vec(readdlm(real_energy_path))
 V0_rv = V0_func(V, V2, V3, V4)
 raw_V0 = mean(V0_rv)
 raw_∂V0_∂T = ∂A_∂T(V0_rv, V2, T)
+raw_F_offset = raw_V0 / n_atoms
 raw_S_offset = -raw_∂V0_∂T / (n_atoms * kB)
 raw_U_offset = (raw_V0 - T*raw_∂V0_∂T) / n_atoms
 

@@ -194,7 +194,7 @@ end
 
 
 rv(::MixedEstimator, V, V₂, V₃, V₄) = V₃ .+ V₄
-V₀_rv(foe::MixedEstimator, V, V₂, V₃, V₄) = V .- V₂ .- V₃ .+ V₄
+V₀_rv(foe::MixedEstimator, V, V₂, V₃, V₄) = V .- V₂ .- V₃ .- V₄
 
 # Random variable used in nth cumulant
 X1(::MixedEstimator, V, V₂, V₃, V₄) = V₄
