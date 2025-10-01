@@ -47,7 +47,7 @@ function bootstrap_corrections(V, V₂, V₃, V₄, T, outpath,
     p = Progress(ce.n_boot, "Bootstrapping Corrections")
     for i in 1:ce.n_boot
         sample!(1:length(V), is; replace = true)
-        ΔFs[:,i], ΔSs[:,i], ΔUs[:,i], ΔCᵥs[:,i] = calculate_cumulants(V[is], V₂[is], V₃[is], V₄[is], T, n_atoms, ce)
+        ΔFs[:,i], ΔSs[:,i], ΔUs[:,i], ΔCᵥs[:,i] = calculate_cumulants(V[is], V₂[is], V₃[is], V₄[is], T, Nat, ce)
         next!(p)
     end
     finish!(p)
