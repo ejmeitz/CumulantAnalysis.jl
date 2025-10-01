@@ -130,9 +130,9 @@ function do_size_study(ce::CumulantEstimator{O}, outpath, V, V₂, V₃, V₄, T
 
             c1 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, T, n_atoms, Val{1}(), ce)
             c2 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, T, n_atoms, c1, Val{2}(), ce)
-            c3 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, T, n_atoms, c1, Val{3}(), ce)
+            # c3 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, T, n_atoms, c1, Val{3}(), ce)
 
-            cds = (c1, c2, c3)
+            cds = (c1, c2)#, c3)
 
             for co in 0:O         
                 if co == 0
@@ -267,6 +267,8 @@ function estimate(
         nthreads::Int = Threads.nthreads(),
         rm_configs::Bool = true
     ) where {O, L <: Limit}
+
+    @assert O <= 2 "Up to second order cumulant corrections are supported. Asked for $(O)."
 
     isfile(ucposcar_path) || throw(ArgumentError("ucposcar path is not a file: $(ucposcar_path)"))
     isfile(ssposcar_path) || throw(ArgumentError("ssposcar path is not a file: $(ssposcar_path)"))
