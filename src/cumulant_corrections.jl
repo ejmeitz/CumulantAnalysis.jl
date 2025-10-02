@@ -57,7 +57,7 @@ end
 function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{1}, ce::CumulantEstimator)
 
     X = X1(ce, V, V₂, V₃, V₄)
-    κ₁, cvd1, ∂κ₁_∂T, cvd2, ∂²κ₁_∂T², cvd3 = get_cv_estimates(X, V₂, T, n_atoms, cvd)
+    κ₁, cvd1, ∂κ₁_∂T, cvd2, ∂²κ₁_∂T², cvd3 = get_cv_estimates(X, V₂, T, n_atoms)
 
     return CumulantData{1, typeof(κ₁), typeof(∂κ₁_∂T), typeof(∂²κ₁_∂T²)}(
                             κ₁, cvd1, ∂κ₁_∂T, cvd2, ∂²κ₁_∂T², cvd3)
