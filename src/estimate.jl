@@ -58,7 +58,7 @@ function bootstrap_corrections(V, V₂, V₃, V₄, T, outpath,
     @info "Calculated Harmonic Properties"
 
     # Get point estimate of corrections and control variate coefficients
-    ΔF, ΔS, ΔU, ΔCᵥ, all_cvds = calculate_cumulants(V, V₂, V₃, V₄, T, Nat, ce, nothing)
+    ΔF, ΔS, ΔU, ΔCᵥ, all_cvds = calculate_cumulants(V, V₂, V₃, V₄, T, Nat, ce)
     F_total_point = sum(ΔF) + (F₀*Nat)
     S_total_point = sum(ΔS) + (S₀*Nat)
     U_total_point = sum(ΔU) + (U₀*Nat)
