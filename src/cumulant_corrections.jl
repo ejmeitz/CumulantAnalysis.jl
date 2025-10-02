@@ -10,6 +10,29 @@ end
 
 skew(X) = central_moment(X, 3)
 
+## CONSTANT CORRECTION (Order Zero) ##
+
+function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{0}, ce::CumulantEstimator)
+
+    if ce isa EffectiveHamiltonianEstimator
+        @warn "Cannot estimate derivatives of V₀ for EffectiveHamiltonianEstimator." maxlog=1
+        V₀ = get_V₀(ce, V, V₂, V₃, V₄)
+        return CumulantData{0, typeof(V₀), typeof(NaN), typeof(NaN)}(V₀, NaN, NaN)
+    end
+
+    X = V₀_rv(ce, V, V₂, V₃, V₄)
+
+    V₀, ∂V₀, ∂²V₀ = get_cv_estimates(X, V₂, T, n_atoms)
+
+    # This estimator uses a user provided V0
+    if ce isa MixedEstimator
+        V₀ = get_V₀(ce, V, V₂, V₃, V₄)
+    end
+
+    return CumulantData{0, typeof(V₀), typeof(∂V₀), typeof(∂²V₀)}(V₀, ∂V₀, ∂²V₀)
+
+end
+
 ## FIRST CUMULANTS ##
 function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{1}, ce::CumulantEstimator)
 
@@ -53,6 +76,44 @@ function CumulantData(V, V₂, V₃, V₄, T, n_atoms, c1::CumulantData{1}, ::Va
                         κ₂, ∂κ₂_∂T, ∂²κ₂_∂T²)
 end
 
+
+function constant_corrections(c0::CumulantData{0}, T)
+
+    F_corr = c0.κ
+    S_corr = -c0.∂κ_∂T
+    U_corr = c0.κ - T*c0.∂κ_∂T
+    Cv_corr = -T * c0.∂²κ_∂T²
+
+    return F_corr, S_corr, U_corr, Cv_corr
+    
+end
+
+
+function first_order_corrections(c1::CumulantData{1}, T)
+   
+    F_correction = c1.κ
+    S_correction = -c1.∂κ_∂T
+    U_correction = c1.κ - T*c1.∂κ_∂T
+    Cv_correction = -T*c1.∂²κ_∂T²
+
+    return F_correction, S_correction, U_correction, Cv_correction
+end
+
+function second_order_corrections(c2::CumulantData{2}, T, stochastic::Bool)
+
+    pref = stochastic ? -1.0 : 1.0
+    β = 1 / (kB*T)
+
+    F_correction = pref * c2.κ / (2*kB*T)
+    S_correction =  pref * (c2.κ - T*c2.∂κ_∂T) / (2*kB*T*T)
+    U_correction =  pref * β * (c2.κ - 0.5*T*c2.∂κ_∂T)
+    # Cv_correction =  pref * ((-U_correction/T) + β*(0.5*c2.∂κ_∂T - 0.5*T*c2.∂²κ_∂T²))
+    Cv_correction = pref * β * ((-c2.κ/T) + c2.∂κ_∂T - ((T/2)*(c2.∂²κ_∂T²)))
+
+    return F_correction, S_correction, U_correction, Cv_correction
+end
+
+
 ## THRID CUMULANTS ##
 
 # function CumulantData(V, V₂, V₃, V₄, T, c1::CumulantData{1}, ::Val{3}, ce::CumulantEstimator)
@@ -83,65 +144,6 @@ end
 #     return CumulantData{3, typeof(κ₃), typeof(∂κ₃_∂T), typeof(∂²κ₃_∂T²)}(
 #                             κ₃, ∂κ₃_∂T, ∂²κ₃_∂T²)
 # end
-
-function constant_corrections(ce, V, V₂, V₃, V₄, T, n_atoms)
-
-    if ce isa EffectiveHamiltonianEstimator
-        @warn "Cannot estimate derivatives of V₀ for EffectiveHamiltonianEstimator." maxlog=1
-        V₀ = get_V₀(ce, V, V₂, V₃, V₄)
-        return V₀, NaN, NaN, NaN
-    end
-
-    X = V₀_rv(ce, V, V₂, V₃, V₄)
-
-    # t1 = get_V₀(ce, V, V₂, V₃, V₄) #* DO NOT SET TO mean(X), BREAKS MixedEstimator, EffectiveHamiltonianEstimator
-    # t2 = Threads.@spawn ∂A_∂T(X, V₂, T)
-    # t3 = Threads.@spawn ∂²A_∂T²(X, V₂, T)
-
-    # V₀ = fetch(t1)
-    # ∂V₀ = fetch(t2)
-    # ∂²V₀ = fetch(t3)
-
-    V₀, ∂V₀, ∂²V₀ = get_cv_estimates(X, V₂, T, n_atoms)
-
-    # This estimator uses a user provided V0
-    if ce isa MixedEstimator
-        V₀ = get_V₀(ce, V, V₂, V₃, V₄)
-    end
-
-    F_corr = V₀
-    S_corr = -∂V₀
-    U_corr = V₀ - T*∂V₀
-    Cv_corr = -T * ∂²V₀
-
-    return F_corr, S_corr, U_corr, Cv_corr
-    
-end
-
-
-function first_order_corrections(c1::CumulantData{1}, T)
-   
-    F_correction = c1.κ
-    S_correction = -c1.∂κ_∂T
-    U_correction = c1.κ - T*c1.∂κ_∂T
-    Cv_correction = -T*c1.∂²κ_∂T²
-
-    return F_correction, S_correction, U_correction, Cv_correction
-end
-
-function second_order_corrections(c2::CumulantData{2}, T, stochastic::Bool)
-
-    pref = stochastic ? -1.0 : 1.0
-    β = 1 / (kB*T)
-
-    F_correction = pref * c2.κ / (2*kB*T)
-    S_correction =  pref * (c2.κ - T*c2.∂κ_∂T) / (2*kB*T*T)
-    U_correction =  pref * β * (c2.κ - 0.5*T*c2.∂κ_∂T)
-    # Cv_correction =  pref * ((-U_correction/T) + β*(0.5*c2.∂κ_∂T - 0.5*T*c2.∂²κ_∂T²))
-    Cv_correction = pref * β * ((-c2.κ/T) + c2.∂κ_∂T - ((T/2)*(c2.∂²κ_∂T²)))
-
-    return F_correction, S_correction, U_correction, Cv_correction
-end
 
 # function third_order_corrections(c3::CumulantData{3}, T)
 

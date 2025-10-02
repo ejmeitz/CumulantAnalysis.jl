@@ -5,7 +5,8 @@ function calculate_cumulants(V, V₂, V₃, V₄, T, n_atoms, ce::CumulantEstima
     ΔF = zeros(O+1); ΔS = zeros(O+1)
     ΔU = zeros(O+1); ΔCᵥ = zeros(O+1)
 
-    ΔF[1], ΔS[1], ΔU[1], ΔCᵥ[1] = constant_corrections(ce, V, V₂, V₃, V₄, T, n_atoms)
+    c0 = CumulantData(V, V₂, V₃, V₄, T, n_atoms, Val{0}(), ce)
+    ΔF[1], ΔS[1], ΔU[1], ΔCᵥ[1] = constant_corrections(c0, T)
 
     c1 = CumulantData(V, V₂, V₃, V₄, T, n_atoms, Val{1}(), ce)
     ΔF[2], ΔS[2], ΔU[2], ΔCᵥ[2] = first_order_corrections(c1, T) 
@@ -128,30 +129,17 @@ function do_size_study(ce::CumulantEstimator{O}, outpath, V, V₂, V₃, V₄, T
             V₃_samples = V₃_sub[idxs]
             V₄_samples = V₄_sub[idxs]
 
+            c0 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, T, n_atoms, Val{0}(), ce)
             c1 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, T, n_atoms, Val{1}(), ce)
             c2 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, T, n_atoms, c1, Val{2}(), ce)
             # c3 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, T, n_atoms, c1, Val{3}(), ce)
 
-            cds = (c1, c2)#, c3)
+            cds = (c0, c1, c2)#, c3)
 
             for co in 0:O         
-                if co == 0
-                    if ce isa EffectiveHamiltonianEstimator
-                        κs[i, co + 1, j] = NaN
-                        ∂κs[i, co + 1, j] = NaN
-                        ∂²κs[i, co + 1, j] = NaN
-                    else
-                        #! UPDATE THIS TO USE CV SO IT MATCHES WHAT CODE ACTUALLY DOES
-                        X = V₀_rv(ce, V_samples, V₂_samples, V₃_samples, V₄_samples)
-                        κs[i, co + 1, j] = get_V₀(ce, V, V₂, V₃, V₄) #* DO NOT SET TO mean(X), BREAKS MixedEstimator
-                        ∂κs[i, co + 1, j] = ∂A_∂T(X, V₂_samples, T)
-                        ∂²κs[i, co + 1, j] = ∂²A_∂T²(X, V₂_samples, T) 
-                    end
-                else
-                    κs[i, co + 1, j] = cds[co].κ
-                    ∂κs[i, co + 1, j] = cds[co].∂κ_∂T
-                    ∂²κs[i, co + 1, j] = cds[co].∂²κ_∂T²
-                end
+                κs[i, co + 1, j] = cds[co].κ
+                ∂κs[i, co + 1, j] = cds[co].∂κ_∂T
+                ∂²κs[i, co + 1, j] = cds[co].∂²κ_∂T²
             end
             next!(p)
         end
@@ -331,8 +319,8 @@ function estimate(
     if rm_configs
         rm(joinpath(outpath, "outfile.canonical_configs.hdf5"); force = true)
     end
-    res = bootstrap_corrections(V, V₂, V₃, V₄, T, outpath, ce, n_atoms)
 
+    res = bootstrap_corrections(V, V₂, V₃, V₄, T, outpath, ce, n_atoms)
     save.(res, Ref(outpath), Ref(ce.n_boot))
 
     # Compute some statistics to assess convergence with N
