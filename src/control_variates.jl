@@ -1,20 +1,24 @@
 export cv_estimate
 
 #! NOT SURE TEHSE ARE RIGHT
+
+# ⟨X⟩ - αᵀ (⟨W⟩ - μ_W)
 function apply_cv(X::AbstractVector{T},
                   cvd::ControlVariateData{T},
                   zero_mean_cvs::AbstractVector{T}...
                 ) where T
 
     W = hcat(zero_mean_cvs...)
-    return mean(X) - dot(cvd.αs, vec(mean(W; dims=1)) .- cvd.μW_estimate)
+    Z = W .- cvd.μW_estimate'
+    return mean(X - Z * cvd.αs)
 end
 
 function apply_cv(X::AbstractVector{T},
                   cvd::ControlVariateData{T},
                   W::AbstractMatrix{T}
                 ) where T
-    return mean(X) - dot(cvd.αs, (vec(mean(W; dims=1)) .- cvd.μW_estimate))
+    Z = W .- cvd.μW_estimate'
+    return mean(X - Z * cvd.αs) 
 end
 
 
@@ -71,7 +75,7 @@ function cv_estimate(X::AbstractVector{T}, zero_mean_cvs::AbstractVector{T}...; 
         pred  = Btest * β
         resid = X[test_idx] .- pred
 
-        push!(estimates, mean(pred))
+        push!(estimates, β[1] + mean(resid))
         push!(var_resids, var(resid; corrected=true))
         push!(alphas, β[2:end])
     end
