@@ -67,7 +67,7 @@ function bootstrap_corrections(V, V₂, V₃, V₄, T, outpath,
     # Save Variance Reduction Data 
     header = ["Order", "<X>", "d<XZ>/dT", "d<XZZ>/dT"]
     N = length(header)
-    float_fmt_str = Printf.Format("%d " * join(fill("%15.7f", N-1), " "))
+    float_fmt_str = Printf.Format("%15d " * join(fill("%15.7f", N-1), " "))
     str_fmt_str = Printf.Format(join(fill("%15s", N), " "))
     open(joinpath(outpath, "outfile.variance_reduction"), "w") do f
         println(f, "# X is the random variable used in the cumulant expansion at the given order")

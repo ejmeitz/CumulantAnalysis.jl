@@ -62,10 +62,8 @@ function cv_estimate(X::AbstractVector{T}, zero_mean_cvs::AbstractVector{T}...; 
     B = hcat(ones(T, n), Z)  # n x (p+1)
     β = B \ X
     
-    intercept = β[1]
-    α = β[2:end]
-    
-    mean_cv = intercept
+    α = β[2:end] # optimal control varaite coefficients
+    mean_cv = β[1]
     resid = X .- B * β # This is the random variable with reduced varaince
     var_cv = var(resid; corrected=true)
     
@@ -73,8 +71,7 @@ function cv_estimate(X::AbstractVector{T}, zero_mean_cvs::AbstractVector{T}...; 
     vr = var_raw / var_cv
     
     # Sanity check (mean should be unchanged when CVs have zero mean)
-    mean_check = mean(X .- Z * α)
-    rel_err = abs(mean_check - mean_raw) / max(abs(mean_raw), eps(T))
+    rel_err = abs(mean_cv - mean_raw) / max(abs(mean_raw), eps(T))
     if rel_err > tol
         @warn "Control variate mean differs from raw mean by $(round(rel_err*100, digits=2))%."
     end
