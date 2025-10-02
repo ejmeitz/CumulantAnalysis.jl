@@ -54,40 +54,29 @@ function cv_estimate(X::AbstractVector{T}, zero_mean_cvs::AbstractVector{T}...; 
     @assert length(X) == n "X and W must have same number of rows."
 
     # C.V. should already have zero mean, but this ensures
-    # the intercept is actually 0.
-    μ_estimate = mean(W; dims=1)               # p
+    # numerical stability and corrects any small deviations
+    μ_estimate = mean(W; dims=1)               # 1 x p
     Z  = W .- μ_estimate                       # n×p, zero-mean by sample
 
-    idx = collect(1:n)
-    shuffle!(idx)
-    mid = n ÷ 2
-    folds = (idx[1:mid], idx[mid+1:end])
-
-    estimates = T[]
-    var_resids = T[]
-    alphas = Vector{T}[]
-
-    for (train_idx, test_idx) in ((folds[1], folds[2]), (folds[2], folds[1]))
-        Btrain = hcat(ones(T, length(train_idx)), Z[train_idx, :])
-        β = Btrain \ X[train_idx]
-
-        Btest = hcat(ones(T, length(test_idx)), Z[test_idx, :])
-        pred  = Btest * β
-        resid = X[test_idx] .- pred
-
-        push!(estimates, β[1] + mean(resid))
-        push!(var_resids, var(resid; corrected=true))
-        push!(alphas, β[2:end])
-    end
-
-    mean_cv = mean(estimates)
-    var_cv  = mean(var_resids)
-    α       = mean(reduce(hcat, alphas); dims=2)[:]
-
+    # Fit with intercept for robustness
+    B = hcat(ones(T, n), Z)  # n x (p+1)
+    β = B \ X
+    
+    intercept = β[1]
+    α = β[2:end]
+    
+    mean_cv = intercept
+    resid = X .- B * β # This is the random variable with reduced varaince
+    var_cv = var(resid; corrected=true)
+    
+    # Variance reduction ratio
     vr = var_raw / var_cv
-    rel_err = abs(mean_cv - mean_raw) / max(abs(mean_raw), eps(T))
+    
+    # Sanity check (mean should be unchanged when CVs have zero mean)
+    mean_check = mean(X .- Z * α)
+    rel_err = abs(mean_check - mean_raw) / max(abs(mean_raw), eps(T))
     if rel_err > tol
-        @warn "Control varaite mean differs from raw mean by $(round(rel_err*100,digits=2))%."
+        @warn "Control variate mean differs from raw mean by $(round(rel_err*100, digits=2))%."
     end
 
     return mean_cv, ControlVariateData(α, vec(μ_estimate), vr)
