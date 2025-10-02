@@ -88,7 +88,6 @@ function constant_corrections(c0::CumulantData{0}, T)
     
 end
 
-
 function first_order_corrections(c1::CumulantData{1}, T)
    
     F_correction = c1.κ

@@ -58,7 +58,7 @@ function cv_estimate(X::AbstractVector{T}, zero_mean_cvs::AbstractVector{T}...; 
 
         push!(estimates, mean(pred))
         push!(var_resids, var(resid; corrected=true))
-        push!(alphas, β[2:end])
+        push!(alphas, β[2:end]...)
     end
 
     mean_cv = mean(estimates)
@@ -91,13 +91,14 @@ end
 
 function get_cv_estimates(X, V2, T, n_atoms)
 
-    # Build some control variates
-    # These all have zero mean by construction
+    # Analytical properties of V2
     f = 3*n_atoms - 3
     μ₂ = 0.5*f*kB*T  # ⟨V2⟩
     ∂μ₂_∂T = 0.5*f*kB
     σ₂² = 0.5*f*(kB*T)^2 # var(V2)
 
+    # Build some control variates
+    # These all have zero mean by construction
     C1 = V2 .- μ₂
     C1_sq = C1 .^ 2
     C2 = C1_sq .- σ₂²
