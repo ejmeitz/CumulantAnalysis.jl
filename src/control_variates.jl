@@ -115,15 +115,15 @@ function get_cv_estimates(X, V2, T, n_atoms)
     C1, C2, C3, ∂μ₂_∂T = build_cvs(V2, T, n_atoms)
 
     # Estimate for <X>
-    μX, vr1, cvd1 = cv_estimate(X, C1, C2, C3)
+    μX, cvd1 = cv_estimate(X, C1, C2, C3)
 
     # Estimate for ∂<X>/∂T
     Y = X .* C1
-    cov_XZ, vr2, cvd2 = cv_estimate(Y, C1, C2, C3)
+    cov_XZ, cvd2 = cv_estimate(Y, C1, C2, C3)
     ∂X_∂T = cov_XZ / (kB * T^2)
 
     # Estimate for ∂²<X>/∂T²
-    cov_XZZ, vr3, cvd3 = cv_estimate(Y .* C1, C1, C2, C3)
+    cov_XZZ, cvd3 = cv_estimate(Y .* C1, C1, C2, C3)
     dXZ_1 = cov_XZZ / (kB * T^2)
     dXZ = dXZ_1 - (∂μ₂_∂T * μX)
     ∂²X_∂T² = (-2*∂X_∂T/T) + (dXZ/(kB*T*T))

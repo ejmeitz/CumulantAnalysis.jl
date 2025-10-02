@@ -74,7 +74,7 @@ function bootstrap_corrections(V, V₂, V₃, V₄, T, outpath,
         println("# Z is the random variable given by V2 - <V2>")
         println(f, Printf.format(str_fmt_str, header...))
         for (order, cvd) in enumerate(all_cvds) # one for each order
-            println(f, Printf.format(float_fmt_str, [order, cvd...]))
+            println(f, Printf.format(float_fmt_str, [order, getproperty.(cvd, :var_red)...]...))
         end
 
     end
