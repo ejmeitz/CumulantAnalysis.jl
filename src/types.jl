@@ -12,12 +12,23 @@ struct Classical <: Limit end
 
 ########################################
 
-struct CumulantData{O,A,B,C}
-    κ::A
-    ∂κ_∂T::B
-    ∂²κ_∂T²::C
+struct ControlVariateData{T}
+    αs::Vector{T}
+    μW_estimate::Vector{T} # sample mean of control variates
 end
 
+########################################
+
+struct CumulantData{O,A,B,C}
+    κ::A
+    κ_cvd::ControlVariateData{A}
+    ∂κ_∂T::B
+    ∂κ_cvd_∂T::ControlVariateData{B}
+    ∂²κ_∂T²::C
+    ∂²κ_cvd_∂T²::ControlVariateData{C}
+end
+
+cvds(cd::CumulantData) = (cd.κ_cvd, cd.∂κ_cvd_∂T, cd.∂²κ_cvd_∂T²)
 order(::CumulantData{O}) where O = O
 
 ########################################

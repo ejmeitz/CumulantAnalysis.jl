@@ -5,21 +5,45 @@ function calculate_cumulants(V, V₂, V₃, V₄, T, n_atoms, ce::CumulantEstima
     ΔF = zeros(O+1); ΔS = zeros(O+1)
     ΔU = zeros(O+1); ΔCᵥ = zeros(O+1)
 
+    all_cvds = Vector{NTuple{3, ControlVariateData{Float64}}}(undef, O+1)
+
     c0 = CumulantData(V, V₂, V₃, V₄, T, n_atoms, Val{0}(), ce)
     ΔF[1], ΔS[1], ΔU[1], ΔCᵥ[1] = constant_corrections(c0, T)
+    all_cvds[1] = cvds(c0)
 
-    c1 = CumulantData(V, V₂, V₃, V₄, T, n_atoms, Val{1}(), ce)
-    ΔF[2], ΔS[2], ΔU[2], ΔCᵥ[2] = first_order_corrections(c1, T) 
+    if O >= 1
+        c1 = CumulantData(V, V₂, V₃, V₄, T, n_atoms, Val{1}(), ce)
+        ΔF[2], ΔS[2], ΔU[2], ΔCᵥ[2] = first_order_corrections(c1, T) 
+        all_cvds[2] = cvds(c1)
+    end
 
     if O >= 2
         c2 = CumulantData(V, V₂, V₃, V₄, T, n_atoms, c1, Val{2}(), ce)
         ΔF[3], ΔS[3], ΔU[3], ΔCᵥ[3] = second_order_corrections(c2, T, true)
+        all_cvds[3] = cvds(c2)
     end
 
-    # if O >= 3
-    #     c3 = CumulantData(V, V₂, V₃, V₄, T, n_atoms, c1, Val{3}(), ce)
-    #     ΔF[4], ΔS[4], ΔU[4], ΔCᵥ[4] = third_order_corrections(c3, T)
-    # end
+    return ΔF, ΔS, ΔU, ΔCᵥ, all_cvds
+
+end
+
+function calculate_cumulants(V, V₂, V₃, V₄, T, n_atoms, ce::CumulantEstimator{O}, all_cvds...) where O
+
+    ΔF = zeros(O+1); ΔS = zeros(O+1)
+    ΔU = zeros(O+1); ΔCᵥ = zeros(O+1)
+
+    c0 = CumulantData(V, V₂, V₃, V₄, T, n_atoms, Val{0}(), ce, all_cvds[1]...)
+    ΔF[1], ΔS[1], ΔU[1], ΔCᵥ[1] = constant_corrections(c0, T)
+
+    if O >= 1
+        c1 = CumulantData(V, V₂, V₃, V₄, T, n_atoms, Val{1}(), ce, all_cvds[2]...)
+        ΔF[2], ΔS[2], ΔU[2], ΔCᵥ[2] = first_order_corrections(c1, T) 
+    end
+
+    if O >= 2
+        c2 = CumulantData(V, V₂, V₃, V₄, T, n_atoms, c1, Val{2}(), ce, all_cvds[3]...)
+        ΔF[3], ΔS[3], ΔU[3], ΔCᵥ[3] = second_order_corrections(c2, T, true)
+    end
 
     return ΔF, ΔS, ΔU, ΔCᵥ
 
@@ -33,8 +57,8 @@ function bootstrap_corrections(V, V₂, V₃, V₄, T, outpath,
     F₀, S₀, U₀, Cᵥ₀ = harmonic_properties(T, L, outpath)
     @info "Calculated Harmonic Properties"
 
-    # Get point estimate of corrections
-    ΔF, ΔS, ΔU, ΔCᵥ = calculate_cumulants(V, V₂, V₃, V₄, T, Nat, ce)
+    # Get point estimate of corrections and control variate coefficients
+    ΔF, ΔS, ΔU, ΔCᵥ, all_cvds = calculate_cumulants(V, V₂, V₃, V₄, T, Nat, ce, nothing)
     F_total_point = sum(ΔF) + (F₀*Nat)
     S_total_point = sum(ΔS) + (S₀*Nat)
     U_total_point = sum(ΔU) + (U₀*Nat)
@@ -45,10 +69,11 @@ function bootstrap_corrections(V, V₂, V₃, V₄, T, outpath,
     ΔFs = zeros(O+1, ce.n_boot); ΔSs = zeros(O+1, ce.n_boot)
     ΔUs = zeros(O+1, ce.n_boot); ΔCᵥs = zeros(O+1, ce.n_boot)
 
+    # Re-use control variate coefficients from point estimates
     p = Progress(ce.n_boot, "Bootstrapping Corrections")
     for i in 1:ce.n_boot
         sample!(1:length(V), is; replace = true)
-        ΔFs[:,i], ΔSs[:,i], ΔUs[:,i], ΔCᵥs[:,i] = calculate_cumulants(V[is], V₂[is], V₃[is], V₄[is], T, Nat, ce)
+        ΔFs[:,i], ΔSs[:,i], ΔUs[:,i], ΔCᵥs[:,i] = calculate_cumulants(V[is], V₂[is], V₃[is], V₄[is], T, Nat, ce, all_cvds...)
         next!(p)
     end
     finish!(p)
@@ -138,12 +163,11 @@ function do_size_study(ce::CumulantEstimator{O}, outpath, V, V₂, V₃, V₄, T
             V₃_samples = V₃_sub[idxs]
             V₄_samples = V₄_sub[idxs]
 
-            c0 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, T, n_atoms, Val{0}(), ce)
-            c1 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, T, n_atoms, Val{1}(), ce)
-            c2 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, T, n_atoms, c1, Val{2}(), ce)
-            # c3 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, T, n_atoms, c1, Val{3}(), ce)
+            c0 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, T, n_atoms, Val{0}(), ce, cvds(c0)...)
+            c1 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, T, n_atoms, Val{1}(), ce, cvds(c1)...)
+            c2 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, T, n_atoms, c1, Val{2}(), ce, cvds(c2)...)
 
-            cds = (c0, c1, c2)#, c3)
+            cds = (c0, c1, c2)
 
             for co in 0:O         
                 κs[i, co + 1, j] = cds[co + 1].κ

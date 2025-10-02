@@ -1,12 +1,27 @@
 export cv_estimate
 
+#! NOT SURE TEHSE ARE RIGHT
+function apply_cv(X::AbstractVector{T},
+                  cvd::ControlVariateData{T},
+                  zero_mean_cvs::AbstractVector{T}...
+                ) where T
 
-function cv_estimate(X::AbstractVector)
+    W = hcat(zero_mean_cvs...)
+    return mean(X) - dot(cvd.αs, vec(mean(W; dims=1)) .- cvd.μW_estimate)
+end
+
+function apply_cv(X::AbstractVector{T},
+                  cvd::ControlVariateData{T},
+                  W::AbstractMatrix{T}
+                ) where T
+    return mean(X) - dot(cvd.αs, (vec(mean(W; dims=1)) .- cvd.μW_estimate))
+end
+
+
+function cv_estimate(X::AbstractVector{T}) where T
     mean_raw = mean(X)
-    var_raw  = var(X; corrected=true)
     @warn "No control variates provided, returning raw estimate." maxlog=1
-    return (mean_raw=mean_raw, mean_cv=mean_raw, alpha=zeros(T,0), var_raw=var_raw,
-                var_cv=var_raw, variance_reduction=1.0)
+    return mean_raw, 1.0, ControlVariateData(zeros(T,0), zeros(T,0))
 end
 
 """
@@ -71,27 +86,10 @@ function cv_estimate(X::AbstractVector{T}, zero_mean_cvs::AbstractVector{T}...; 
         @warn "Control varaite mean differs from raw mean by $(round(rel_err*100,digits=2))%." maxlog=1
     end
 
-    return (mean_raw=mean_raw, mean_cv=mean_cv, alpha=α,
-            var_raw=var_raw, var_cv=var_cv, variance_reduction=vr)
+    return mean_cv, vr, ControlVariateData(α, vec(μ_estimate))
 end
 
-# U is N_samples x 3N matrix of displacements
-# chatgpt says this can help generate quadratic control variates
-# but I haven't tested it yet
-function quadratic_probe_CVs(u::AbstractMatrix{T}; J::Int=16, seed::Int=42) where {T}
-    Random.seed!(seed)
-    n, d = size(u)
-    R = randn(T, d, J)           # random directions
-    # project, square, center
-    P = u * R                    # n×J, projections
-    W = P .^ 2                   # n×J
-    W .-= mean(W; dims=1)        # zero-mean per column
-    return W, R
-end
-
-function get_cv_estimates(X, V2, T, n_atoms)
-
-    # Analytical properties of V2
+function build_cvs(V2, T, n_atoms)
     f = 3*n_atoms - 3
     μ₂ = 0.5*f*kB*T  # ⟨V2⟩
     ∂μ₂_∂T = 0.5*f*kB
@@ -104,20 +102,46 @@ function get_cv_estimates(X, V2, T, n_atoms)
     C2 = C1_sq .- σ₂²
     C3 = C1 .^ 3 .- (3*σ₂²*C1)
 
+    return C1, C2, C3, ∂μ₂_∂T
+end
+
+# Fit from scratch
+function get_cv_estimates(X, V2, T, n_atoms)
+
+    C1, C2, C3, ∂μ₂_∂T = build_cvs(V2, T, n_atoms)
+
     # Estimate for <X>
-    res1 = cv_estimate(X, C1, C2, C3)
-    μX = res1.mean_cv
-    # println("Variance reduction for ⟨X⟩: $(res1.variance_reduction)")
+    μX, vr1, cvd1 = cv_estimate(X, C1, C2, C3)
 
     # Estimate for ∂<X>/∂T
-    res2 = cv_estimate(X .* C1, C1, C2, C3)
-    ∂X_∂T = res2.mean_cv / (kB * T^2)
-    # println("Variance reduction for ∂⟨X⟩/∂T: $(res2.variance_reduction)")
+    Y = X .* C1
+    cov_XZ, vr2, cvd2 = cv_estimate(Y, C1, C2, C3)
+    ∂X_∂T = cov_XZ / (kB * T^2)
 
     # Estimate for ∂²<X>/∂T²
-    res3 = cv_estimate(X .* C1 .* C1, C1, C2, C3)
-    dXZ_1 = res3.mean_cv ./ (kB * T^2)
-    # println("Variance reduction for ∂⟨XZ²⟩/∂T: $(res3.variance_reduction)")
+    cov_XZZ, vr3, cvd3 = cv_estimate(Y .* C1, C1, C2, C3)
+    dXZ_1 = cov_XZZ / (kB * T^2)
+    dXZ = dXZ_1 - (∂μ₂_∂T * μX)
+    ∂²X_∂T² = (-2*∂X_∂T/T) + (dXZ/(kB*T*T))
+
+    return μX, cvd1, ∂X_∂T, cvd2, ∂²X_∂T², cvd3
+
+end
+
+# Re-use alphas from before, 
+function get_cv_estimates(X, V2, T, n_atoms, cvds...)
+
+    C1, C2, C3, ∂μ₂_∂T = build_cvs(V2, T, n_atoms)
+
+    # Estimate for <X>
+    μX = apply_cv(X, cvds[1], C1, C2, C3)
+
+    # Estimate for ∂<X>/∂T
+    Y = X .* C1
+    ∂X_∂T = apply_cv(Y, cvds[2], C1, C2, C3) / (kB * T^2)
+
+    # Estimate for ∂²<X>/∂T²
+    dXZ_1 = apply_cv(Y .* C1, cvds[3], C1, C2, C3) / (kB * T^2)
     dXZ = dXZ_1 - (∂μ₂_∂T * μX)
     ∂²X_∂T² = (-2*∂X_∂T/T) + (dXZ/(kB*T*T))
 

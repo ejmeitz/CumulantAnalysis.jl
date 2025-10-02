@@ -12,6 +12,7 @@ using ProgressMeter
 using HDF5
 using TDEP
 using FileIO
+using LinearAlgebra
 using Printf
 using OrderedCollections
 using Random
