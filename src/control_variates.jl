@@ -46,7 +46,7 @@ function cv_estimate(X::AbstractVector{T}, zero_mean_cvs::AbstractVector{T}...; 
 
     estimates = T[]
     var_resids = T[]
-    alphas = T[]
+    alphas = Vector{T}[]
 
     for (train_idx, test_idx) in ((folds[1], folds[2]), (folds[2], folds[1]))
         Btrain = hcat(ones(T, length(train_idx)), Z[train_idx, :])
@@ -58,7 +58,7 @@ function cv_estimate(X::AbstractVector{T}, zero_mean_cvs::AbstractVector{T}...; 
 
         push!(estimates, mean(pred))
         push!(var_resids, var(resid; corrected=true))
-        push!(alphas, β[2:end]...)
+        push!(alphas, β[2:end])
     end
 
     mean_cv = mean(estimates)
