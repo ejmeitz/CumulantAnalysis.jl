@@ -1,10 +1,20 @@
 export cv_estimate
 
+
+function cv_estimate(X::AbstractVector)
+    mean_raw = mean(X)
+    var_raw  = var(X; corrected=true)
+    @warn "No control variates provided, returning raw estimate." maxlog=1
+    return (mean_raw=mean_raw, mean_cv=mean_raw, alpha=zeros(T,0), var_raw=var_raw,
+                var_cv=var_raw, variance_reduction=1.0)
+end
+
 """
     cv_estimate(X, zero_mean_cvs...)
 
 Control-variates estimator for E[X] using zero_mean_cvs as controls.
-ASSUMES means of control variates are 0.
+ASSUMES means of control variates are 0. Does 2-fold cross-fitting
+to remove a little bias.
 
 Inputs:
   X :: AbstractVector       (length n)
@@ -14,17 +24,10 @@ Inputs:
 Returns NamedTuple:
   (mean_raw, mean_cv, alpha, var_raw, var_residual, variance_reduction)
 """
-function cv_estimate(X::AbstractVector{T}, zero_mean_cvs::AbstractVector{T}...) where T
+function cv_estimate(X::AbstractVector{T}, zero_mean_cvs::AbstractVector{T}...; tol = 1e-4) where T
     
     mean_raw = mean(X)
     var_raw  = var(X; corrected=true)
-
-    # Fallback so I can test effect of no CVs
-    if length(zero_mean_cvs) == 0
-        @warn "No control variates provided, returning raw estimate." maxlog=1
-        return (mean_raw=mean_raw, mean_cv=mean_raw, alpha=zeros(T,0), var_raw=var_raw,
-                var_cv=var_raw, variance_reduction=1.0)
-    end
 
     W = hcat(zero_mean_cvs...) # n x p 
     n, p = size(W)
@@ -36,19 +39,56 @@ function cv_estimate(X::AbstractVector{T}, zero_mean_cvs::AbstractVector{T}...) 
     μ_estimate = mean(W; dims=1)               # p
     Z  = W .- μ_estimate                       # n×p, zero-mean by sample
 
-    X_centered = X .- mean_raw                 # n, zero-mean by sample ← ADD THIS
-    
-    α = Z \ X_centered                         # Regression on centered data ← CHANGED
-    resid = X_centered .- Z * α               # Residuals from centered data ← CHANGED
-    mean_cv = mean_raw + mean(resid)          # Adjust back to original scale ← CHANGED
-    var_cv = var(resid; corrected=true)
+    idx = collect(1:n)
+    shuffle!(idx)
+    mid = n ÷ 2
+    folds = (idx[1:mid], idx[mid+1:end])
 
-    return (mean_raw=mean_raw, mean_cv=mean_cv, alpha=α, var_raw=var_raw,
-            var_cv=var_cv, variance_reduction=var_raw/var_cv)
+    estimates = T[]
+    var_resids = T[]
+    alphas = T[]
 
+    for (train_idx, test_idx) in ((folds[1], folds[2]), (folds[2], folds[1]))
+        Btrain = hcat(ones(T, length(train_idx)), Z[train_idx, :])
+        β = Btrain \ X[train_idx]
+
+        Btest = hcat(ones(T, length(test_idx)), Z[test_idx, :])
+        pred  = Btest * β
+        resid = X[test_idx] .- pred
+
+        push!(estimates, mean(pred))
+        push!(var_resids, var(resid; corrected=true))
+        push!(alphas, β[2:end])
+    end
+
+    mean_cv = mean(estimates)
+    var_cv  = mean(var_resids)
+    α       = mean(reduce(hcat, alphas); dims=2)[:]
+
+    vr = var_raw / var_cv
+    rel_err = abs(mean_cv - mean_raw) / max(abs(mean_raw), eps(T))
+    if rel_err > tol
+        @warn "Control varaite mean differs from raw mean by $(round(rel_err*100,digits=2))%." maxlog=1
+    end
+
+    return (mean_raw=mean_raw, mean_cv=mean_cv, alpha=α,
+            var_raw=var_raw, var_cv=var_cv, variance_reduction=vr)
 end
 
-# Assumes harmonic reference
+# U is N_samples x 3N matrix of displacements
+# chatgpt says this can help generate quadratic control variates
+# but I haven't tested it yet
+function quadratic_probe_CVs(u::AbstractMatrix{T}; J::Int=16, seed::Int=42) where {T}
+    Random.seed!(seed)
+    n, d = size(u)
+    R = randn(T, d, J)           # random directions
+    # project, square, center
+    P = u * R                    # n×J, projections
+    W = P .^ 2                   # n×J
+    W .-= mean(W; dims=1)        # zero-mean per column
+    return W, R
+end
+
 function get_cv_estimates(X, V2, T, n_atoms)
 
     # Build some control variates
@@ -61,24 +101,59 @@ function get_cv_estimates(X, V2, T, n_atoms)
     C1 = V2 .- μ₂
     C1_sq = C1 .^ 2
     C2 = C1_sq .- σ₂²
-    C3 = C1 .^ 3
-    C4 = (C1 .^ 4) .- ((3*σ₂²).*C1_sq)
+    C3 = C1 .^ 3 .- (3*σ₂²*C1)
 
     # Estimate for <X>
-    res1 = cv_estimate(X, C1, C2, C3, C4)
+    res1 = cv_estimate(X, C1, C2, C3)
     μX = res1.mean_cv
+    # println("Variance reduction for ⟨X⟩: $(res1.variance_reduction)")
 
     # Estimate for ∂<X>/∂T
-    ∂X_∂T, red = derivative_with_opt_c(X, V2, T, n_atoms, K = 2)
+    res2 = cv_estimate(X .* C1, C1, C2, C3)
+    ∂X_∂T = res2.mean_cv / (kB * T^2)
+    # println("Variance reduction for ∂⟨X⟩/∂T: $(res2.variance_reduction)")
 
     # Estimate for ∂²<X>/∂T²
-    dXZ_1, red = derivative_with_opt_c(X .* C1, V2, T, n_atoms, K = 3)
+    res3 = cv_estimate(X .* C1 .* C1, C1, C2, C3)
+    dXZ_1 = res3.mean_cv ./ (kB * T^2)
+    # println("Variance reduction for ∂⟨XZ²⟩/∂T: $(res3.variance_reduction)")
     dXZ = dXZ_1 - (∂μ₂_∂T * μX)
     ∂²X_∂T² = (-2*∂X_∂T/T) + (dXZ/(kB*T*T))
 
     return μX, ∂X_∂T, ∂²X_∂T²
 
 end
+
+# Assumes harmonic reference
+# function get_cv_estimates(X, V2, T, n_atoms)
+
+#     # Build some control variates
+#     # These all have zero mean by construction
+#     f = 3*n_atoms - 3
+#     μ₂ = 0.5*f*kB*T  # ⟨V2⟩
+#     ∂μ₂_∂T = 0.5*f*kB
+#     σ₂² = 0.5*f*(kB*T)^2 # var(V2)
+
+#     C1 = V2 .- μ₂
+#     C1_sq = C1 .^ 2
+#     C2 = C1_sq .- σ₂²
+#     C3 = C1 .^ 3 .- (3*σ₂²*C1)
+
+#     # Estimate for <X>
+#     res1 = cv_estimate(X, C1, C2, C3)
+#     μX = res1.mean_cv
+
+#     # Estimate for ∂<X>/∂T
+#     ∂X_∂T, red = derivative_with_opt_c(X, V2, T, n_atoms, K = 2)
+
+#     # Estimate for ∂²<X>/∂T²
+#     dXZ_1, red = derivative_with_opt_c(X .* C1, V2, T, n_atoms, K = 3)
+#     dXZ = dXZ_1 - (∂μ₂_∂T * μX)
+#     ∂²X_∂T² = (-2*∂X_∂T/T) + (dXZ/(kB*T*T))
+
+#     return μX, ∂X_∂T, ∂²X_∂T²
+
+# end
 
 
 """

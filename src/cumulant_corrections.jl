@@ -35,7 +35,7 @@ function CumulantData(V, V₂, V₃, V₄, T, n_atoms, c1::CumulantData{1}, ::Va
     X = X2(ce, V, V₂, V₃, V₄)
     X² = X .^ 2
 
-    t1 = Threads.@spawn var(X)
+    # t1 = Threads.@spawn var(X)
     # t2 = Threads.@spawn ∂A_∂T(X², V₂, T)
     # t3 = Threads.@spawn ∂²A_∂T²(X², V₂, T)
 

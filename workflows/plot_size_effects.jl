@@ -58,7 +58,7 @@
 #     "U_tol" => missing, #eV / atom
 #     "Cv" => Dict(10 => 2.9662821, 80 => 2.829351244), # eV / kB * atom
 #     "Cv_tol" => 0.0, # eV / kB * atom
-#     "S" => Dict(10 => -0.11024685, 80 => 0.15272945), # just from S = (U - F) / T
+#     "S" => Dict(10 => -2.54218, 80 => 3.52216), # just from S = (U - F) / T
 #     "S_tol" => missing, # eV / kB * atom
 # )
 

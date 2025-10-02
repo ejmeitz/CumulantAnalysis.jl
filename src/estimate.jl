@@ -141,6 +141,7 @@ function do_size_study(ce::CumulantEstimator{O}, outpath, V, V₂, V₃, V₄, T
                         ∂κs[i, co + 1, j] = NaN
                         ∂²κs[i, co + 1, j] = NaN
                     else
+                        #! UPDATE THIS TO USE CV SO IT MATCHES WHAT CODE ACTUALLY DOES
                         X = V₀_rv(ce, V_samples, V₂_samples, V₃_samples, V₄_samples)
                         κs[i, co + 1, j] = get_V₀(ce, V, V₂, V₃, V₄) #* DO NOT SET TO mean(X), BREAKS MixedEstimator
                         ∂κs[i, co + 1, j] = ∂A_∂T(X, V₂_samples, T)
