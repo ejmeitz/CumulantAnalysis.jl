@@ -91,7 +91,6 @@ end
 # Bootstrap estimates error on kappa and its derivatives for all orders
 function do_size_study(ce::CumulantEstimator{O}, outpath, V, V₂, V₃, V₄, T, n_atoms) where O
 
-    β = 1 / (kB*T)
     min_samples = (length(V) < 500) ? 10 : 100
 
     lg_pts = range(log10(min_samples), log10(length(V)), length = 12)
@@ -103,9 +102,9 @@ function do_size_study(ce::CumulantEstimator{O}, outpath, V, V₂, V₃, V₄, T
 
     p = Progress(length(Ns) * ce.n_boot, "Sampling Study")
 
-    κ_point = zeros(length(Ns))
-    ∂κ_point = zeros(length(Ns))
-    ∂²κ_point = zeros(length(Ns))
+    κ_point = zeros(length(Ns), O+1)
+    ∂κ_point = zeros(length(Ns), O+1)
+    ∂²κ_point = zeros(length(Ns), O+1)
     
     for (i,N) in enumerate(Ns)
         # pre-allocate things
@@ -118,8 +117,18 @@ function do_size_study(ce::CumulantEstimator{O}, outpath, V, V₂, V₃, V₄, T
         V₃_sub = @views V₃[1:N]
         V₄_sub = @views V₄[1:N]
 
-        #!DO POINT ESTIMATE
+        # Get Point Estimate of Mean
+        c0 = CumulantData(V_sub, V₂_sub, V₃_sub, V₄_sub, T, n_atoms, Val{0}(), ce)
+        c1 = CumulantData(V_sub, V₂_sub, V₃_sub, V₄_sub, T, n_atoms, Val{1}(), ce)
+        c2 = CumulantData(V_sub, V₂_sub, V₃_sub, V₄_sub, T, n_atoms, c1, Val{2}(), ce)
+        cds = (c0, c1, c2)
+        for co in 0:O         
+            κ_point[i, co + 1] = cds[co + 1].κ
+            ∂κ_point[i, co + 1] = cds[co + 1].∂κ_∂T
+            ∂²κ_point[i, co + 1] = cds[co + 1].∂²κ_∂T²
+        end
 
+        # Do bootstrap to estimate standard error
         for j in 1:ce.n_boot
 
             sample!(1:N, idxs; replace = true)
@@ -137,9 +146,9 @@ function do_size_study(ce::CumulantEstimator{O}, outpath, V, V₂, V₃, V₄, T
             cds = (c0, c1, c2)#, c3)
 
             for co in 0:O         
-                κs[i, co + 1, j] = cds[co].κ
-                ∂κs[i, co + 1, j] = cds[co].∂κ_∂T
-                ∂²κs[i, co + 1, j] = cds[co].∂²κ_∂T²
+                κs[i, co + 1, j] = cds[co + 1].κ
+                ∂κs[i, co + 1, j] = cds[co + 1].∂κ_∂T
+                ∂²κs[i, co + 1, j] = cds[co + 1].∂²κ_∂T²
             end
             next!(p)
         end
@@ -147,14 +156,15 @@ function do_size_study(ce::CumulantEstimator{O}, outpath, V, V₂, V₃, V₄, T
     finish!(p)
 
     #! TODO NON-DIMENSONALIZE
-    #! TODO REPLACE WITH POINT ESTIMATE
-    κ_estimates = mean(κs; dims = 3) ./ n_atoms
-    ∂κ_estimates = mean(∂κs; dims = 3) ./ n_atoms
-    ∂²κ_estimates = mean(∂²κs; dims = 3) ./ n_atoms
+    β = 1 / (kB*T)
 
-    κ_SEs = std(κs; dims = 3) ./ n_atoms
-    ∂κ_SEs = std(∂κs; dims = 3) ./ n_atoms
-    ∂²κ_SEs = std(∂²κs; dims = 3) ./ n_atoms
+    κ_estimates = κ_point
+    ∂κ_estimates = ∂κ_point
+    ∂²κ_estimates = ∂²κ_point
+
+    κ_SEs = std(κs; dims = 3)
+    ∂κ_SEs = std(∂κs; dims = 3)
+    ∂²κ_SEs = std(∂²κs; dims = 3)
 
     data_fmt_str = (N) -> Printf.Format("%7d"*join(fill("%15.8f", N), " "))
     d_fmt = data_fmt_str(6)
@@ -164,7 +174,7 @@ function do_size_study(ce::CumulantEstimator{O}, outpath, V, V₂, V₃, V₄, T
         header = ["N" "k" "k_SE" "dk_dT" "dk_dT_SE" "d2k_dT2" "d2k_dT2_SE"]
 
         open(joinpath(outpath, "outfile.nsamples_study_order$(co)"), "w") do f
-            println(f, "# Standard Error estimated from $(ce.n_boot) bootstraps of size N from origianl dataset with $(length(V)) samples")
+            println(f, "# Standard Error estimated from $(ce.n_boot) bootstraps of size N from origianl dataset which had $(length(V)) samples")
             println(f, "# Temperature $(T), N_atoms $(n_atoms)")
             println(f, Printf.format(str_fmt_str(length(header)), header...))
             for i in eachindex(Ns)
