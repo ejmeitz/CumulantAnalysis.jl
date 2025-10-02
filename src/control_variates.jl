@@ -25,7 +25,7 @@ end
 function cv_estimate(X::AbstractVector{T}) where T
     mean_raw = mean(X)
     @warn "No control variates provided, returning raw estimate." maxlog=1
-    return mean_raw, 1.0, ControlVariateData(zeros(T,0), zeros(T,0))
+    return mean_raw, ControlVariateData(zeros(T,0), zeros(T,0), T(1.0))
 end
 
 """
@@ -87,10 +87,10 @@ function cv_estimate(X::AbstractVector{T}, zero_mean_cvs::AbstractVector{T}...; 
     vr = var_raw / var_cv
     rel_err = abs(mean_cv - mean_raw) / max(abs(mean_raw), eps(T))
     if rel_err > tol
-        @warn "Control varaite mean differs from raw mean by $(round(rel_err*100,digits=2))%." maxlog=1
+        @warn "Control varaite mean differs from raw mean by $(round(rel_err*100,digits=2))%."
     end
 
-    return mean_cv, vr, ControlVariateData(α, vec(μ_estimate))
+    return mean_cv, ControlVariateData(α, vec(μ_estimate), vr)
 end
 
 function build_cvs(V2, T, n_atoms)

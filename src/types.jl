@@ -15,6 +15,7 @@ struct Classical <: Limit end
 struct ControlVariateData{T}
     αs::Vector{T}
     μW_estimate::Vector{T} # sample mean of control variates
+    var_red::T
 end
 
 ########################################
