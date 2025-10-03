@@ -27,21 +27,21 @@ function calculate_cumulants(V, V₂, V₃, V₄, T, n_atoms, ce::CumulantEstima
 
 end
 
-function calculate_cumulants(V, V₂, V₃, V₄, T, n_atoms, ce::CumulantEstimator{O}, all_cvds...) where O
+function calculate_cumulants(V, V₂, V₃, V₄, T, n_atoms, ce::CumulantEstimator{O}, use_cvs, all_cvds...) where O
 
     ΔF = zeros(O+1); ΔS = zeros(O+1)
     ΔU = zeros(O+1); ΔCᵥ = zeros(O+1)
 
-    c0 = CumulantData(V, V₂, V₃, V₄, T, n_atoms, Val{0}(), ce, all_cvds[1]...)
+    c0 = CumulantData(V, V₂, V₃, V₄, T, n_atoms, Val{0}(), ce, use_cvs, all_cvds[1]...)
     ΔF[1], ΔS[1], ΔU[1], ΔCᵥ[1] = constant_corrections(c0, T)
 
     if O >= 1
-        c1 = CumulantData(V, V₂, V₃, V₄, T, n_atoms, Val{1}(), ce, all_cvds[2]...)
+        c1 = CumulantData(V, V₂, V₃, V₄, T, n_atoms, Val{1}(), ce, use_cvs, all_cvds[2]...)
         ΔF[2], ΔS[2], ΔU[2], ΔCᵥ[2] = first_order_corrections(c1, T) 
     end
 
     if O >= 2
-        c2 = CumulantData(V, V₂, V₃, V₄, T, n_atoms, c1, Val{2}(), ce, all_cvds[3]...)
+        c2 = CumulantData(V, V₂, V₃, V₄, T, n_atoms, c1, Val{2}(), ce, use_cvs, all_cvds[3]...)
         ΔF[3], ΔS[3], ΔU[3], ΔCᵥ[3] = second_order_corrections(c2, T, true)
     end
 
@@ -51,7 +51,7 @@ end
 
 function bootstrap_corrections(V, V₂, V₃, V₄, T, outpath,
                                 ce::CumulantEstimator{O, L}, 
-                                Nat::Int, use_control_variates) where {O, L <: Limit}
+                                Nat::Int, use_cvs) where {O, L <: Limit}
 
     # these are returned per-atom
     @info "Calculating Harmonic Properties"
@@ -59,7 +59,7 @@ function bootstrap_corrections(V, V₂, V₃, V₄, T, outpath,
     @info "Calculated Harmonic Properties"
 
     # Get point estimate of corrections and control variate coefficients
-    ΔF, ΔS, ΔU, ΔCᵥ, all_cvds = calculate_cumulants(V, V₂, V₃, V₄, T, Nat, ce)
+    ΔF, ΔS, ΔU, ΔCᵥ, all_cvds = calculate_cumulants(V, V₂, V₃, V₄, T, Nat, ce, use_cvs)
     F_total_point = sum(ΔF) + (F₀*Nat)
     S_total_point = sum(ΔS) + (S₀*Nat)
     U_total_point = sum(ΔU) + (U₀*Nat)
@@ -89,7 +89,8 @@ function bootstrap_corrections(V, V₂, V₃, V₄, T, outpath,
     p = Progress(ce.n_boot, "Bootstrapping Corrections")
     for i in 1:ce.n_boot
         sample!(1:length(V), is; replace = true)
-        ΔFs[:,i], ΔSs[:,i], ΔUs[:,i], ΔCᵥs[:,i] = calculate_cumulants(V[is], V₂[is], V₃[is], V₄[is], T, Nat, ce, all_cvds...)
+        ΔFs[:,i], ΔSs[:,i], ΔUs[:,i], ΔCᵥs[:,i] =
+             calculate_cumulants(V[is], V₂[is], V₃[is], V₄[is], T, Nat, ce, use_cvs, all_cvds...)
         next!(p)
     end
     finish!(p)
@@ -130,7 +131,7 @@ end
 
 # Potentially useful for gauging convergence of different approaches
 # Bootstrap estimates error on kappa and its derivatives for all orders
-function do_size_study(ce::CumulantEstimator{O}, outpath, V, V₂, V₃, V₄, T, n_atoms) where O
+function do_size_study(ce::CumulantEstimator{O}, outpath, V, V₂, V₃, V₄, T, n_atoms, use_cvs) where O
 
     min_samples = (length(V) < 500) ? 10 : 100
 
@@ -159,9 +160,9 @@ function do_size_study(ce::CumulantEstimator{O}, outpath, V, V₂, V₃, V₄, T
         V₄_sub = @views V₄[1:N]
 
         # Get Point Estimate of Mean
-        c0 = CumulantData(V_sub, V₂_sub, V₃_sub, V₄_sub, T, n_atoms, Val{0}(), ce)
-        c1 = CumulantData(V_sub, V₂_sub, V₃_sub, V₄_sub, T, n_atoms, Val{1}(), ce)
-        c2 = CumulantData(V_sub, V₂_sub, V₃_sub, V₄_sub, T, n_atoms, c1, Val{2}(), ce)
+        c0 = CumulantData(V_sub, V₂_sub, V₃_sub, V₄_sub, T, n_atoms, Val{0}(), ce, use_cvs)
+        c1 = CumulantData(V_sub, V₂_sub, V₃_sub, V₄_sub, T, n_atoms, Val{1}(), ce, use_cvs)
+        c2 = CumulantData(V_sub, V₂_sub, V₃_sub, V₄_sub, T, n_atoms, c1, Val{2}(), ce, use_cvs)
         cds = (c0, c1, c2)
         for co in 0:O         
             κ_point[i, co + 1] = cds[co + 1].κ
@@ -179,9 +180,9 @@ function do_size_study(ce::CumulantEstimator{O}, outpath, V, V₂, V₃, V₄, T
             V₃_samples = V₃_sub[idxs]
             V₄_samples = V₄_sub[idxs]
 
-            c0 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, T, n_atoms, Val{0}(), ce, cvds(c0)...)
-            c1 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, T, n_atoms, Val{1}(), ce, cvds(c1)...)
-            c2 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, T, n_atoms, c1, Val{2}(), ce, cvds(c2)...)
+            c0 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, T, n_atoms, Val{0}(), ce, use_cvs, cvds(c0)...)
+            c1 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, T, n_atoms, Val{1}(), ce, use_cvs, cvds(c1)...)
+            c2 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, T, n_atoms, c1, Val{2}(), ce, use_cvs, cvds(c2)...)
 
             cds = (c0, c1, c2)
 

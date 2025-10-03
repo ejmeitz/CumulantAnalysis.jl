@@ -9,7 +9,7 @@ using SimpleCrystals
 expansion_order = 2
 limit = Classical()
 samples = 100_000 
-n_boot = 500
+n_boot = 2500
 use_cvs = false
 
 # Lennard-Jones Argon
