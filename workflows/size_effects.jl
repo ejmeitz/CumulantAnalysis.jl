@@ -10,7 +10,7 @@ expansion_order = 2
 limit = Classical()
 samples = 100_000 
 n_boot = 500
-boot_size = 1_000
+use_cvs = false
 
 # Lennard-Jones Argon
 make_outpath = (CT, T,s) -> "/mnt/merged/emeitz/CumulantAnalysisTest/LJ_size_effects_$(CT)/T$(ustrip(T))/$(s)UC"
@@ -132,6 +132,7 @@ for CE_TYPE in (MixedEstimator, ) #(MixedEstimator, EffectiveHamiltonianEstimato
                 outpath;
                 ucposcar_path = ucposcar_path,
                 ssposcar_path = ssposcar_path,
+                use_control_variates = use_cvs
             )
 
         end
