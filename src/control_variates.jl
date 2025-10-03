@@ -21,6 +21,13 @@ function apply_cv(X::AbstractVector{T},
     return mean(X - Z * cvd.αs) 
 end
 
+# Path when not using control variates
+function apply_cv(X::AbstractVector{T},
+                  cvd::ControlVariateData{T}
+                ) where T
+    return mean(X)
+end
+
 
 function cv_estimate(X::AbstractVector{T}) where T
     mean_raw = mean(X)
@@ -43,7 +50,8 @@ Inputs:
 Returns NamedTuple:
   (mean_raw, mean_cv, alpha, var_raw, var_residual, variance_reduction)
 """
-function cv_estimate(X::AbstractVector{T}, zero_mean_cvs::AbstractVector{T}...; tol = 1e-4) where T
+function cv_estimate(X::AbstractVector{T}, zero_mean_cvs::AbstractVector{T}...;
+                     tol = 1e-4, ridge::Real = 1e-6) where T
     
     mean_raw = mean(X)
     var_raw  = var(X; corrected=true)
@@ -56,13 +64,18 @@ function cv_estimate(X::AbstractVector{T}, zero_mean_cvs::AbstractVector{T}...; 
     # C.V. should already have zero mean, but this ensures
     # numerical stability and corrects any small deviations
     μ_estimate = mean(W; dims=1)               # 1×p
-Z = W .- μ_estimate                        # n×p
+    Z = W .- μ_estimate                        # n×p
 
-    # (2) Fit WITHOUT intercept (optionally with tiny ridge)
-    # α = (Z'Z) \ (Z'X)
-    α = (Z'Z) \ (Z' * X)                       # or (Z'Z .+ ridge*I)\(Z'X)
+    λ = T(ridge)
+    A = Z'Z .+ λ*I    # α = (Z'Z) \ (Z' * X)
+    α = A \ (Z' * X)
 
-    # (3) Estimator for E[X]
+    cn = cond(A)
+    if cn > 1e6
+        @warn "Possibly ill-condition control variates, cond number: $(cn)"
+    end
+
+    # Estimator for E[X]
     mean_cv = mean(X .- Z * α)
     resid = X .- Z * α 
     var_cv = var(resid; corrected=true)
@@ -96,20 +109,22 @@ function build_cvs(V2, T, n_atoms)
 end
 
 # Fit from scratch
-function get_cv_estimates(X, V2, T, n_atoms)
+function get_cv_estimates(X, V2, T, n_atoms, use_cvs::Bool)
+    
+    cvs, ∂μ₂_∂T = build_cvs(V2, T, n_atoms)
 
-    C1, C2, C3, ∂μ₂_∂T = build_cvs(V2, T, n_atoms)
+    cvs = use_cvs ? cvs : ()
 
     # Estimate for <X>
-    μX, cvd1 = cv_estimate(X, C1, C2, C3)
+    μX, cvd1 = cv_estimate(X, cvs...)
 
     # Estimate for ∂<X>/∂T
     Y = X .* C1
-    cov_XZ, cvd2 = cv_estimate(Y, C1, C2, C3)
+    cov_XZ, cvd2 = cv_estimate(Y, cvs...)
     ∂X_∂T = cov_XZ / (kB * T^2)
 
     # Estimate for ∂²<X>/∂T²
-    cov_XZZ, cvd3 = cv_estimate(Y .* C1, C1, C2, C3)
+    cov_XZZ, cvd3 = cv_estimate(Y .* C1, cvs...)
     dXZ_1 = cov_XZZ / (kB * T^2)
     dXZ = dXZ_1 - (∂μ₂_∂T * μX)
     ∂²X_∂T² = (-2*∂X_∂T/T) + (dXZ/(kB*T*T))
@@ -119,19 +134,21 @@ function get_cv_estimates(X, V2, T, n_atoms)
 end
 
 # Re-use alphas from before, 
-function get_cv_estimates(X, V2, T, n_atoms, cvds...)
+function get_cv_estimates(X, V2, T, n_atoms, use_cvs::Bool, cvds...)
 
-    C1, C2, C3, ∂μ₂_∂T = build_cvs(V2, T, n_atoms)
+    cvs, ∂μ₂_∂T = build_cvs(V2, T, n_atoms)
+
+    cvs = use_cvs ? cvs : ()
 
     # Estimate for <X>
-    μX = apply_cv(X, cvds[1], C1, C2, C3)
+    μX = apply_cv(X, cvds[1], cvs...)
 
     # Estimate for ∂<X>/∂T
     Y = X .* C1
-    ∂X_∂T = apply_cv(Y, cvds[2], C1, C2, C3) / (kB * T^2)
+    ∂X_∂T = apply_cv(Y, cvds[2], cvs...) / (kB * T^2)
 
     # Estimate for ∂²<X>/∂T²
-    dXZ_1 = apply_cv(Y .* C1, cvds[3], C1, C2, C3) / (kB * T^2)
+    dXZ_1 = apply_cv(Y .* C1, cvds[3], cvs...) / (kB * T^2)
     dXZ = dXZ_1 - (∂μ₂_∂T * μX)
     ∂²X_∂T² = (-2*∂X_∂T/T) + (dXZ/(kB*T*T))
 

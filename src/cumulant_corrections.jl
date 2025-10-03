@@ -11,7 +11,7 @@ end
 skew(X) = central_moment(X, 3)
 
 ## CONSTANT CORRECTION (Order Zero) ##
-function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{0}, ce::CumulantEstimator)
+function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{0}, ce::CumulantEstimator, use_cvs)
 
     if ce isa EffectiveHamiltonianEstimator
         @warn "Cannot estimate derivatives of V₀ for EffectiveHamiltonianEstimator." maxlog=1
@@ -21,7 +21,7 @@ function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{0}, ce::CumulantEst
 
     X = V₀_rv(ce, V, V₂, V₃, V₄)
 
-    V₀, cvd1, ∂V₀, cvd2, ∂²V₀, cvd3 = get_cv_estimates(X, V₂, T, n_atoms)
+    V₀, cvd1, ∂V₀, cvd2, ∂²V₀, cvd3 = get_cv_estimates(X, V₂, T, n_atoms, use_cvs)
 
     # This estimator uses a user provided V0
     if ce isa MixedEstimator
@@ -54,10 +54,10 @@ function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{0}, ce::CumulantEst
 end
 
 ## FIRST CUMULANTS ##
-function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{1}, ce::CumulantEstimator)
+function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{1}, ce::CumulantEstimator, use_cvs)
 
     X = X1(ce, V, V₂, V₃, V₄)
-    κ₁, cvd1, ∂κ₁_∂T, cvd2, ∂²κ₁_∂T², cvd3 = get_cv_estimates(X, V₂, T, n_atoms)
+    κ₁, cvd1, ∂κ₁_∂T, cvd2, ∂²κ₁_∂T², cvd3 = get_cv_estimates(X, V₂, T, n_atoms, use_cvs)
 
     return CumulantData{1, typeof(κ₁), typeof(∂κ₁_∂T), typeof(∂²κ₁_∂T²)}(
                             κ₁, cvd1, ∂κ₁_∂T, cvd2, ∂²κ₁_∂T², cvd3)
@@ -73,12 +73,12 @@ function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{1}, ce::CumulantEst
 end
 
 ## SECOND CUMULANTS ##
-function CumulantData(V, V₂, V₃, V₄, T, n_atoms, c1::CumulantData{1}, ::Val{2}, ce::CumulantEstimator)
+function CumulantData(V, V₂, V₃, V₄, T, n_atoms, c1::CumulantData{1}, ::Val{2}, ce::CumulantEstimator, use_cvs)
 
     X = X2(ce, V, V₂, V₃, V₄)
     X² = X .^ 2
 
-    μX², cvd1, ∂X²_∂T, cvd2, ∂²X²_∂T², cvd3 = get_cv_estimates(X², V₂, T, n_atoms)
+    μX², cvd1, ∂X²_∂T, cvd2, ∂²X²_∂T², cvd3 = get_cv_estimates(X², V₂, T, n_atoms, use_cvs)
     κ₂ =  μX² - c1.κ^2
 
     ∂κ₂_∂T = ∂X²_∂T - (2*c1.κ*c1.∂κ_∂T)

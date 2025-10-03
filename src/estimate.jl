@@ -1,24 +1,24 @@
 export estimate, save
 
-function calculate_cumulants(V, V₂, V₃, V₄, T, n_atoms, ce::CumulantEstimator{O}) where O
+function calculate_cumulants(V, V₂, V₃, V₄, T, n_atoms, ce::CumulantEstimator{O}, use_cvs) where O
 
     ΔF = zeros(O+1); ΔS = zeros(O+1)
     ΔU = zeros(O+1); ΔCᵥ = zeros(O+1)
 
     all_cvds = Vector{NTuple{3, ControlVariateData{Float64}}}(undef, O+1)
 
-    c0 = CumulantData(V, V₂, V₃, V₄, T, n_atoms, Val{0}(), ce)
+    c0 = CumulantData(V, V₂, V₃, V₄, T, n_atoms, Val{0}(), ce, use_cvs)
     ΔF[1], ΔS[1], ΔU[1], ΔCᵥ[1] = constant_corrections(c0, T)
     all_cvds[1] = cvds(c0)
 
     if O >= 1
-        c1 = CumulantData(V, V₂, V₃, V₄, T, n_atoms, Val{1}(), ce)
+        c1 = CumulantData(V, V₂, V₃, V₄, T, n_atoms, Val{1}(), ce, use_cvs)
         ΔF[2], ΔS[2], ΔU[2], ΔCᵥ[2] = first_order_corrections(c1, T) 
         all_cvds[2] = cvds(c1)
     end
 
     if O >= 2
-        c2 = CumulantData(V, V₂, V₃, V₄, T, n_atoms, c1, Val{2}(), ce)
+        c2 = CumulantData(V, V₂, V₃, V₄, T, n_atoms, c1, Val{2}(), ce, use_cvs)
         ΔF[3], ΔS[3], ΔU[3], ΔCᵥ[3] = second_order_corrections(c2, T, true)
         all_cvds[3] = cvds(c2)
     end
@@ -50,7 +50,8 @@ function calculate_cumulants(V, V₂, V₃, V₄, T, n_atoms, ce::CumulantEstima
 end
 
 function bootstrap_corrections(V, V₂, V₃, V₄, T, outpath,
-                                ce::CumulantEstimator{O, L}, Nat::Int) where {O, L <: Limit}
+                                ce::CumulantEstimator{O, L}, 
+                                Nat::Int, use_control_variates) where {O, L <: Limit}
 
     # these are returned per-atom
     @info "Calculating Harmonic Properties"
@@ -303,7 +304,8 @@ function estimate(
         ucposcar_path::String = joinpath(outpath, "infile.ucposcar"),
         ssposcar_path::String = joinpath(outpath, "infile.ssposcar"),
         nthreads::Int = Threads.nthreads(),
-        rm_configs::Bool = true
+        rm_configs::Bool = true,
+        use_control_variates::Bool = true
     ) where {O, L <: Limit}
 
     @assert O <= 2 "Up to second order cumulant corrections are supported. Asked for $(O)."
@@ -369,11 +371,11 @@ function estimate(
         rm(joinpath(outpath, "outfile.canonical_configs.hdf5"); force = true)
     end
 
-    res = bootstrap_corrections(V, V₂, V₃, V₄, T, outpath, ce, n_atoms)
+    res = bootstrap_corrections(V, V₂, V₃, V₄, T, outpath, ce, n_atoms, use_control_variates)
     save.(res, Ref(outpath), Ref(ce.n_boot))
 
     # Compute some statistics to assess convergence with N
-    do_size_study(ce, outpath, V, V₂, V₃, V₄, T, n_atoms)
+    do_size_study(ce, outpath, V, V₂, V₃, V₄, T, n_atoms, use_control_variates)
 
     return res
 
