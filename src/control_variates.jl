@@ -55,16 +55,16 @@ function cv_estimate(X::AbstractVector{T}, zero_mean_cvs::AbstractVector{T}...; 
 
     # C.V. should already have zero mean, but this ensures
     # numerical stability and corrects any small deviations
-    μ_estimate = mean(W; dims=1)               # 1 x p
-    Z  = W .- μ_estimate                       # n×p, zero-mean by sample
+    μ_estimate = mean(W; dims=1)               # 1×p
+Z = W .- μ_estimate                        # n×p
 
-    # Fit with intercept for robustness
-    B = hcat(ones(T, n), Z)  # n x (p+1)
-    β = B \ X
-    
-    α = β[2:end] # optimal control varaite coefficients
-    mean_cv = β[1]
-    resid = X .- B * β # This is the random variable with reduced varaince
+    # (2) Fit WITHOUT intercept (optionally with tiny ridge)
+    # α = (Z'Z) \ (Z'X)
+    α = (Z'Z) \ (Z' * X)                       # or (Z'Z .+ ridge*I)\(Z'X)
+
+    # (3) Estimator for E[X]
+    mean_cv = mean(X .- Z * α)
+    resid = X .- Z * α 
     var_cv = var(resid; corrected=true)
     
     # Variance reduction ratio
