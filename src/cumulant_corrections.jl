@@ -32,7 +32,7 @@ function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{0}, ce::CumulantEst
 
 end
 
-function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{0}, ce::CumulantEstimator, cvds...)
+function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{0}, ce::CumulantEstimator, use_cvs, cvds...)
 
     if ce isa EffectiveHamiltonianEstimator
         @warn "Cannot estimate derivatives of V₀ for EffectiveHamiltonianEstimator." maxlog=1
@@ -42,7 +42,7 @@ function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{0}, ce::CumulantEst
 
     X = V₀_rv(ce, V, V₂, V₃, V₄)
 
-    V₀, ∂V₀, ∂²V₀ = get_cv_estimates(X, V₂, T, n_atoms, cvds...)
+    V₀, ∂V₀, ∂²V₀ = get_cv_estimates(X, V₂, T, n_atoms, use_cvs, cvds...)
 
     # This estimator uses a user provided V0
     if ce isa MixedEstimator
@@ -63,10 +63,10 @@ function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{1}, ce::CumulantEst
                             κ₁, cvd1, ∂κ₁_∂T, cvd2, ∂²κ₁_∂T², cvd3)
 end
 
-function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{1}, ce::CumulantEstimator, cvds...)
+function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{1}, ce::CumulantEstimator, use_cvs, cvds...)
 
     X = X1(ce, V, V₂, V₃, V₄)
-    κ₁, ∂κ₁_∂T, ∂²κ₁_∂T² = get_cv_estimates(X, V₂, T, n_atoms, cvds...)
+    κ₁, ∂κ₁_∂T, ∂²κ₁_∂T² = get_cv_estimates(X, V₂, T, n_atoms, use_cvs, cvds...)
 
     return CumulantData{1, typeof(κ₁), typeof(∂κ₁_∂T), typeof(∂²κ₁_∂T²)}(
                             κ₁, cvds[1], ∂κ₁_∂T, cvds[2], ∂²κ₁_∂T², cvds[3])
@@ -88,12 +88,12 @@ function CumulantData(V, V₂, V₃, V₄, T, n_atoms, c1::CumulantData{1}, ::Va
                         κ₂, cvd1, ∂κ₂_∂T, cvd2, ∂²κ₂_∂T², cvd3)
 end
 
-function CumulantData(V, V₂, V₃, V₄, T, n_atoms, c1::CumulantData{1}, ::Val{2}, ce::CumulantEstimator, cvds...)
+function CumulantData(V, V₂, V₃, V₄, T, n_atoms, c1::CumulantData{1}, ::Val{2}, ce::CumulantEstimator, use_cvs, cvds...)
 
     X = X2(ce, V, V₂, V₃, V₄)
     X² = X .^ 2
 
-    μX², ∂X²_∂T, ∂²X²_∂T² = get_cv_estimates(X², V₂, T, n_atoms, cvds...)
+    μX², ∂X²_∂T, ∂²X²_∂T² = get_cv_estimates(X², V₂, T, n_atoms, use_cvs, cvds...)
     κ₂ =  μX² - c1.κ^2
 
     ∂κ₂_∂T = ∂X²_∂T - (2*c1.κ*c1.∂κ_∂T)
