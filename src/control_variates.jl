@@ -67,7 +67,7 @@ function cv_estimate(X::AbstractVector{T}, zero_mean_cvs::AbstractVector{T}...;
     Z = W .- μ_estimate                        # n×p
 
     λ = T(ridge)
-    R = diagm(0 => fill(λ, n))
+    R = diagm(0 => fill(λ, p))
     A = (Z' * Z) .+ R    # α = (Z'Z) \ (Z' * X)
     α = A \ (Z' * X)
 
