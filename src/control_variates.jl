@@ -111,7 +111,7 @@ end
 # Fit from scratch
 function get_cv_estimates(X, V2, T, n_atoms, use_cvs::Bool)
     
-    cvs, ∂μ₂_∂T = build_cvs(V2, T, n_atoms)
+    cvs..., ∂μ₂_∂T = build_cvs(V2, T, n_atoms)
     Z = cvs[1]
 
     cvs = use_cvs ? cvs : ()
@@ -137,7 +137,7 @@ end
 # Re-use alphas from before, 
 function get_cv_estimates(X, V2, T, n_atoms, use_cvs::Bool, cvds...)
 
-    cvs, ∂μ₂_∂T = build_cvs(V2, T, n_atoms)
+    cvs..., ∂μ₂_∂T = build_cvs(V2, T, n_atoms)
     Z = cvs[1]
 
     cvs = use_cvs ? cvs : ()
