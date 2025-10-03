@@ -112,6 +112,7 @@ end
 function get_cv_estimates(X, V2, T, n_atoms, use_cvs::Bool)
     
     cvs, ∂μ₂_∂T = build_cvs(V2, T, n_atoms)
+    Z = cvs[1]
 
     cvs = use_cvs ? cvs : ()
 
@@ -119,12 +120,12 @@ function get_cv_estimates(X, V2, T, n_atoms, use_cvs::Bool)
     μX, cvd1 = cv_estimate(X, cvs...)
 
     # Estimate for ∂<X>/∂T
-    Y = X .* C1
+    Y = X .* Z
     cov_XZ, cvd2 = cv_estimate(Y, cvs...)
     ∂X_∂T = cov_XZ / (kB * T^2)
 
     # Estimate for ∂²<X>/∂T²
-    cov_XZZ, cvd3 = cv_estimate(Y .* C1, cvs...)
+    cov_XZZ, cvd3 = cv_estimate(Y .* Z, cvs...)
     dXZ_1 = cov_XZZ / (kB * T^2)
     dXZ = dXZ_1 - (∂μ₂_∂T * μX)
     ∂²X_∂T² = (-2*∂X_∂T/T) + (dXZ/(kB*T*T))
@@ -137,6 +138,7 @@ end
 function get_cv_estimates(X, V2, T, n_atoms, use_cvs::Bool, cvds...)
 
     cvs, ∂μ₂_∂T = build_cvs(V2, T, n_atoms)
+    Z = cvs[1]
 
     cvs = use_cvs ? cvs : ()
 
@@ -144,11 +146,11 @@ function get_cv_estimates(X, V2, T, n_atoms, use_cvs::Bool, cvds...)
     μX = apply_cv(X, cvds[1], cvs...)
 
     # Estimate for ∂<X>/∂T
-    Y = X .* C1
+    Y = X .* Z
     ∂X_∂T = apply_cv(Y, cvds[2], cvs...) / (kB * T^2)
 
     # Estimate for ∂²<X>/∂T²
-    dXZ_1 = apply_cv(Y .* C1, cvds[3], cvs...) / (kB * T^2)
+    dXZ_1 = apply_cv(Y .* Z, cvds[3], cvs...) / (kB * T^2)
     dXZ = dXZ_1 - (∂μ₂_∂T * μX)
     ∂²X_∂T² = (-2*∂X_∂T/T) + (dXZ/(kB*T*T))
 
