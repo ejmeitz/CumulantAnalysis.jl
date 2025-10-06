@@ -108,8 +108,8 @@ function build_cvs(V2, T, n_atoms)
     return C1, C2, C3, μ₂, ∂μ₂_∂T
 end
 
-function my_cov(X, V2, μ2)
-    return mean(X .* V2) - (mean(X) * μ2)
+function my_cov(X, V2, μ2, μX = mean(X))
+    return sum((X .- μX) .* (V2 .- μ2)) / length(X)
 end
 
 # Fit from scratch
