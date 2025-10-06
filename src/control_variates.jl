@@ -133,7 +133,8 @@ function cv_estimate_crossfit(X::AbstractVector{T}, cvs::AbstractVector{T}...;
     μ_accum = zeros(Float64, p)
     n_accum = 0
 
-    λ = float(ridge)
+    λ = T(ridge)
+    R = diagm(0 => fill(λ, p))
 
     for k in 1:K
         test  = folds[k]
@@ -153,7 +154,7 @@ function cv_estimate_crossfit(X::AbstractVector{T}, cvs::AbstractVector{T}...;
         Ztr = Ztr_c ./ σ_tr'
 
         # Ridge solve (SPD ⇒ use Cholesky)
-        A = Ztr' * Ztr .+ λ * I
+        A = Ztr' * Ztr .+ R
         α_std = @views cholesky(A) \ (Ztr' * X[train])         # p
         α = α_std ./ σ_tr   # un-normalize
 
