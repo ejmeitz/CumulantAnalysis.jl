@@ -142,8 +142,8 @@ function cv_estimate_crossfit(X::AbstractVector{T}, cvs::AbstractVector{T}...;
         @assert ntr > p "Train block (size=$(ntr)) must exceed #CVs (p=$(p))."
 
         # ---- Train-fold centering & scaling for conditioning ----
-        μ_tr   = vec(mean(@view W[train, :]; dims=1))            # p
-        Ztr_c  = @view W[train, :] .- μ_tr'                      # ntr×p
+        μ_tr   = @views vec(mean(W[train, :]; dims=1))            # p
+        Ztr_c  = @views W[train, :] .- μ_tr'                      # ntr×p
         σ_tr   = vec(std(Ztr_c; dims=1, corrected=true))         # p
         @inbounds for j in 1:p
             if σ_tr[j] == 0
@@ -154,12 +154,12 @@ function cv_estimate_crossfit(X::AbstractVector{T}, cvs::AbstractVector{T}...;
 
         # Ridge solve (SPD ⇒ use Cholesky)
         A = Ztr' * Ztr .+ λ * I
-        α_std = cholesky(A) \ (Ztr' * @view(X[train]))           # p
-        α = α_std ./ σ_tr                                        # back to original units
+        α_std = @views cholesky(A) \ (Ztr' * X[train])         # p
+        α = α_std ./ σ_tr   # un-normalize
 
         # ---- Apply on test block using *train* μ ----
-        Zte = (@view W[test, :]) .- μ_tr'
-        resid[test] = @view(X[test]) .- (Zte * α)
+        Zte = (@views W[test, :]) .- μ_tr'
+        resid[test] = @views X[test] .- (Zte * α)
 
         # diagnostics
         α_accum .+= nt .* α
