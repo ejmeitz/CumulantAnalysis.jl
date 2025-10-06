@@ -30,9 +30,8 @@ end
 
 
 function cv_estimate(X::AbstractVector{T}) where T
-    mean_raw = mean(X)
     @warn "No control variates provided, returning raw estimate." maxlog=1
-    return mean_raw, ControlVariateData(zeros(T,0), zeros(T,0), T(1.0))
+    return mean(X), ControlVariateData(zeros(T,0), zeros(T,0), T(1.0))
 end
 
 """
@@ -120,12 +119,13 @@ function get_cv_estimates(X, V2, T, n_atoms, use_cvs::Bool)
     # Estimate for <X>
     μX, cvd1 = cv_estimate(X, cvs...)
 
-    # Estimate for ∂<X>/∂T
+    # Estimate for ∂<X>/∂T ∝ cov(X, V2) = <XZ>
     Y = X .* Z
     cov_XZ, cvd2 = cv_estimate(Y, cvs...)
+    cov_XZ = cov(X, V2) #! REMOVE
     ∂X_∂T = cov_XZ / (kB * T^2)
 
-    # Estimate for ∂²<X>/∂T²
+    # Estimate for ∂²<X>/∂T² ∝ cov(XZ, V2) = <XZ^2>
     cov_XZZ, cvd3 = cv_estimate(Y .* Z, cvs...)
     dXZ_1 = cov_XZZ / (kB * T^2)
     dXZ = dXZ_1 - (∂μ₂_∂T * μX)
@@ -149,6 +149,7 @@ function get_cv_estimates(X, V2, T, n_atoms, use_cvs::Bool, cvds...)
     # Estimate for ∂<X>/∂T
     Y = X .* Z
     ∂X_∂T = apply_cv(Y, cvds[2], cvs...) / (kB * T^2)
+    ∂X_∂T = cov(X, V2) / (kB * T^2) #! REMOVE
 
     # Estimate for ∂²<X>/∂T²
     dXZ_1 = apply_cv(Y .* Z, cvds[3], cvs...) / (kB * T^2)
@@ -159,36 +160,6 @@ function get_cv_estimates(X, V2, T, n_atoms, use_cvs::Bool, cvds...)
 
 end
 
-# Assumes harmonic reference
-# function get_cv_estimates(X, V2, T, n_atoms)
-
-#     # Build some control variates
-#     # These all have zero mean by construction
-#     f = 3*n_atoms - 3
-#     μ₂ = 0.5*f*kB*T  # ⟨V2⟩
-#     ∂μ₂_∂T = 0.5*f*kB
-#     σ₂² = 0.5*f*(kB*T)^2 # var(V2)
-
-#     C1 = V2 .- μ₂
-#     C1_sq = C1 .^ 2
-#     C2 = C1_sq .- σ₂²
-#     C3 = C1 .^ 3 .- (3*σ₂²*C1)
-
-#     # Estimate for <X>
-#     res1 = cv_estimate(X, C1, C2, C3)
-#     μX = res1.mean_cv
-
-#     # Estimate for ∂<X>/∂T
-#     ∂X_∂T, red = derivative_with_opt_c(X, V2, T, n_atoms, K = 2)
-
-#     # Estimate for ∂²<X>/∂T²
-#     dXZ_1, red = derivative_with_opt_c(X .* C1, V2, T, n_atoms, K = 3)
-#     dXZ = dXZ_1 - (∂μ₂_∂T * μX)
-#     ∂²X_∂T² = (-2*∂X_∂T/T) + (dXZ/(kB*T*T))
-
-#     return μX, ∂X_∂T, ∂²X_∂T²
-
-# end
 
 
 """
@@ -263,81 +234,3 @@ function derivative_with_opt_c(X::AbstractVector{<:Real},
     return deriv_hat, red
 end
 
-
-
-# is = zeros(Int, length(X))
-# μX_b = zeros(n_boot)
-# ∂X_∂T_b = zeros(n_boot)
-# ∂2X_∂T²_b = zeros(n_boot)
-# for i in 1:n_boot
-#     sample!(1:length(X), is; replace = true)
-#     r1 = mean(X[is])
-#     r2 = cov(X[is], V2[is]) / (kB * T * T)
-#     μX_b[i] = r1
-#     ∂X_∂T_b[i] = r2
-#     dXZ = cov(X[is].*C1[is], V2[is]) / (kB * T * T) - (∂μ₂_∂T * μX_b[i])
-#     # dXV2 = cov(X[is] .* V2[is], V2[is]) / (kB * T * T)
-#     # dAB = (μX_b[i] * ∂μ₂_∂T) + (μ₂ * ∂X_∂T_b[i])
-#     ∂2X_∂T²_b[i] = (-2*∂X_∂T_b[i]/T) + ((dXZ/(kB*T*T)))# * (dXV2 - dAB))
-# end
-# μX_SE_raw = std(μX_b)
-# ∂X_∂T_SE_raw = std(∂X_∂T_b)
-# ∂2X_∂T²_SE_raw = std(∂2X_∂T²_b)
-# println("Bootstrap SE for ⟨X⟩ (raw): $(μX_SE_raw)")
-# println("Bootstrap SE for ∂⟨X⟩/∂T (raw): $(∂X_∂T_SE_raw)")
-# println("Bootstrap SE for ∂²⟨X⟩/∂T² (raw): $(∂2X_∂T²_SE_raw)")
-
-    # mu_X_raw = mean(X)
-# dx_dT_raw = cov(X, V2) / (kB * T * T)
-# dXV2 = cov(X .* V2, V2) / (kB * T * T)
-# dAB = (mu_X_raw * ∂μ₂_∂T) + (μ₂ * dx_dT_raw)
-# dXZ = cov(X.*C1, V2) / (kB * T * T) - (∂μ₂_∂T * mu_X_raw)
-# println("Raw <X> estimate: $(mean(X))")
-# println("Raw ∂<X>/∂T estimate: $(cov(X, V2) / (kB * T * T))")
-# println("Raw ∂²<X>/∂T² estimate: $((-2*dx_dT_raw/T) + ((1/(kB*T*T)) * (dXV2 - dAB)))")
-# println("Raw ∂²<X>/∂T² estimate: $((-2*dx_dT_raw/T) + (dXZ/(kB*T*T)))")
-
-# Estimate for ∂²<X>/∂T² = (-2/T)*∂⟨X⟩/∂T + (1/(kB T²)) (∂⟨X*V₂⟩/∂T - ∂⟨X⟩⟨V₂⟩/∂T)
-# ∂XV₂_∂T, red =  derivative_with_opt_c(X .* V2, V2, T, n_atoms, K = 2)
-# ∂AB_∂T = (μX * ∂μ₂_∂T) + (μ₂ * ∂X_∂T)
-# ∂²X_∂T² = (-2*∂X_∂T/T) + ((1/(kB*T*T)) * (∂XV₂_∂T - ∂AB_∂T))
-
-    # Bootstrap to get error estimates
-# is = zeros(Int, length(X))
-# μX_b = zeros(n_boot)
-# ∂X_∂T_b = zeros(n_boot)
-# ∂²X_∂T²_b = zeros(n_boot)
-
-# # Storage
-# X_b = similar(X); Y_b = similar(X); Z_b = similar(X)
-# C1_b = similar(C1); C2_b = similar(C2)
-# C3_b = similar(C3); C4_b = similar(C4)
-# for i in 1:n_boot
-#     sample!(1:length(X), is; replace = true)
-#     X_b .= X[is]; V2_b = V2[is]
-#     C1_b .= C1[is]; C2_b .= C2[is];
-#     C3_b .= C3[is]; C4_b .= C4[is];
-#     Y_b = X_b .* V2_b
-#     Z_b = X_b .* C1_b
-
-#     r1 = cv_estimate(X_b, C1_b, C2_b, C3_b, C4_b)
-#     ∂X_∂T_b[i], _ =  derivative_with_opt_c(X_b, V2_b, T, n_atoms, K = 3)
-#     # ∂XV₂_∂T_b, _  =  derivative_with_opt_c(Y_b, V2_b, T, n_atoms, K = 3)
-#     dXZ_1, _ = derivative_with_opt_c(Z_b, V2_b, T, n_atoms, K = 3)
-#     dXZ = dXZ_1 - (∂μ₂_∂T * μX_b[i])
-
-#     μX_b[i] = r1.mean_cv
-#     ∂AB_∂T_b = (μX_b[i] * ∂μ₂_∂T) + (μ₂ * ∂X_∂T_b[i])
-#     # ∂²X_∂T²_b[i] = (-2*∂X_∂T_b[i]/T) + ((1/(kB*T*T)) * (∂XV₂_∂T_b - ∂AB_∂T_b))
-#     ∂²X_∂T²_b[i] = (-2*∂X_∂T_b[i]/T) + (dXZ/(kB*T*T))
-# end
-
-# μX_SE = std(μX_b)
-# ∂X_∂T_SE = std(∂X_∂T_b)
-# ∂²X_∂T²_SE = std(∂²X_∂T²_b)
-
-# println("⟨X⟩ = $(round(μX, digits=5)) ± $(round(μX_SE, digits=5))")
-# println("∂⟨X⟩/∂T = $(round(∂X_∂T, digits=5)) ± $(round(∂X_∂T_SE, digits=5))")
-# println("∂²⟨X⟩/∂T² = $(round(∂²X_∂T², digits=5)) ± $(round(∂²X_∂T²_SE, digits=5))")
-
-# return μX, μX_SE, ∂X_∂T, ∂X_∂T_SE, ∂²X_∂T², ∂²X_∂T²_SE

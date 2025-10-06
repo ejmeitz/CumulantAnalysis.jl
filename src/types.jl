@@ -155,13 +155,13 @@ function FourthOrderEstimator(order::Int, lim::L, calc, ifc2_path, ifc3_path,
 end
 
 
-rv(::FourthOrderEstimator, V, V₂, V₃, V₄) = V .- V₂ .- V₃ .- V₄
-V₀_rv(foe::FourthOrderEstimator, V, V₂, V₃, V₄) = rv(foe, V, V₂, V₃, V₄)
+rv(::FourthOrderEstimator, V, V₂, V₃, V₄) = V₃ .+ V₄
+V₀_rv(foe::FourthOrderEstimator, V, V₂, V₃, V₄) = V .- V₂ .- V₃ .- V₄
 
 # Random variable used in nth cumulant
-X1(::FourthOrderEstimator, V, V₂, V₃, V₄) = zero.(V₄)
-X2(he::FourthOrderEstimator, V, V₂, V₃, V₄) = rv(he, V, V₂, V₃, V₄)
-X3(he::FourthOrderEstimator, V, V₂, V₃, V₄) = rv(he, V, V₂, V₃, V₄)
+X1(::FourthOrderEstimator, V, V₂, V₃, V₄) = V₄
+X2(foe::FourthOrderEstimator, V, V₂, V₃, V₄) = rv(foe, V, V₂, V₃, V₄)
+X3(foe::FourthOrderEstimator, V, V₂, V₃, V₄) = rv(foe, V, V₂, V₃, V₄)
 
 ifc_paths(foe::FourthOrderEstimator) = [foe.ifc2_path, foe.ifc3_path, foe.ifc4_path]
 needs_true_V(::FourthOrderEstimator) = true
