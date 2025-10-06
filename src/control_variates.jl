@@ -251,13 +251,13 @@ function get_cv_estimates(X, V2, V3, T, n_atoms, use_cvs::Bool, cvds...)
 
     # Estimate for ∂<X>/∂T
     Y1 = (X .- μX) .* Z
-    cov_XZ = apply_cv(Y1, cvds[2], cvs..., cvs_nz[1], cvs_nz[2]) 
+    cov_XZ = apply_cv(Y1, cvds[2], cvs..., X) 
     ∂X_∂T = cov_XZ / (kB * T^2)
 
     # Estimate for ∂²<X>/∂T²
     tmp = X .* V2
     Y2 = (tmp .- mean(tmp)) .* Z #! CAN I REUSE DATA FROM BEFORE TO IMPROVE ACCURACY?
-    dXV = apply_cv(Y2, cvds[3], cvs..., cvs_nz...) / (kB * T^2)
+    dXV = apply_cv(Y2, cvds[3], cvs..., X) / (kB * T^2)
     Δ = dXV - ((∂X_∂T * μ₂) - (∂μ₂_∂T * μX))
     ∂²X_∂T² = (-2*∂X_∂T/T) + (Δ/(kB*T*T))
 
