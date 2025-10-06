@@ -221,13 +221,13 @@ function get_cv_estimates(X, V2, V3, T, n_atoms, use_cvs::Bool)
 
     # Estimate for ∂<X>/∂T ∝ cov(X, V2)
     Y1 = (X .- μX) .* Z
-    cov_XZ, cvd2 = cv_estimate_crossfit(Y1, cvs..., cvs_nz[1], cvs_nz[2])
+    cov_XZ, cvd2 = cv_estimate_crossfit(Y1, cvs..., X)
     ∂X_∂T = cov_XZ / (kB * T^2)
 
     # Estimate for ∂²<X>/∂T² ∝ cov(XV2, V2)
     tmp = X .* V2
     Y2 = (tmp .- mean(tmp)) .* Z #! CAN I REUSE DATA FROM BEFORE TO IMPROVE ACCURACY?
-    cov_XVV, cvd3 = cv_estimate_crossfit(Y2, cvs..., cvs_nz...)
+    cov_XVV, cvd3 = cv_estimate_crossfit(Y2, cvs..., X)#, cvs_nz...)
     dXV = cov_XVV / (kB * T^2)
     Δ = dXV - ((∂X_∂T * μ₂) + (∂μ₂_∂T * μX))
     ∂²X_∂T² = (-2*∂X_∂T/T) + (Δ/(kB*T*T))
