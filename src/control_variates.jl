@@ -109,7 +109,7 @@ Notes:
 function cv_estimate_crossfit(X::AbstractVector{T}, cvs::AbstractVector{T}...;
                               K::Int=4,
                               ridge::Real=1e-6,
-                              tol::Real=1e-4) where {T}
+                              tol::Real=1e-3) where {T}
 
     n = length(X)
 
@@ -219,18 +219,18 @@ function get_cv_estimates(X, V2, V3, T, n_atoms, use_cvs::Bool)
     # Estimate for <X>
     μX, cvd1 = cv_estimate_crossfit(X, cvs...)
 
-    # Estimate for ∂<X>/∂T ∝ cov(X, V2) = <XZ>
+    # Estimate for ∂<X>/∂T ∝ cov(X, V2)
     Y1 = (X .- μX) .* Z
     cov_XZ, cvd2 = cv_estimate_crossfit(Y1, cvs..., cvs_nz[1], cvs_nz[2])
     ∂X_∂T = cov_XZ / (kB * T^2)
 
-    # Estimate for ∂²<X>/∂T² ∝ cov(XZ, V2) = <XZ^2>
+    # Estimate for ∂²<X>/∂T² ∝ cov(XV2, V2)
     tmp = X .* V2
     Y2 = (tmp .- mean(tmp)) .* Z #! CAN I REUSE DATA FROM BEFORE TO IMPROVE ACCURACY?
-    cov_XZZ, cvd3 = cv_estimate_crossfit(Y2, cvs..., cvs_nz...)
-    dXZ_1 = cov_XZZ / (kB * T^2)
-    dXZ = dXZ_1 - (∂μ₂_∂T * μX)
-    ∂²X_∂T² = (-2*∂X_∂T/T) + (dXZ/(kB*T*T))
+    cov_XVV, cvd3 = cv_estimate_crossfit(Y2, cvs..., cvs_nz...)
+    dXV = cov_XVV / (kB * T^2)
+    Δ = dXV - ((∂X_∂T * μ₂) - (∂μ₂_∂T * μX))
+    ∂²X_∂T² = (-2*∂X_∂T/T) + (Δ/(kB*T*T))
 
     return μX, cvd1, ∂X_∂T, cvd2, ∂²X_∂T², cvd3
 
