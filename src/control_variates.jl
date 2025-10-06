@@ -154,7 +154,7 @@ function cv_estimate_crossfit(X::AbstractVector{T}, cvs::AbstractVector{T}...;
         Ztr = Ztr_c ./ σ_tr'
 
         # Ridge solve (SPD ⇒ use Cholesky)
-        A = Ztr' * Ztr .+ R
+        A = (Ztr' * Ztr ).+ R
         α_std = @views cholesky(A) \ (Ztr' * X[train])         # p
         α = α_std ./ σ_tr   # un-normalize
 
