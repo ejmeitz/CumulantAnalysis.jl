@@ -34,6 +34,11 @@ function cv_estimate(X::AbstractVector{T}) where T
     return mean(X), ControlVariateData(zeros(T,0), zeros(T,0), T(1.0))
 end
 
+function cv_estimate_crossfit(X::AbstractVector{T}) where T
+    @warn "No control variates provided, returning raw estimate." maxlog=1
+    return mean(X), ControlVariateData(zeros(T,0), zeros(T,0), T(1.0))
+end
+
 """
     cv_estimate(X, zero_mean_cvs...)
 
@@ -211,7 +216,7 @@ function get_cv_estimates(X, V2, V3, T, n_atoms, use_cvs::Bool)
     
     cvs...,  μ₂, ∂μ₂_∂T = build_zero_mean_cvs(V2, V3, T, n_atoms)
     Z = cvs[1]
-    cvs_nz = (X, X .^ 2)#, X .* Z)
+    cvs_nz = (X, X .^ 2, X .* Z)
 
     cvs = use_cvs ? cvs : ()
     cvs_nz = use_cvs ? cvs_nz : ()
@@ -221,13 +226,13 @@ function get_cv_estimates(X, V2, V3, T, n_atoms, use_cvs::Bool)
 
     # Estimate for ∂<X>/∂T ∝ cov(X, V2)
     Y1 = (X .- μX) .* Z
-    cov_XZ, cvd2 = cv_estimate_crossfit(Y1, cvs..., X)
+    cov_XZ, cvd2 = cv_estimate_crossfit(Y1, cvs..., cvs_nz[1], cvs_nz[2])
     ∂X_∂T = cov_XZ / (kB * T^2)
 
     # Estimate for ∂²<X>/∂T² ∝ cov(X*V2, V2) + C
     tmp = X .* V2
     Y2 = (tmp .- mean(tmp)) .* Z 
-    cov_XVV, cvd3 = cv_estimate_crossfit(Y2, cvs_nz...)#, cvs_nz...)
+    cov_XVV, cvd3 = cv_estimate_crossfit(Y2,  cvs_nz[2])
     dXV = cov_XVV / (kB * T^2)
     Δ = dXV - ((∂X_∂T * μ₂) + (∂μ₂_∂T * μX))
     ∂²X_∂T² = (-2*∂X_∂T/T) + (Δ/(kB*T*T))
@@ -241,7 +246,7 @@ function get_cv_estimates(X, V2, V3, T, n_atoms, use_cvs::Bool, cvds...)
 
     cvs...,  μ₂, ∂μ₂_∂T = build_zero_mean_cvs(V2, V3, T, n_atoms)
     Z = cvs[1]
-    cvs_nz = (X, X .^ 2)#, X .* Z)
+    cvs_nz = (X, X .^ 2, X .* Z)
 
     cvs = use_cvs ? cvs : ()
     cvs_nz = use_cvs ? cvs_nz : ()
@@ -251,13 +256,13 @@ function get_cv_estimates(X, V2, V3, T, n_atoms, use_cvs::Bool, cvds...)
 
     # Estimate for ∂<X>/∂T
     Y1 = (X .- μX) .* Z
-    cov_XZ = apply_cv(Y1, cvds[2], cvs..., X) 
+    cov_XZ = apply_cv(Y1, cvds[2], cvs..., cvs_nz[1], cvs_nz[2]) 
     ∂X_∂T = cov_XZ / (kB * T^2)
 
     # Estimate for ∂²<X>/∂T²
     tmp = X .* V2
-    Y2 = (tmp .- mean(tmp)) .* Z #! CAN I REUSE DATA FROM BEFORE TO IMPROVE ACCURACY?
-    dXV = apply_cv(Y2, cvds[3], cvs_nz...) / (kB * T^2)
+    Y2 = (tmp .- mean(tmp)) .* Z
+    dXV = apply_cv(Y2, cvds[3], cvs_nz[2]) / (kB * T^2)
     Δ = dXV - ((∂X_∂T * μ₂) - (∂μ₂_∂T * μX))
     ∂²X_∂T² = (-2*∂X_∂T/T) + (Δ/(kB*T*T))
 
