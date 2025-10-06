@@ -90,7 +90,7 @@ function bootstrap_corrections(V, V₂, V₃, V₄, T, outpath,
     for i in 1:ce.n_boot
         sample!(1:length(V), is; replace = true)
         ΔFs[:,i], ΔSs[:,i], ΔUs[:,i], ΔCᵥs[:,i] =
-             calculate_cumulants(V[is], V₂[is], V₃[is], V₄[is], T, Nat, ce, use_cvs)#, all_cvds...)
+             calculate_cumulants(V[is], V₂[is], V₃[is], V₄[is], T, Nat, ce, use_cvs, all_cvds...)
         next!(p)
     end
     finish!(p)
@@ -180,9 +180,9 @@ function do_size_study(ce::CumulantEstimator{O}, outpath, V, V₂, V₃, V₄, T
             V₃_samples = V₃_sub[idxs]
             V₄_samples = V₄_sub[idxs]
 
-            c0 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, T, n_atoms, Val{0}(), ce, use_cvs)#, cvds(c0)...)
-            c1 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, T, n_atoms, Val{1}(), ce, use_cvs)#, cvds(c1)...)
-            c2 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, T, n_atoms, c1, Val{2}(), ce, use_cvs)#, cvds(c2)...)
+            c0 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, T, n_atoms, Val{0}(), ce, use_cvs, cvds(c0)...)
+            c1 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, T, n_atoms, Val{1}(), ce, use_cvs, cvds(c1)...)
+            c2 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, T, n_atoms, c1, Val{2}(), ce, use_cvs, cvds(c2)...)
 
             cds = (c0, c1, c2)
 
