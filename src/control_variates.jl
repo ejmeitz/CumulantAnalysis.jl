@@ -211,7 +211,7 @@ function get_cv_estimates(X, V2, V3, T, n_atoms, use_cvs::Bool)
     
     cvs...,  μ₂, ∂μ₂_∂T = build_zero_mean_cvs(V2, V3, T, n_atoms)
     Z = cvs[1]
-    cvs_nz = (X, X .^ 2, X .* Z)
+    cvs_nz = (X, X .^ 2)#, X .* Z)
 
     cvs = use_cvs ? cvs : ()
     cvs_nz = use_cvs ? cvs_nz : ()
@@ -241,7 +241,7 @@ function get_cv_estimates(X, V2, V3, T, n_atoms, use_cvs::Bool, cvds...)
 
     cvs...,  μ₂, ∂μ₂_∂T = build_zero_mean_cvs(V2, V3, T, n_atoms)
     Z = cvs[1]
-    cvs_nz = (X, X .^ 2, X .* Z)
+    cvs_nz = (X, X .^ 2)#, X .* Z)
 
     cvs = use_cvs ? cvs : ()
     cvs_nz = use_cvs ? cvs_nz : ()
