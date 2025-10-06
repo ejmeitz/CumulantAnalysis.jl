@@ -112,7 +112,6 @@ function cv_estimate_crossfit(X::AbstractVector{T}, cvs::AbstractVector{T}...;
                               tol::Real=1e-4) where {T}
 
     n = length(X)
-    @assert n ≥ 3 "Need at least 3 samples."
 
     # Stack CVs (n × p)
     W = hcat(cvs...)
@@ -202,14 +201,6 @@ function build_zero_mean_cvs(V2, V3, T, n_atoms)
     return C1, C2, C3, C4, V3, μ₂, ∂μ₂_∂T
 end
 
-function build_cvs(X, V2, V3, T, n_atoms)
-    cvs..., μ₂, ∂μ₂_∂T = build_zero_mean_cvs(V2, V3, T, n_atoms)
-
-    C1 = X
-    C2 = X .^ 2
-
-    return cvs..., C1, C2, μ₂, ∂μ₂_∂T
-end
 
 function my_cov(X, V2, μ2, μX = mean(X))
     return sum((X .- μX) .* (V2 .- μ2)) / length(X)
@@ -218,22 +209,24 @@ end
 # Fit from scratch
 function get_cv_estimates(X, V2, V3, T, n_atoms, use_cvs::Bool)
     
-    cvs...,  μ₂, ∂μ₂_∂T = build_cvs(X, V2, V3, T, n_atoms)
+    cvs...,  μ₂, ∂μ₂_∂T = build_zero_mean_cvs(V2, V3, T, n_atoms)
     Z = cvs[1]
+    cvs_nz = (X, X .^ 2, X .* Z)
 
     cvs = use_cvs ? cvs : ()
+    cvs_nz = use_cvs ? cvs_nz : ()
 
     # Estimate for <X>
     μX, cvd1 = cv_estimate_crossfit(X, cvs...)
 
     # Estimate for ∂<X>/∂T ∝ cov(X, V2) = <XZ>
     Y1 = (X .- μX) .* Z
-    cov_XZ, cvd2 = cv_estimate_crossfit(Y1, cvs...)
+    cov_XZ, cvd2 = cv_estimate_crossfit(Y1, cvs..., cvs_nz[1], cvs_nz[2])
     ∂X_∂T = cov_XZ / (kB * T^2)
 
     # Estimate for ∂²<X>/∂T² ∝ cov(XZ, V2) = <XZ^2>
     Y2 = (Y1 .- cov_XZ) .* Z
-    cov_XZZ, cvd3 = cv_estimate_crossfit(Y2, cvs...)
+    cov_XZZ, cvd3 = cv_estimate_crossfit(Y2, cvs..., cvs_nz...)
     dXZ_1 = cov_XZZ / (kB * T^2)
     dXZ = dXZ_1 - (∂μ₂_∂T * μX)
     ∂²X_∂T² = (-2*∂X_∂T/T) + (dXZ/(kB*T*T))
@@ -245,22 +238,24 @@ end
 # Re-use alphas from before, 
 function get_cv_estimates(X, V2, V3, T, n_atoms, use_cvs::Bool, cvds...)
 
-    cvs..., μ₂, ∂μ₂_∂T = build_cvs(X, V2, V3, T, n_atoms)
+    cvs...,  μ₂, ∂μ₂_∂T = build_zero_mean_cvs(V2, V3, T, n_atoms)
     Z = cvs[1]
+    cvs_nz = (X, X .^ 2, X .* Z)
 
     cvs = use_cvs ? cvs : ()
+    cvs_nz = use_cvs ? cvs_nz : ()
 
     # Estimate for <X>
-    μX = apply_cv(X, cvds[1], cvs...)
+    μX = apply_cv(X, cvds[1], cvs...) # do not pass cvs that depend on X
 
     # Estimate for ∂<X>/∂T
     Y1 = (X .- μX) .* Z
-    cov_XZ = apply_cv(Y1, cvds[2], cvs...) 
+    cov_XZ = apply_cv(Y1, cvds[2], cvs..., cvs_nz[1], cvs_nz[2]) 
     ∂X_∂T = cov_XZ / (kB * T^2)
 
     # Estimate for ∂²<X>/∂T²
     Y2 = (Y1 .- cov_XZ) .* Z
-    dXZ_1 = apply_cv(Y2, cvds[3], cvs...) / (kB * T^2)
+    dXZ_1 = apply_cv(Y2, cvds[3], cvs..., cvs_nz...) / (kB * T^2)
     dXZ = dXZ_1 - (∂μ₂_∂T * μX)
     ∂²X_∂T² = (-2*∂X_∂T/T) + (dXZ/(kB*T*T))
 
