@@ -105,13 +105,17 @@ function build_cvs(V2, T, n_atoms)
     C2 = C1_sq .- σ₂²
     C3 = C1 .^ 3 .- (3*σ₂²*C1)
 
-    return C1, C2, C3, ∂μ₂_∂T
+    return C1, C2, C3, μ₂, ∂μ₂_∂T
+end
+
+function my_cov(X, V2, μ2)
+    return mean(X .* V2) - (mean(X) * μ2)
 end
 
 # Fit from scratch
 function get_cv_estimates(X, V2, T, n_atoms, use_cvs::Bool)
     
-    cvs..., ∂μ₂_∂T = build_cvs(V2, T, n_atoms)
+    cvs...,  μ₂, ∂μ₂_∂T = build_cvs(V2, T, n_atoms)
     Z = cvs[1]
 
     cvs = use_cvs ? cvs : ()
@@ -122,7 +126,7 @@ function get_cv_estimates(X, V2, T, n_atoms, use_cvs::Bool)
     # Estimate for ∂<X>/∂T ∝ cov(X, V2) = <XZ>
     Y = X .* Z
     cov_XZ, cvd2 = cv_estimate(Y, cvs...)
-    cov_XZ = cov(X, V2) #! REMOVE
+    cov_XZ = my_cov(X, V2, μ₂) #! REMOVE
     ∂X_∂T = cov_XZ / (kB * T^2)
 
     # Estimate for ∂²<X>/∂T² ∝ cov(XZ, V2) = <XZ^2>
@@ -138,7 +142,7 @@ end
 # Re-use alphas from before, 
 function get_cv_estimates(X, V2, T, n_atoms, use_cvs::Bool, cvds...)
 
-    cvs..., ∂μ₂_∂T = build_cvs(V2, T, n_atoms)
+    cvs..., μ₂, ∂μ₂_∂T = build_cvs(V2, T, n_atoms)
     Z = cvs[1]
 
     cvs = use_cvs ? cvs : ()
@@ -149,7 +153,7 @@ function get_cv_estimates(X, V2, T, n_atoms, use_cvs::Bool, cvds...)
     # Estimate for ∂<X>/∂T
     Y = X .* Z
     ∂X_∂T = apply_cv(Y, cvds[2], cvs...) / (kB * T^2)
-    ∂X_∂T = cov(X, V2) / (kB * T^2) #! REMOVE
+    ∂X_∂T = my_cov(X, V2, μ₂) / (kB * T^2) #! REMOVE
 
     # Estimate for ∂²<X>/∂T²
     dXZ_1 = apply_cv(Y .* Z, cvds[3], cvs...) / (kB * T^2)
