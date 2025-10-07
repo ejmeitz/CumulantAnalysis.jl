@@ -234,7 +234,7 @@ function get_cv_estimates(X, V2, V3, T, n_atoms, use_cvs::Bool)
     # Y2 = (tmp .- mean(tmp)) .* Z 
     # cov_XVV, cvd3 = cv_estimate_crossfit(Y2,  cvs[2])
     # dXV = cov_XVV / (kB * T^2)
-    cvd3 = ControlVariateData(zeros(T,0), zeros(T,0), T(1.0))
+    cvd3 = ControlVariateData(zeros(0), zeros(0), Float64(1.0))
     dXV = cov(tmp, V2) / (kB * T^2)
     Δ = dXV - ((∂X_∂T * μ₂) + (∂μ₂_∂T * μX))
     ∂²X_∂T² = (-2*∂X_∂T/T) + (Δ/(kB*T*T))
