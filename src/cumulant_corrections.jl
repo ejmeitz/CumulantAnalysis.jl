@@ -23,6 +23,10 @@ function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{0}, ce::CumulantEst
 
     V₀, cvd1, ∂V₀, cvd2, ∂²V₀, cvd3 = get_cv_estimates(X, V₂, V₃, T, n_atoms, use_cvs)
 
+    V₀ = mean(X)
+    ∂V₀ = ∂A_∂T(X, V₂, T)
+    ∂²V₀ = ∂²A_∂T²(X, V₂, T)
+
     # This estimator uses a user provided V0
     if ce isa MixedEstimator
         V₀ = get_V₀(ce, V, V₂, V₃, V₄)
@@ -42,7 +46,11 @@ function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{0}, ce::CumulantEst
 
     X = V₀_rv(ce, V, V₂, V₃, V₄)
 
-    V₀, ∂V₀, ∂²V₀ = get_cv_estimates(X, V₂, V₃, T, n_atoms, use_cvs, cvds...)
+    # V₀, ∂V₀, ∂²V₀ = get_cv_estimates(X, V₂, V₃, T, n_atoms, use_cvs, cvds...)
+
+    V₀ = mean(X)
+    ∂V₀ = ∂A_∂T(X, V₂, T)
+    ∂²V₀ = ∂²A_∂T²(X, V₂, T)
 
     # This estimator uses a user provided V0
     if ce isa MixedEstimator
