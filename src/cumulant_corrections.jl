@@ -25,7 +25,7 @@ function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{0}, ce::CumulantEst
 
     V₀ = mean(X)
     ∂V₀ = ∂A_∂T(X, V₂, T)
-    ∂²V₀ = ∂²A_∂T²(X, V₂, T)
+    ∂²V₀ = ∂²A_∂T²(X, V₂, T, ∂V₀)
 
     # This estimator uses a user provided V0
     if ce isa MixedEstimator
@@ -50,7 +50,7 @@ function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{0}, ce::CumulantEst
 
     V₀ = mean(X)
     ∂V₀ = ∂A_∂T(X, V₂, T)
-    ∂²V₀ = ∂²A_∂T²(X, V₂, T)
+    ∂²V₀ = ∂²A_∂T²(X, V₂, T, ∂V₀)
 
     # This estimator uses a user provided V0
     if ce isa MixedEstimator
@@ -89,9 +89,9 @@ function CumulantData(V, V₂, V₃, V₄, T, n_atoms, c1::CumulantData{1}, ::Va
     μX², cvd1, ∂X²_∂T, cvd2, ∂²X²_∂T², cvd3 = get_cv_estimates(X², V₂, V₃, T, n_atoms, use_cvs)
     κ₂ =  μX² - c1.κ^2
 
-    κ₂ = var(X; corrected = true)
-    ∂X²_∂T = ∂A_∂T(X², V₂, T)
-    ∂²X²_∂T² = ∂²A_∂T²(X², V₂, T)
+    # κ₂ = var(X; corrected = true)
+    # ∂X²_∂T = ∂A_∂T(X², V₂, T)
+    # ∂²X²_∂T² = ∂²A_∂T²(X², V₂, T)
 
     ∂κ₂_∂T = ∂X²_∂T - (2*c1.κ*c1.∂κ_∂T)
     ∂²κ₂_∂T² = ∂²X²_∂T² - 2*(((c1.∂κ_∂T)^2) + (c1.κ*c1.∂²κ_∂T²))
@@ -105,12 +105,12 @@ function CumulantData(V, V₂, V₃, V₄, T, n_atoms, c1::CumulantData{1}, ::Va
     X = X2(ce, V, V₂, V₃, V₄)
     X² = X .^ 2
 
-    # μX², ∂X²_∂T, ∂²X²_∂T² = get_cv_estimates(X², V₂, V₃, T, n_atoms, use_cvs, cvds...)
-    # κ₂ =  μX² - c1.κ^2
+    μX², ∂X²_∂T, ∂²X²_∂T² = get_cv_estimates(X², V₂, V₃, T, n_atoms, use_cvs, cvds...)
+    κ₂ =  μX² - c1.κ^2
 
-    κ₂ = var(X; corrected = true)
-    ∂X²_∂T = ∂A_∂T(X², V₂, T)
-    ∂²X²_∂T² = ∂²A_∂T²(X², V₂, T)
+    # κ₂ = var(X; corrected = true)
+    # ∂X²_∂T = ∂A_∂T(X², V₂, T)
+    # ∂²X²_∂T² = ∂²A_∂T²(X², V₂, T)
 
     ∂κ₂_∂T = ∂X²_∂T - (2*c1.κ*c1.∂κ_∂T)
     ∂²κ₂_∂T² = ∂²X²_∂T² - 2*(((c1.∂κ_∂T)^2) + (c1.κ*c1.∂²κ_∂T²))
