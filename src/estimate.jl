@@ -367,8 +367,10 @@ function estimate(
     # This energy file will have the correct ordering it is not always correct 
     # to load V from outfile.true_potential_energy and V2/V3/V4 from outfile.energies
     header = ["V" "Vp" "V2" "V3" "V4"]
+    str_fmt_str = (N) -> Printf.Format(join(fill("%15s", N), " "))
     open(joinpath(outpath, "outfile.all_energies"), "w") do f
-        writedlm(f, [header; V Vₚ V₂ V₃ V₄])
+        println(f, Printf.format(str_fmt_str(length(header)), header...))
+        writedlm(f, [V Vₚ V₂ V₃ V₄])
     end
 
     if rm_configs
