@@ -348,8 +348,6 @@ function estimate(
     end
 
     @info "Parsing Energies"
-
-    #! REDUMP THESE IN THE CORRECT ORDERING
     T_file, n_atoms, Vₚ, V₂, V₃, V₄ = parse_energies(tep_energies_path, is_hdf5)
 
     if T_file != T
@@ -369,7 +367,7 @@ function estimate(
     # This energy file will have the correct ordering it is not always correct 
     # to load V from outfile.true_potential_energy and V2/V3/V4 from outfile.energies
     header = ["V" "Vp" "V2" "V3" "V4"]
-    open(joinpath(outpath, "outfile.ordered_energies"), "w") do f
+    open(joinpath(outpath, "outfile.all_energies"), "w") do f
         writedlm(f, [header; V Vₚ V₂ V₃ V₄])
     end
 
