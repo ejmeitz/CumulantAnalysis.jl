@@ -290,10 +290,6 @@ function calculate_true_energies(calc, nconf, ssposcar_path, outpath)
         next!(p)
     end
     finish!(p)
-    
-    open(joinpath(outpath, "outfile.true_potential_energy"), "w") do f
-        writedlm(f, V)
-    end
 
     return V
 end
@@ -352,6 +348,8 @@ function estimate(
     end
 
     @info "Parsing Energies"
+
+    #! REDUMP THESE IN THE CORRECT ORDERING
     T_file, n_atoms, Vₚ, V₂, V₃, V₄ = parse_energies(tep_energies_path, is_hdf5)
 
     if T_file != T
@@ -363,9 +361,16 @@ function estimate(
     end
 
     if needs_true_V(ce)
-        V = calculate_true_energies(ce.force_calculator, ce.nconf, ssposcar_path, outpath)
+        V = calculate_true_energies(ce.force_calculator, ce.nconf, ssposcar_path, outpath)   
     else
-        V = zeros(eltype(V₂), size(V₂))
+        V = NaN .* zeros(eltype(V₂), size(V₂))
+    end
+
+    # This energy file will have the correct ordering it is not always correct 
+    # to load V from outfile.true_potential_energy and V2/V3/V4 from outfile.energies
+    header = ["V" "Vp" "V2" "V3" "V4"]
+    open(joinpath(outpath, "outfile.ordered_energies"), "w") do f
+        writedlm(f, [header; V Vₚ V₂ V₃ V₄])
     end
 
     if rm_configs
