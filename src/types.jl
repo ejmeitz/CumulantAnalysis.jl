@@ -1,14 +1,8 @@
 export 
-    Quantum, 
-    Classical, 
-    EffectiveHamiltonianEstimator, 
     HarmonicEstimator, 
     FourthOrderEstimator,
     MixedEstimator
 
-abstract type Limit end
-struct Quantum <: Limit end
-struct Classical <: Limit end
 
 ########################################
 
@@ -46,7 +40,7 @@ end
 
 ########################################
 
-abstract type CumulantEstimator{O, L <: Limit} end
+abstract type CumulantEstimator{O} end
 
 order(::CumulantEstimator{O}) where O = O
 
@@ -58,62 +52,14 @@ end
 
 ########################################
 
-struct EffectiveHamiltonianEstimator{O,L,T} <: CumulantEstimator{O,L}
-    lim::L
-    ifc2_path::String
-    ifc3_path::String
-    ifc4_path::String
-    V₀::T # expects eV
-    nconf::Int
-    n_boot::Int
-end
-
-function EffectiveHamiltonianEstimator(order::Int, lim::L, ifc2_path, ifc3_path, 
-        ifc4_path, V₀_eV, nconf, n_boot) where L
-    return EffectiveHamiltonianEstimator{order, L, typeof(V₀_eV)}(lim, ifc2_path,
-        ifc3_path, ifc4_path, V₀_eV, nconf, n_boot)
-end
-
-rv(::EffectiveHamiltonianEstimator, V, V₂, V₃, V₄) = V₃ .+ V₄
-
-# Random variable used in nth cumulant
-X1(::EffectiveHamiltonianEstimator, V, V₂, V₃, V₄) = V₄
-X2(ehe::EffectiveHamiltonianEstimator, V, V₂, V₃, V₄) = rv(ehe, V, V₂, V₃, V₄)
-X3(ehe::EffectiveHamiltonianEstimator, V, V₂, V₃, V₄) = rv(ehe, V, V₂, V₃, V₄)
-
-ifc_paths(ehe::EffectiveHamiltonianEstimator) = [ehe.ifc2_path, ehe.ifc3_path, ehe.ifc4_path]
-needs_true_V(::EffectiveHamiltonianEstimator) = false
-get_V₀(e::EffectiveHamiltonianEstimator, V, V₂, V₃, V₄) = e.V₀
-
-function move_ifcs(ehe::EffectiveHamiltonianEstimator, outpath::String)
-
-    check_ifc_paths(ehe)
-
-    new_ifc2_path = joinpath(outpath, "infile.forceconstant")
-    new_ifc3_path = joinpath(outpath, "infile.forceconstant_thirdorder")
-    new_ifc4_path = joinpath(outpath, "infile.forceconstant_fourthorder")
-
-    isfile(new_ifc2_path) || cp(ehe.ifc2_path, new_ifc2_path; force = true)
-    isfile(new_ifc3_path) || cp(ehe.ifc3_path, new_ifc3_path; force = true)
-    isfile(new_ifc4_path) || cp(ehe.ifc4_path, new_ifc4_path; force = true)
-
-end
-
-########################################
-
-
-struct HarmonicEstimator{O,L,C} <: CumulantEstimator{O,L}
-    lim::L
-    force_calculator::C
+struct HarmonicEstimator{O} <: CumulantEstimator{O}
     ifc2_path::String
     nconf::Int
     n_boot::Int
 end
 
-function HarmonicEstimator(order::Int, lim::L, calc, ifc2_path,
-                             nconf, n_boot) where L
-    return HarmonicEstimator{order, L, typeof(calc)}(lim, calc, 
-                            ifc2_path, nconf, n_boot)
+function HarmonicEstimator(order::Int, ifc2_path, nconf, n_boot)
+    return HarmonicEstimator{order}(ifc2_path, nconf, n_boot)
 end
 
 rv(::HarmonicEstimator, V, V₂, V₃, V₄) = V .- V₂
@@ -135,12 +81,18 @@ function move_ifcs(ehe::HarmonicEstimator, outpath::String)
     isfile(new_ifc2_path) || cp(ehe.ifc2_path, new_ifc2_path; force = true)
 end
 
+function load_ifcs(::HarmonicEstimator, ucposcar_path::String, basepath::String)
+
+    ifc2_path = joinpath(basepath, "infile.forceconstant")
+    ifc2 = read_ifc2(ifc2_path, ucposcar_path)
+
+    return (ifc2, )
+end
+
 ########################################
 
 
-struct FourthOrderEstimator{O,L,C} <: CumulantEstimator{O,L}
-    lim::L
-    force_calculator::C
+struct FourthOrderEstimator{O} <: CumulantEstimator{O}
     ifc2_path::String
     ifc3_path::String
     ifc4_path::String
@@ -148,15 +100,15 @@ struct FourthOrderEstimator{O,L,C} <: CumulantEstimator{O,L}
     n_boot::Int
 end
 
-function FourthOrderEstimator(order::Int, lim::L, calc, ifc2_path, ifc3_path, 
-        ifc4_path, nconf, n_boot) where L
-    return FourthOrderEstimator{order, L, typeof(calc)}(lim, calc, ifc2_path,
+function FourthOrderEstimator(order::Int, ifc2_path, ifc3_path, 
+        ifc4_path, nconf, n_boot)
+    return FourthOrderEstimator{order}(ifc2_path,
         ifc3_path, ifc4_path, nconf, n_boot)
 end
 
 
 rv(::FourthOrderEstimator, V, V₂, V₃, V₄) = V₃ .+ V₄
-V₀_rv(foe::FourthOrderEstimator, V, V₂, V₃, V₄) = V .- V₂ .- V₃ .- V₄
+V₀_rv(::FourthOrderEstimator, V, V₂, V₃, V₄) = V .- V₂ .- V₃ .- V₄
 
 # Random variable used in nth cumulant
 X1(::FourthOrderEstimator, V, V₂, V₃, V₄) = V₄
@@ -181,15 +133,26 @@ function move_ifcs(foe::FourthOrderEstimator, outpath::String)
 
 end
 
+function load_ifcs(::FourthOrderEstimator, ucposcar_path::String, basepath::String)
+
+    ifc2_path = joinpath(basepath, "infile.forceconstant")
+    ifc3_path = joinpath(basepath, "infile.forceconstant_thirdorder")
+    ifc4_path = joinpath(basepath, "infile.forceconstant_fourthorder")
+
+    ifc2 = read_ifc2(ifc2_path, ucposcar_path)
+    ifc3 = read_ifc3(ifc3_path, ucposcar_path)
+    ifc4 = read_ifc4(ifc4_path, ucposcar_path)
+
+    return ifc2, ifc3, ifc4
+end
+
 
 ###########################
 
 # Uses V0 from MD for Free energy
 # Estimates V0 as <V - V2 - V3 - V4>_0 for derivatives
 # Approximates V as (V0 + V2 + V3 + V4)
-struct MixedEstimator{O,L,C,T} <: CumulantEstimator{O,L}
-    lim::L
-    force_calculator::C
+struct MixedEstimator{O,T} <: CumulantEstimator{O}
     ifc2_path::String
     ifc3_path::String
     ifc4_path::String
@@ -198,9 +161,9 @@ struct MixedEstimator{O,L,C,T} <: CumulantEstimator{O,L}
     n_boot::Int
 end
 
-function MixedEstimator(order::Int, lim::L, calc, ifc2_path, ifc3_path, 
-        ifc4_path, V0::T, nconf, n_boot) where {L,T}
-    return MixedEstimator{order, L, typeof(calc), T}(lim, calc, ifc2_path,
+function MixedEstimator(order::Int, ifc2_path, ifc3_path, 
+        ifc4_path, V0::T, nconf, n_boot) where T
+    return MixedEstimator{order, T}(ifc2_path,
         ifc3_path, ifc4_path, V0, nconf, n_boot)
 end
 
@@ -230,3 +193,74 @@ function move_ifcs(me::MixedEstimator, outpath::String)
     isfile(new_ifc4_path) || cp(me.ifc4_path, new_ifc4_path; force = true)
 
 end
+
+function load_ifcs(::MixedEstimator, ucposcar_path::String, basepath::String)
+
+    ifc2_path = joinpath(basepath, "infile.forceconstant")
+    ifc3_path = joinpath(basepath, "infile.forceconstant_thirdorder")
+    ifc4_path = joinpath(basepath, "infile.forceconstant_fourthorder")
+
+    ifc2 = read_ifc2(ifc2_path, ucposcar_path)
+    ifc3 = read_ifc3(ifc3_path, ucposcar_path)
+    ifc4 = read_ifc4(ifc4_path, ucposcar_path)
+
+    return ifc2, ifc3, ifc4
+end
+
+
+########################################
+
+# struct EffectiveHamiltonianEstimator{O,L,T} <: CumulantEstimator{O,L}
+#     lim::L
+#     ifc2_path::String
+#     ifc3_path::String
+#     ifc4_path::String
+#     V₀::T # expects eV
+#     nconf::Int
+#     n_boot::Int
+# end
+
+# function EffectiveHamiltonianEstimator(order::Int, lim::L, ifc2_path, ifc3_path, 
+#         ifc4_path, V₀_eV, nconf, n_boot) where L
+#     return EffectiveHamiltonianEstimator{order, L, typeof(V₀_eV)}(lim, ifc2_path,
+#         ifc3_path, ifc4_path, V₀_eV, nconf, n_boot)
+# end
+
+# rv(::EffectiveHamiltonianEstimator, V, V₂, V₃, V₄) = V₃ .+ V₄
+
+# # Random variable used in nth cumulant
+# X1(::EffectiveHamiltonianEstimator, V, V₂, V₃, V₄) = V₄
+# X2(ehe::EffectiveHamiltonianEstimator, V, V₂, V₃, V₄) = rv(ehe, V, V₂, V₃, V₄)
+# X3(ehe::EffectiveHamiltonianEstimator, V, V₂, V₃, V₄) = rv(ehe, V, V₂, V₃, V₄)
+
+# ifc_paths(ehe::EffectiveHamiltonianEstimator) = [ehe.ifc2_path, ehe.ifc3_path, ehe.ifc4_path]
+# needs_true_V(::EffectiveHamiltonianEstimator) = false
+# get_V₀(e::EffectiveHamiltonianEstimator, V, V₂, V₃, V₄) = e.V₀
+
+# function move_ifcs(ehe::EffectiveHamiltonianEstimator, outpath::String)
+
+#     check_ifc_paths(ehe)
+
+#     new_ifc2_path = joinpath(outpath, "infile.forceconstant")
+#     new_ifc3_path = joinpath(outpath, "infile.forceconstant_thirdorder")
+#     new_ifc4_path = joinpath(outpath, "infile.forceconstant_fourthorder")
+
+#     isfile(new_ifc2_path) || cp(ehe.ifc2_path, new_ifc2_path; force = true)
+#     isfile(new_ifc3_path) || cp(ehe.ifc3_path, new_ifc3_path; force = true)
+#     isfile(new_ifc4_path) || cp(ehe.ifc4_path, new_ifc4_path; force = true)
+
+# end
+
+
+# function load_ifcs(::EffectiveHamiltonianEstimator, ucposcar_path::String, basepath::String)
+
+#     ifc2_path = joinpath(basepath, "infile.forceconstant")
+#     ifc3_path = joinpath(basepath, "infile.forceconstant_thirdorder")
+#     ifc4_path = joinpath(basepath, "infile.forceconstant_fourthorder")
+
+#     ifc2 = read_ifc2(ifc2_path, ucposcar_path)
+#     ifc3 = read_ifc3(ifc3_path, ucposcar_path)
+#     ifc4 = read_ifc4(ifc4_path, ucposcar_path)
+
+#     return ifc2, ifc3, ifc4
+# end

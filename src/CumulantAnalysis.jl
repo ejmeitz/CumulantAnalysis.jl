@@ -10,23 +10,20 @@ using DelimitedFiles
 using Measurements
 using ProgressMeter
 using HDF5
-using TDEP
 using FileIO
 using LinearAlgebra
 using Printf
 using OrderedCollections
 using Random
+using LAMMPS
+using LatticeDynamicsToolkit
+import LatticeDynamicsToolkit: Hartree_to_eV
 
-@static if !CumulantAnalysis.TDEP.TDEP_jll.is_available()
-    @warn "Could not load TDEP on this platform. Try Linux or MacOs"
-end
 
-const FREQ_TOL = 1e-6
 const kB = ustrip(u"eV / K", Unitful.k)
 const ħ = ustrip(u"eV * s", Unitful.ħ)
 
 include("types.jl")
-include("harmonic_properties.jl")
 include("control_variates.jl")
 include("cumulant_corrections.jl")
 include("estimate.jl")

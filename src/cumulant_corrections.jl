@@ -13,11 +13,11 @@ skew(X) = central_moment(X, 3)
 ## CONSTANT CORRECTION (Order Zero) ##
 function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{0}, ce::CumulantEstimator, use_cvs)
 
-    if ce isa EffectiveHamiltonianEstimator
-        @warn "Cannot estimate derivatives of V₀ for EffectiveHamiltonianEstimator." maxlog=1
-        V₀ = get_V₀(ce, V, V₂, V₃, V₄)
-        return CumulantData{0, typeof(V₀), typeof(NaN), typeof(NaN)}(V₀, NaN, NaN)
-    end
+    # if ce isa EffectiveHamiltonianEstimator
+    #     @warn "Cannot estimate derivatives of V₀ for EffectiveHamiltonianEstimator." maxlog=1
+    #     V₀ = get_V₀(ce, V, V₂, V₃, V₄)
+    #     return CumulantData{0, typeof(V₀), typeof(NaN), typeof(NaN)}(V₀, NaN, NaN)
+    # end
 
     X = V₀_rv(ce, V, V₂, V₃, V₄)
 
@@ -38,11 +38,11 @@ end
 
 function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{0}, ce::CumulantEstimator, use_cvs, cvds...)
 
-    if ce isa EffectiveHamiltonianEstimator
-        @warn "Cannot estimate derivatives of V₀ for EffectiveHamiltonianEstimator." maxlog=1
-        V₀ = get_V₀(ce, V, V₂, V₃, V₄)
-        return CumulantData{0, typeof(V₀), typeof(NaN), typeof(NaN)}(V₀, NaN, NaN)
-    end
+    # if ce isa EffectiveHamiltonianEstimator
+    #     @warn "Cannot estimate derivatives of V₀ for EffectiveHamiltonianEstimator." maxlog=1
+    #     V₀ = get_V₀(ce, V, V₂, V₃, V₄)
+    #     return CumulantData{0, typeof(V₀), typeof(NaN), typeof(NaN)}(V₀, NaN, NaN)
+    # end
 
     X = V₀_rv(ce, V, V₂, V₃, V₄)
 
