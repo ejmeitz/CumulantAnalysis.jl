@@ -158,9 +158,9 @@ function estimate(
     analytical_corrections = free_energy_corrections(
         T,
         uc,
-        ifc2,
-        ifc3,
-        ifc4;
+        ifc_kwargs.ifc2,
+        ifc_kwargs.ifc3,
+        ifc_kwargs.ifc4;
         mesh = free_energy_q_mesh,
         quantum = quantum,
         n_threads = n_threads
