@@ -44,7 +44,7 @@ order(::CumulantEstimator{O}) where O = O
 
 function check_ifc_paths(ce::CumulantEstimator)
     for p in ifc_paths(ce)
-        isfile(p) || throw(ArgumentError("Force constant path is not a file: $(ifc_path)"))
+        isfile(p) || throw(ArgumentError("Force constant path is not a file: $(p)"))
     end
 end
 
