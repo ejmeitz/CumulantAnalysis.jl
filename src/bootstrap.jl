@@ -36,7 +36,7 @@ function bootstrap_corrections(
 
 
     F_const, S_const, U_const, Cv_const = 
-        calculate_cumulants(V, V₂, V₃, V₄, T, n_atoms, ce)
+        calculate_cumulants(V, V₂, V₃, V₄, T, Nat, ce)
 
     F_total_point = (F₀*Nat) + F_const + ac.F3 + ac.F4
     S_total_point = (S₀*Nat) + S_const + ac.S3 + ac.S4
