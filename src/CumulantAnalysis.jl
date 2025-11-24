@@ -24,8 +24,9 @@ const kB = ustrip(u"eV / K", Unitful.k)
 const ħ = ustrip(u"eV * s", Unitful.ħ)
 
 include("types.jl")
-include("control_variates.jl")
+# include("control_variates.jl")
 include("cumulant_corrections.jl")
+include("bootstrap.jl")
 include("estimate.jl")
 
 end # CumulantAnalysis

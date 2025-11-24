@@ -16,14 +16,10 @@ end
 
 struct CumulantData{O,A,B,C}
     κ::A
-    κ_cvd::ControlVariateData{A}
     ∂κ_∂T::B
-    ∂κ_cvd_∂T::ControlVariateData{B}
     ∂²κ_∂T²::C
-    ∂²κ_cvd_∂T²::ControlVariateData{C}
 end
 
-cvds(cd::CumulantData) = (cd.κ_cvd, cd.∂κ_cvd_∂T, cd.∂²κ_cvd_∂T²)
 order(::CumulantData{O}) where O = O
 
 ########################################
@@ -41,10 +37,11 @@ end
 ########################################
 
 abstract type CumulantEstimator{O} end
+abstract type SamplingCumulantEstimator{O} <: CumulantEstimator{O} end
 
-order(::CumulantEstimator{O}) where O = O
+order(::SamplingCumulantEstimator{O}) where O = O
 
-function check_ifc_paths(ce::CumulantEstimator)
+function check_ifc_paths(ce::SamplingCumulantEstimator)
     for p in ifc_paths(ce)
         isfile(p) || throw(ArgumentError("Force constant path is not a file: $(ifc_path)"))
     end
@@ -52,7 +49,7 @@ end
 
 ########################################
 
-struct HarmonicEstimator{O} <: CumulantEstimator{O}
+struct HarmonicEstimator{O} <: SamplingCumulantEstimator{O}
     ifc2_path::String
     nconf::Int
     n_boot::Int
@@ -92,7 +89,7 @@ end
 ########################################
 
 
-struct FourthOrderEstimator{O} <: CumulantEstimator{O}
+struct FourthOrderEstimator{O} <: SamplingCumulantEstimator{O}
     ifc2_path::String
     ifc3_path::String
     ifc4_path::String
@@ -152,7 +149,7 @@ end
 # Uses V0 from MD for Free energy
 # Estimates V0 as <V - V2 - V3 - V4>_0 for derivatives
 # Approximates V as (V0 + V2 + V3 + V4)
-struct MixedEstimator{O,T} <: CumulantEstimator{O}
+struct MixedEstimator{O,T} <: SamplingCumulantEstimator{O}
     ifc2_path::String
     ifc3_path::String
     ifc4_path::String
@@ -208,9 +205,55 @@ function load_ifcs(::MixedEstimator, ucposcar_path::String, basepath::String)
 end
 
 
+###########################
+
+# Uses <V4> and <V3*V3> analytically
+# Estimates derivatives of V0 numerically
+struct AnalyticalEstimator <: CumulantEstimator{2}
+    ifc2_path::String
+    ifc3_path::String
+    ifc4_path::String
+    nconf::Int
+    n_boot::Int
+end
+
+V₀_rv(::AnalyticalEstimator, V, V₂, V₃, V₄) = V .- V₂ .- V₃ .- V₄
+
+ifc_paths(me::AnalyticalEstimator) = [me.ifc2_path, me.ifc3_path, me.ifc4_path]
+needs_true_V(::AnalyticalEstimator) = true
+get_V₀(me::AnalyticalEstimator, V, V₂, V₃, V₄) = mean(V₀_rv(foe, V, V₂, V₃, V₄))
+
+function move_ifcs(me::AnalyticalEstimator, outpath::String)
+
+    check_ifc_paths(me)
+
+    new_ifc2_path = joinpath(outpath, "infile.forceconstant")
+    new_ifc3_path = joinpath(outpath, "infile.forceconstant_thirdorder")
+    new_ifc4_path = joinpath(outpath, "infile.forceconstant_fourthorder")
+
+    isfile(new_ifc2_path) || cp(me.ifc2_path, new_ifc2_path; force = true)
+    isfile(new_ifc3_path) || cp(me.ifc3_path, new_ifc3_path; force = true)
+    isfile(new_ifc4_path) || cp(me.ifc4_path, new_ifc4_path; force = true)
+
+end
+
+function load_ifcs(::AnalyticalEstimator, ucposcar_path::String, basepath::String)
+
+    ifc2_path = joinpath(basepath, "infile.forceconstant")
+    ifc3_path = joinpath(basepath, "infile.forceconstant_thirdorder")
+    ifc4_path = joinpath(basepath, "infile.forceconstant_fourthorder")
+
+    ifc2 = read_ifc2(ifc2_path, ucposcar_path)
+    ifc3 = read_ifc3(ifc3_path, ucposcar_path)
+    ifc4 = read_ifc4(ifc4_path, ucposcar_path)
+
+    return ifc2, ifc3, ifc4
+end
+
+
 ########################################
 
-# struct EffectiveHamiltonianEstimator{O,L,T} <: CumulantEstimator{O,L}
+# struct EffectiveHamiltonianEstimator{O,L,T} <: SamplingCumulantEstimator{O,L}
 #     lim::L
 #     ifc2_path::String
 #     ifc3_path::String

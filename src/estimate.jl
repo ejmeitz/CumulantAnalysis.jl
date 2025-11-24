@@ -1,243 +1,17 @@
 export estimate, save
 
-function calculate_cumulants(V, V₂, V₃, V₄, T, n_atoms, ce::CumulantEstimator{O}, use_cvs) where O
 
-    ΔF = zeros(O+1); ΔS = zeros(O+1)
-    ΔU = zeros(O+1); ΔCᵥ = zeros(O+1)
-
-    all_cvds = Vector{NTuple{3, ControlVariateData{Float64}}}(undef, O+1)
-
-    c0 = CumulantData(V, V₂, V₃, V₄, T, n_atoms, Val{0}(), ce, use_cvs)
-    ΔF[1], ΔS[1], ΔU[1], ΔCᵥ[1] = constant_corrections(c0, T)
-    all_cvds[1] = cvds(c0)
-
-    if O >= 1
-        c1 = CumulantData(V, V₂, V₃, V₄, T, n_atoms, Val{1}(), ce, use_cvs)
-        ΔF[2], ΔS[2], ΔU[2], ΔCᵥ[2] = first_order_corrections(c1, T) 
-        all_cvds[2] = cvds(c1)
-    end
-
-    if O >= 2
-        c2 = CumulantData(V, V₂, V₃, V₄, T, n_atoms, c1, Val{2}(), ce, use_cvs)
-        ΔF[3], ΔS[3], ΔU[3], ΔCᵥ[3] = second_order_corrections(c2, T, true)
-        all_cvds[3] = cvds(c2)
-    end
-
-    return ΔF, ΔS, ΔU, ΔCᵥ, all_cvds
-
-end
-
-function calculate_cumulants(V, V₂, V₃, V₄, T, n_atoms, ce::CumulantEstimator{O}, use_cvs, all_cvds...) where O
-
-    ΔF = zeros(O+1); ΔS = zeros(O+1)
-    ΔU = zeros(O+1); ΔCᵥ = zeros(O+1)
-
-    c0 = CumulantData(V, V₂, V₃, V₄, T, n_atoms, Val{0}(), ce, use_cvs, all_cvds[1]...)
-    ΔF[1], ΔS[1], ΔU[1], ΔCᵥ[1] = constant_corrections(c0, T)
-
-    if O >= 1
-        c1 = CumulantData(V, V₂, V₃, V₄, T, n_atoms, Val{1}(), ce, use_cvs, all_cvds[2]...)
-        ΔF[2], ΔS[2], ΔU[2], ΔCᵥ[2] = first_order_corrections(c1, T) 
-    end
-
-    if O >= 2
-        c2 = CumulantData(V, V₂, V₃, V₄, T, n_atoms, c1, Val{2}(), ce, use_cvs, all_cvds[3]...)
-        ΔF[3], ΔS[3], ΔU[3], ΔCᵥ[3] = second_order_corrections(c2, T, true)
-    end
-
-    return ΔF, ΔS, ΔU, ΔCᵥ
-
-end
-
-function bootstrap_corrections(V, V₂, V₃, V₄, T, outpath, freqs,
-                                ce::CumulantEstimator{O}, 
-                                Nat::Int, use_cvs, ::Type{L}) where {O, L <: Limit}
-
-
-    #! NEED TO DO THIS ON A BIGGER SUPER CELL TO BE CONVERGED!!!
-    @info "Calculating Harmonic Properties"
-    F₀, S₀, U₀, Cᵥ₀ = Hartree_to_eV .* harmonic_properties(T, freqs, L)
-
-    # Get point estimate of corrections and control variate coefficients
-    ΔF, ΔS, ΔU, ΔCᵥ, all_cvds = calculate_cumulants(V, V₂, V₃, V₄, T, Nat, ce, use_cvs)
-    F_total_point = sum(ΔF) + F₀
-    S_total_point = sum(ΔS) + S₀
-    U_total_point = sum(ΔU) + U₀
-    Cᵥ_total_point = sum(ΔCᵥ) + Cᵥ₀
-
-    # Save Variance Reduction Data 
-    header = ["Order", "<X>", "d<XZ>/dT", "d<XZZ>/dT"]
-    N = length(header)
-    float_fmt_str = Printf.Format("%15d " * join(fill("%15.7f", N-1), " "))
-    str_fmt_str = Printf.Format(join(fill("%15s", N), " "))
-    open(joinpath(outpath, "outfile.variance_reduction"), "w") do f
-        println(f, "# X is the random variable used in the cumulant expansion at the given order")
-        println(f, "# Z is the random variable given by V2 - <V2>")
-        println(f, Printf.format(str_fmt_str, header...))
-        for (order, cvd) in enumerate(all_cvds) # one for each order
-            println(f, Printf.format(float_fmt_str, [Int(order - 1), getproperty.(cvd, :var_red)...]...))
-        end
-
-    end
-
-    # Estimate standard error by bootstrapping
-    is = zeros(Int, length(V))
-    ΔFs = zeros(O+1, ce.n_boot); ΔSs = zeros(O+1, ce.n_boot)
-    ΔUs = zeros(O+1, ce.n_boot); ΔCᵥs = zeros(O+1, ce.n_boot)
-
-    # Re-use control variate coefficients from point estimates
-    p = Progress(ce.n_boot, "Bootstrapping Corrections")
-    for i in 1:ce.n_boot
-        sample!(1:length(V), is; replace = true)
-        ΔFs[:,i], ΔSs[:,i], ΔUs[:,i], ΔCᵥs[:,i] =
-             calculate_cumulants(V[is], V₂[is], V₃[is], V₄[is], T, Nat, ce, use_cvs, all_cvds...)
-        next!(p)
-    end
-    finish!(p)
-
-    F_totals = sum(ΔFs, dims = 1) .+ F₀
-    S_totals = sum(ΔSs, dims = 1) .+ S₀
-    U_totals = sum(ΔUs, dims = 1) .+ U₀
-    Cᵥ_totals = sum(ΔCᵥs, dims = 1) .+ Cᵥ₀
-    
-    F_SEs = std(ΔFs, dims = 2); S_SEs = std(ΔSs, dims = 2)
-    U_SEs = std(ΔUs, dims = 2); Cᵥ_SEs = std(ΔCᵥs, dims = 2)
-
-    kBNat = ustrip(CumulantAnalysis.kB) * Nat
-
-    F = BootstrapCumualantEstimate(
-        F₀ / Nat, SVector(ΔF...) ./ Nat, SVector(F_SEs...) ./ Nat,
-        F_total_point / Nat, std(F_totals) / Nat, "F", "[eV/atom]"
-    )
-
-    S = BootstrapCumualantEstimate(
-        S₀ / kBNat, SVector(ΔS...) ./ kBNat, SVector(S_SEs...) ./ kBNat,
-        S_total_point / kBNat, std(S_totals) / kBNat, "S", "[kB / atom]"
-    )
-
-    U = BootstrapCumualantEstimate(
-        U₀ / Nat, SVector(ΔU...) ./ Nat, SVector(U_SEs...) ./ Nat,
-        U_total_point / Nat, std(U_totals) / Nat, "U", "[eV/atom]"
-    )
-
-    Cᵥ = BootstrapCumualantEstimate(
-        Cᵥ₀ / kBNat, SVector(ΔCᵥ...) ./ kBNat, SVector(Cᵥ_SEs...) ./ kBNat,
-        Cᵥ_total_point / kBNat, std(Cᵥ_totals) / kBNat, "Cv", "[kB / atom]"
-    )
-
-    return F, S, U, Cᵥ
-
-end
-
-# Potentially useful for gauging convergence of different approaches
-# Bootstrap estimates error on kappa and its derivatives for all orders
-function do_size_study(ce::CumulantEstimator{O}, outpath, V, V₂, V₃, V₄, T, n_atoms, use_cvs) where O
-
-    min_samples = (length(V) < 500) ? 10 : 100
-
-    lg_pts = range(log10(min_samples), log10(length(V)), length = 12)
-    Ns = round.(Int, 10 .^ lg_pts)
-
-    κs = zeros(length(Ns), O+1, ce.n_boot)
-    ∂κs = zeros(length(Ns), O+1, ce.n_boot)
-    ∂²κs = zeros(length(Ns), O+1, ce.n_boot)
-
-    p = Progress(length(Ns) * ce.n_boot, "Sampling Study")
-
-    κ_point = zeros(length(Ns), O+1)
-    ∂κ_point = zeros(length(Ns), O+1)
-    ∂²κ_point = zeros(length(Ns), O+1)
-    
-    for (i,N) in enumerate(Ns)
-        # pre-allocate things
-        idxs = zeros(Int, N)
-
-        # Samples are IID so our "fake" smaller dataset we'll
-        # just take as the first N samples 
-        V_sub  = @views V[1:N]
-        V₂_sub = @views V₂[1:N]
-        V₃_sub = @views V₃[1:N]
-        V₄_sub = @views V₄[1:N]
-
-        # Get Point Estimate of Mean
-        c0 = CumulantData(V_sub, V₂_sub, V₃_sub, V₄_sub, T, n_atoms, Val{0}(), ce, use_cvs)
-        c1 = CumulantData(V_sub, V₂_sub, V₃_sub, V₄_sub, T, n_atoms, Val{1}(), ce, use_cvs)
-        c2 = CumulantData(V_sub, V₂_sub, V₃_sub, V₄_sub, T, n_atoms, c1, Val{2}(), ce, use_cvs)
-        cds = (c0, c1, c2)
-        for co in 0:O         
-            κ_point[i, co + 1] = cds[co + 1].κ
-            ∂κ_point[i, co + 1] = cds[co + 1].∂κ_∂T
-            ∂²κ_point[i, co + 1] = cds[co + 1].∂²κ_∂T²
-        end
-
-        # Do bootstrap to estimate standard error
-        for j in 1:ce.n_boot
-
-            sample!(1:N, idxs; replace = true)
-
-            V_samples = V_sub[idxs]
-            V₂_samples = V₂_sub[idxs]
-            V₃_samples = V₃_sub[idxs]
-            V₄_samples = V₄_sub[idxs]
-
-            c0 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, T, n_atoms, Val{0}(), ce, use_cvs, cvds(c0)...)
-            c1 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, T, n_atoms, Val{1}(), ce, use_cvs, cvds(c1)...)
-            c2 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, T, n_atoms, c1, Val{2}(), ce, use_cvs, cvds(c2)...)
-
-            cds = (c0, c1, c2)
-
-            for co in 0:O         
-                κs[i, co + 1, j] = cds[co + 1].κ
-                ∂κs[i, co + 1, j] = cds[co + 1].∂κ_∂T
-                ∂²κs[i, co + 1, j] = cds[co + 1].∂²κ_∂T²
-            end
-            next!(p)
-        end
-    end
-    finish!(p)
-
-    #! TODO NON-DIMENSONALIZE
-    β = 1 / (kB*T)
-
-    κ_estimates = κ_point
-    ∂κ_estimates = ∂κ_point
-    ∂²κ_estimates = ∂²κ_point
-
-    κ_SEs = std(κs; dims = 3)
-    ∂κ_SEs = std(∂κs; dims = 3)
-    ∂²κ_SEs = std(∂²κs; dims = 3)
-
-    data_fmt_str = (N) -> Printf.Format("%7d"*join(fill("%15.8f", N), " "))
-    d_fmt = data_fmt_str(6)
-    str_fmt_str = (N) -> Printf.Format("%7s"*join(fill("%15s", N-1), " "))
-
-    for co in 0:O
-        header = ["N" "k" "k_SE" "dk_dT" "dk_dT_SE" "d2k_dT2" "d2k_dT2_SE"]
-
-        open(joinpath(outpath, "outfile.nsamples_study_order$(co)"), "w") do f
-            println(f, "# Standard Error estimated from $(ce.n_boot) bootstraps of size N from origianl dataset which had $(length(V)) samples")
-            println(f, "# Temperature $(T), N_atoms $(n_atoms)")
-            println(f, Printf.format(str_fmt_str(length(header)), header...))
-            for i in eachindex(Ns)
-                println(f, Printf.format(d_fmt, Ns[i], κ_estimates[i, co+1], κ_SEs[i, co+1],
-                                                       ∂κ_estimates[i, co+1], ∂κ_SEs[i, co+1], 
-                                                       ∂²κ_estimates[i, co+1], ∂²κ_SEs[i, co+1]))
-            end
-        end
-    end
-
-end
-
-function estimate_tdeptoolkit(
-        ce::CumulantEstimator{O},
+function estimate(
+        ce::SamplingCumulantEstimator{O},
         T::Real, # Kelvin
         outpath::String,
         lammps_potential_cmds::Union{String, Vector{String}};
         ucposcar_path::String = joinpath(outpath, "infile.ucposcar"),
         ssposcar_path::String = joinpath(outpath, "infile.ssposcar"),
         n_threads::Int = Threads.nthreads(),
-        use_control_variates::Bool = true,
-        quantum::Bool = false
+        size_study::Bool = false,
+        quantum::Bool = false,
+        q_mesh::AbstractVector{<:Integer} = [30,30,30]
     ) where {O}
 
     @assert O <= 2 "Up to second order cumulant corrections are supported. Asked for $(O)."
@@ -245,7 +19,7 @@ function estimate_tdeptoolkit(
     T = Float64(T)
     
     if !needs_true_V(ce)
-        error("The provided CumulantEstimator, $(typeof(ce)), does not use the true potential energies V. You probably didnt meant to call this method.")
+        error("The provided SamplingCumulantEstimator, $(typeof(ce)), does not use the true potential energies V. You probably didnt meant to call this method.")
     end
 
     isfile(ucposcar_path) || throw(ArgumentError("ucposcar path is not a file: $(ucposcar_path)"))
@@ -269,7 +43,11 @@ function estimate_tdeptoolkit(
     
     make_calc = (sc) -> LAMMPSCalculator(sc, lammps_potential_cmds)
 
-    tep_energies, V, freqs = make_energy_dataset(
+    @info "Calculating Harmonic Properties"
+    F₀, S₀, U₀, Cᵥ₀ = Hartree_to_eV .* harmonic_properties(T, uc, ifc_kwargs.ifc2, q_mesh, L;
+                                                 n_threads = n_threads)
+
+    tep_energies, V = make_energy_dataset(
         settings,
         uc,
         sc,
@@ -294,20 +72,166 @@ function estimate_tdeptoolkit(
     res = bootstrap_corrections(
             V, V₂, V₃, V₄, T,
             outpath,
-            freqs,
+            F₀, S₀, U₀, Cᵥ₀,
             ce,
             n_atoms,
-            use_control_variates,
             L
         )
 
     save.(res, Ref(outpath), Ref(ce.n_boot))
 
     # Compute some statistics to assess convergence with N
-    do_size_study(ce, outpath, V, V₂, V₃, V₄, T, n_atoms, use_control_variates)
+    size_study && do_size_study(ce, outpath, V, V₂, V₃, V₄, T, n_atoms)
 
     return res
 end
+
+
+function estimate(
+        ce::AnalyticalEstimator,
+        T::Real, # Kelvin
+        outpath::String,
+        lammps_potential_cmds::Union{String, Vector{String}};
+        ucposcar_path::String = joinpath(outpath, "infile.ucposcar"),
+        ssposcar_path::String = joinpath(outpath, "infile.ssposcar"),
+        n_threads::Int = Threads.nthreads(),
+        size_study::Bool = false,
+        quantum::Bool = false,
+        harmonic_q_mesh::AbstractVector{<:Integer} = [30,30,30],
+        free_energy_q_mesh::AbstractVector{<:Integer} = [25,25,25]
+    )
+
+    T = Float64(T)
+    
+    if !needs_true_V(ce)
+        error("The provided SamplingCumulantEstimator, $(typeof(ce)), does not use the true potential energies V. You probably didnt meant to call this method.")
+    end
+
+    isfile(ucposcar_path) || throw(ArgumentError("ucposcar path is not a file: $(ucposcar_path)"))
+    isfile(ssposcar_path) || throw(ArgumentError("ssposcar path is not a file: $(ssposcar_path)"))
+
+    new_uc_path = joinpath(outpath, "infile.ucposcar")
+    new_ss_path = joinpath(outpath, "infile.ssposcar")
+    isfile(new_uc_path) || cp(ucposcar_path, new_uc_path; force = true)
+    isfile(new_ss_path) || cp(ssposcar_path, new_ss_path; force = true)
+
+    uc = CrystalStructure(ucposcar_path)
+    sc = CrystalStructure(ssposcar_path)
+    n_atoms = length(sc)
+
+    L = ifelse(quantum, Quantum, Classical)
+    settings = ConfigSettings(ce.nconf, T, L)
+
+    move_ifcs(ce, outpath)
+    ifcs = load_ifcs(ce, ucposcar_path, outpath)
+    ifc_kwargs = LatticeDynamicsToolkit.build_kwargs(ifcs...)
+    
+    make_calc = (sc) -> LAMMPSCalculator(sc, lammps_potential_cmds)
+
+    @info "Calculating Harmonic Properties"
+    F₀, S₀, U₀, Cᵥ₀ = Hartree_to_eV .* harmonic_properties(T, uc, ifc_kwargs.ifc2, harmonic_q_mesh, L;
+                                                 n_threads = n_threads)
+
+    tep_energies, V = make_energy_dataset(
+        settings,
+        uc,
+        sc,
+        make_calc;
+        ifc_kwargs...,
+        n_threads = n_threads
+    )
+
+    V₂ = getindex.(tep_energies, 1)
+    V₃ = getindex.(tep_energies, 2)
+    V₄ = getindex.(tep_energies, 3)
+    Vₚ = zeros(length(V))
+
+    header = ["V" "Vp" "V2" "V3" "V4"]
+    str_fmt_str = (N) -> Printf.Format(join(fill("%15s", N), " "))
+    open(joinpath(outpath, "outfile.all_energies"), "w") do f
+        println(f, "# Energies in eV, N atoms = $(n_atoms), tempearture [K] = $(T)")
+        println(f, Printf.format(str_fmt_str(length(header)), header...))
+        writedlm(f, [V Vₚ V₂ V₃ V₄])
+    end
+
+    # Get analytical corrections
+    analytical_corrections = free_energy_corrections(
+        T,
+        uc,
+        ifc2,
+        ifc3,
+        ifc4;
+        mesh = free_energy_q_mesh,
+        quantum = quantum,
+        n_threads = n_threads
+    )
+
+    res = bootstrap_corrections(
+            V, V₂, V₃, V₄, T,
+            outpath,
+            F₀, S₀, U₀, Cᵥ₀,
+            analytical_corrections,
+            ce,
+            n_atoms,
+            L
+        )
+
+    save.(res, Ref(outpath), Ref(ce.n_boot))
+
+    # Compute some statistics to assess convergence with N
+    size_study && do_size_study(ce, outpath, V, V₂, V₃, V₄, T, n_atoms)
+
+    return res
+end
+
+function save(bce::BootstrapCumualantEstimate{L}, outdir::String, n_boot) where L
+    prop_name = bce.property
+    unit_str = bce.unit_str
+
+    outpath_mean = (ext) -> joinpath(outdir, prop_name * "_mean.$(ext)")
+    mean_data = OrderedDict(prop_name*"0" => bce.harmonic)
+    SE_data = OrderedDict(prop_name*"0_SE" => 0.0)
+
+    for order in 0:(L-1)
+        if order == 0
+            mean_data[prop_name * "_offset"] = bce.corrections[order+1]
+            SE_data[prop_name * "_offset_SE"] = bce.correction_SEs[order+1]
+        else
+            mean_data[prop_name * "$(order)"] = bce.corrections[order+1]
+            SE_data[prop_name * "$(order)_SE"] = bce.correction_SEs[order+1]
+        end
+    end
+
+    mean_data[prop_name*"_total"] = bce.total
+    SE_data[prop_name*"_total_SE"] = bce.total_SE
+
+    float_fmt_str = (N) -> Printf.Format(join(fill("%15.7f", N), " "))
+    str_fmt_str = (N) -> Printf.Format(join(fill("%15s", N), " "))
+
+    # Human Readable Version
+    header = collect(keys(mean_data))
+    mean_values = collect(values(mean_data))
+    SE_values = collect(values(SE_data))
+    N = length(header)
+    open(outpath_mean("txt"), "w") do f
+        println(f, "# $(prop_name) Units: $(unit_str)")
+        println(f, "# Row 1: Values, Row 2: Standard Error estimated from $(n_boot) bootstraps")
+        println(f, Printf.format(str_fmt_str(N), header...))
+        println(f, Printf.format(float_fmt_str(N), mean_values...))
+        println(f, Printf.format(float_fmt_str(N), SE_values...))
+    end
+    # Save to HDF5
+    h5open(outpath_mean("h5"), "w") do file
+        for (k,v) in mean_data
+            write(file, k, v)
+        end
+        for (k,v) in SE_data
+            write(file, k, v)
+        end
+    end
+end
+
+
 
 # function parse_energies(path, is_hdf5::Val{false})
 
@@ -350,7 +274,7 @@ end
 
 
 # function calculate_true_energies(calc, nconf, ssposcar_path, outpath)
-#     isnothing(calc) && throw(ArgumentError("This CumulantEstimator requires a calculator for energies, but `calc` was nothing."))
+#     isnothing(calc) && throw(ArgumentError("This SamplingCumulantEstimator requires a calculator for energies, but `calc` was nothing."))
 #     (AtomsCalculators.energy_unit(calc) != u"eV") && throw(ArgumentError("Expected calculator with eV energy units. Got $(AtomsCalculators.energy_unit(calc)) "))
 
 #     sys_ss = TDEPSystem(ssposcar_path)
@@ -377,7 +301,7 @@ end
 # end
 
 # function estimate(
-#         ce::CumulantEstimator{O,L},
+#         ce::SamplingCumulantEstimator{O,L},
 #         T::Real, # kelvin
 #         outpath::String;
 #         ucposcar_path::String = joinpath(outpath, "infile.ucposcar"),
@@ -469,54 +393,5 @@ end
 #     return res
 
 # end
-
-
-function save(bce::BootstrapCumualantEstimate{L}, outdir::String, n_boot) where L
-    prop_name = bce.property
-    unit_str = bce.unit_str
-
-    outpath_mean = (ext) -> joinpath(outdir, prop_name * "_mean.$(ext)")
-    mean_data = OrderedDict(prop_name*"0" => bce.harmonic)
-    SE_data = OrderedDict(prop_name*"0_SE" => 0.0)
-
-    for order in 0:(L-1)
-        if order == 0
-            mean_data[prop_name * "_offset"] = bce.corrections[order+1]
-            SE_data[prop_name * "_offset_SE"] = bce.correction_SEs[order+1]
-        else
-            mean_data[prop_name * "$(order)"] = bce.corrections[order+1]
-            SE_data[prop_name * "$(order)_SE"] = bce.correction_SEs[order+1]
-        end
-    end
-
-    mean_data[prop_name*"_total"] = bce.total
-    SE_data[prop_name*"_total_SE"] = bce.total_SE
-
-    float_fmt_str = (N) -> Printf.Format(join(fill("%15.7f", N), " "))
-    str_fmt_str = (N) -> Printf.Format(join(fill("%15s", N), " "))
-
-    # Human Readable Version
-    header = collect(keys(mean_data))
-    mean_values = collect(values(mean_data))
-    SE_values = collect(values(SE_data))
-    N = length(header)
-    open(outpath_mean("txt"), "w") do f
-        println(f, "# $(prop_name) Units: $(unit_str)")
-        println(f, "# Row 1: Values, Row 2: Standard Error estimated from $(n_boot) bootstraps")
-        println(f, Printf.format(str_fmt_str(N), header...))
-        println(f, Printf.format(float_fmt_str(N), mean_values...))
-        println(f, Printf.format(float_fmt_str(N), SE_values...))
-    end
-    # Save to HDF5
-    h5open(outpath_mean("h5"), "w") do file
-        for (k,v) in mean_data
-            write(file, k, v)
-        end
-        for (k,v) in SE_data
-            write(file, k, v)
-        end
-    end
-end
-
 
 
