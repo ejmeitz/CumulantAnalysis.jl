@@ -24,7 +24,7 @@ for T in Ts
     o = getoutpath(T)
     mkpath(o)
 
-    estim = AnalyticalEstimator(
+    estim = CumulantAnalysis.AnalyticalEstimator(
             ifc2_path(T), ifc3_path(T), ifc4_path(T), nconf, nboot
         )
 

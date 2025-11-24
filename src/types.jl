@@ -1,7 +1,8 @@
 export 
     HarmonicEstimator, 
     FourthOrderEstimator,
-    MixedEstimator
+    MixedEstimator,
+    AnalyticalEstimator
 
 
 ########################################
