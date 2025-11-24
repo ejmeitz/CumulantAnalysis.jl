@@ -40,9 +40,9 @@ end
 abstract type CumulantEstimator{O} end
 abstract type SamplingCumulantEstimator{O} <: CumulantEstimator{O} end
 
-order(::SamplingCumulantEstimator{O}) where O = O
+order(::CumulantEstimator{O}) where O = O
 
-function check_ifc_paths(ce::SamplingCumulantEstimator)
+function check_ifc_paths(ce::CumulantEstimator)
     for p in ifc_paths(ce)
         isfile(p) || throw(ArgumentError("Force constant path is not a file: $(ifc_path)"))
     end
