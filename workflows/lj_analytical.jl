@@ -5,7 +5,7 @@ nconf = 100_000
 nboot = 1000
 
 base_outpath = "/mnt/merged/emeitz/CumulantAnalysisTest/LJ_ANALYTICAL"
-getoutpath = (pot, estim, T) -> joinpath(base_outpath, pot, estim, "T$(T)")
+getoutpath = (T) -> joinpath(base_outpath,  "T$(T)")
 
 # LENNARD JONES
 pot = "LJ"
@@ -19,24 +19,22 @@ pot_cmds = ["pair_style lj/cut 8.5", "pair_coeff * * 0.010423 3.4", "pair_modify
 
 
 for T in Ts
-    for estim in estims
-        @info "T = $(T), estim = $(estim)"
+    @info "T = $(T)"
 
-        o = getoutpath(pot, estim, T)
-        mkpath(o)
+    o = getoutpath(T)
+    mkpath(o)
 
-        estim = AnalyticalEstimator(
-                ifc2_path(T), ifc3_path(T), ifc4_path(T), nconf, nboot
-            )
+    estim = AnalyticalEstimator(
+            ifc2_path(T), ifc3_path(T), ifc4_path(T), nconf, nboot
+        )
 
-        estimate(
-                estim,
-                T, 
-                o,
-                pot_cmds;
-                ucposcar_path = ucposcar_path,
-                ssposcar_path = ssposcar_path,
-                size_study = true
-            )
-    end
+    estimate(
+            estim,
+            T, 
+            o,
+            pot_cmds;
+            ucposcar_path = ucposcar_path,
+            ssposcar_path = ssposcar_path,
+            size_study = true
+        )
 end
