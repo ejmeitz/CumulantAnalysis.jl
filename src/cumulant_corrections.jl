@@ -11,7 +11,7 @@ end
 skew(X) = central_moment(X, 3)
 
 ## CONSTANT CORRECTION (Order Zero) ##
-function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{0}, ce::CumulantEstimator, use_cvs)
+function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{0}, ce::CumulantEstimator)
 
     # if ce isa EffectiveHamiltonianEstimator
     #     @warn "Cannot estimate derivatives of V₀ for EffectiveHamiltonianEstimator." maxlog=1
