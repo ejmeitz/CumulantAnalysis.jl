@@ -230,7 +230,7 @@ function do_size_study(ce::AnalyticalEstimator, outpath, V, V₂, V₃, V₄, T,
 
     header = ["N" "k" "k_SE" "dk_dT" "dk_dT_SE" "d2k_dT2" "d2k_dT2_SE"]
 
-    open(joinpath(outpath, "outfile.nsamples_study_order$(co)"), "w") do f
+    open(joinpath(outpath, "outfile.nsamples_study_order0"), "w") do f
         println(f, "# Standard Error estimated from $(ce.n_boot) bootstraps of size N from origianl dataset which had $(length(V)) samples")
         println(f, "# Temperature $(T), N_atoms $(n_atoms)")
         println(f, Printf.format(str_fmt_str(length(header)), header...))
