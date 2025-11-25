@@ -165,15 +165,15 @@ function do_size_study(ce::AnalyticalEstimator, outpath, V, V₂, V₃, V₄, T,
     lg_pts = range(log10(min_samples), log10(length(V)), length = 12)
     Ns = round.(Int, 10 .^ lg_pts)
 
-    κs = zeros(length(Ns), 1, ce.n_boot)
-    ∂κs = zeros(length(Ns), 1, ce.n_boot)
-    ∂²κs = zeros(length(Ns), 1, ce.n_boot)
+    κs = zeros(length(Ns), ce.n_boot)
+    ∂κs = zeros(length(Ns), ce.n_boot)
+    ∂²κs = zeros(length(Ns), ce.n_boot)
 
     p = Progress(length(Ns) * ce.n_boot, "Sampling Study")
 
-    κ_point = zeros(length(Ns), 1)
-    ∂κ_point = zeros(length(Ns), 1)
-    ∂²κ_point = zeros(length(Ns), 1)
+    κ_point = zeros(length(Ns))
+    ∂κ_point = zeros(length(Ns))
+    ∂²κ_point = zeros(length(Ns))
     
     for (i,N) in enumerate(Ns)
         # pre-allocate things
@@ -189,9 +189,9 @@ function do_size_study(ce::AnalyticalEstimator, outpath, V, V₂, V₃, V₄, T,
         # Get Point Estimate of Mean
         c0 = CumulantData(V_sub, V₂_sub, V₃_sub, V₄_sub, T, n_atoms, Val{0}(), ce)
       
-        κ_point[i, 1] = c0.κ
-        ∂κ_point[i, 1] = c0.∂κ_∂T
-        ∂²κ_point[i, 1] = c0.∂²κ_∂T²
+        κ_point[i] = c0.κ
+        ∂κ_point[i] = c0.∂κ_∂T
+        ∂²κ_point[i] = c0.∂²κ_∂T²
 
         # Do bootstrap to estimate standard error
         for j in 1:ce.n_boot
@@ -204,9 +204,9 @@ function do_size_study(ce::AnalyticalEstimator, outpath, V, V₂, V₃, V₄, T,
             V₄_samples = V₄_sub[idxs]
 
             c0 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, T, n_atoms, Val{0}(), ce)
-            κs[i, co + 1, j] = c0.κ
-            ∂κs[i, co + 1, j] = c0.∂κ_∂T
-            ∂²κs[i, co + 1, j] = c0.∂²κ_∂T²
+            κs[i, j] = c0.κ
+            ∂κs[i, j] = c0.∂κ_∂T
+            ∂²κs[i, j] = c0.∂²κ_∂T²
 
             next!(p)
         end
@@ -220,9 +220,9 @@ function do_size_study(ce::AnalyticalEstimator, outpath, V, V₂, V₃, V₄, T,
     ∂κ_estimates = ∂κ_point
     ∂²κ_estimates = ∂²κ_point
 
-    κ_SEs = std(κs; dims = 3)
-    ∂κ_SEs = std(∂κs; dims = 3)
-    ∂²κ_SEs = std(∂²κs; dims = 3)
+    κ_SEs = std(κs; dims = 2)
+    ∂κ_SEs = std(∂κs; dims = 2)
+    ∂²κ_SEs = std(∂²κs; dims = 2)
 
     data_fmt_str = (N) -> Printf.Format("%7d"*join(fill("%15.8f", N), " "))
     d_fmt = data_fmt_str(6)
@@ -235,9 +235,9 @@ function do_size_study(ce::AnalyticalEstimator, outpath, V, V₂, V₃, V₄, T,
         println(f, "# Temperature $(T), N_atoms $(n_atoms)")
         println(f, Printf.format(str_fmt_str(length(header)), header...))
         for i in eachindex(Ns)
-            println(f, Printf.format(d_fmt, Ns[i], κ_estimates[i, 1], κ_SEs[i, 1],
-                                                    ∂κ_estimates[i, 1], ∂κ_SEs[i, 1], 
-                                                    ∂²κ_estimates[i, 1], ∂²κ_SEs[i, 1]))
+            println(f, Printf.format(d_fmt, Ns[i], κ_estimates[i], κ_SEs[i, 1],
+                                                    ∂κ_estimates[i], ∂κ_SEs[i, 1], 
+                                                    ∂²κ_estimates[i], ∂²κ_SEs[i, 1]))
         end
     end
 
