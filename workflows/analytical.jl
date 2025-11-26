@@ -25,7 +25,7 @@ ifc2_path = (T) -> "/mnt/merged/emeitz/SW_IFC_NODES/IFCs/T$(T)_0/infile.forcecon
 ifc3_path = (T) -> "/mnt/merged/emeitz/SW_IFC_NODES/IFCs/T$(T)_0/infile.forceconstant_thirdorder"
 ifc4_path = (T) -> "/mnt/merged/emeitz/SW_IFC_NODES/IFCs/T$(T)_0/infile.forceconstant_fourthorder"
 
-sw_pot = "/home/emeitz/software/lammps/potentials/SW/Si.sw"
+sw_pot = "/home/emeitz/software/lammps/potentials/Si.sw"
 pot_cmds = ["pair_style sw", "pair_coeff * * \"$(sw_pot)\" Si"]
 
 for T in Ts
