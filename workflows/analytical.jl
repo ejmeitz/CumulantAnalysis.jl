@@ -22,8 +22,8 @@ Ts = [100,300,500,700,900,1100,1300]
 ucposcar_path = raw"/mnt/merged/emeitz/SW_IFC_NODES/infile.ucposcar"
 ssposcar_path = raw"/mnt/merged/emeitz/SW_IFC_NODES/infile.ssposcar" #3UC
 ifc2_path = (T) -> "/mnt/merged/emeitz/SW_IFC_NODES/IFCs/T$(T)_0/infile.forceconstant"
-ifc3_path = (T) -> "/mnt/merged/emeitz/SW_IFC_NODES/IFCs/T$(T)_0/infile.forceconstasnt_thirdorder"
-ifc4_path = (T) -> "/mnt/merged/emeitz/SW_IFC_NODES/IFCs/T$(T)_0/infile.forceconstasnt_fourthorder"
+ifc3_path = (T) -> "/mnt/merged/emeitz/SW_IFC_NODES/IFCs/T$(T)_0/infile.forceconstant_thirdorder"
+ifc4_path = (T) -> "/mnt/merged/emeitz/SW_IFC_NODES/IFCs/T$(T)_0/infile.forceconstant_fourthorder"
 
 sw_pot = "/home/emeitz/software/lammps/potentials/SW/Si.sw"
 pot_cmds = ["pair_style sw", "pair_coeff * * \"$(sw_pot)\" Si"]
