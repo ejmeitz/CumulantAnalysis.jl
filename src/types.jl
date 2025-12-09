@@ -60,9 +60,9 @@ function HarmonicEstimator(order::Int, ifc2_path, nconf, n_boot)
     return HarmonicEstimator{order}(ifc2_path, nconf, n_boot)
 end
 
-rv(::HarmonicEstimator, V, V₂, V₃, V₄) = V .- V₂
-V₀_rv(he::HarmonicEstimator, V, V₂, V₃, V₄) = rv(he, V, V₂, V₃, V₄)
-
+V₀_rv(::HarmonicEstimator, V, V₂, V₃, V₄) = V .- V₂
+get_V₀(he::HarmonicEstimator, V, V₂, V₃, V₄) = mean(V₀_rv(he, V, V₂, V₃, V₄))
+rv(he::HarmonicEstimator, V, V₂, V₃, V₄) = V .- V₂ .- get_V₀(he, V, V₂, V₃, V₄)
 
 # Random variable used in nth cumulant
 X1(::HarmonicEstimator, V, V₂, V₃, V₄) = zero.(V₄)
@@ -71,7 +71,6 @@ X3(he::HarmonicEstimator, V, V₂, V₃, V₄) = rv(he, V, V₂, V₃, V₄)
 
 ifc_paths(ehe::HarmonicEstimator) = [ehe.ifc2_path]
 needs_true_V(::HarmonicEstimator) = true
-get_V₀(he::HarmonicEstimator, V, V₂, V₃, V₄) = mean(V₀_rv(he, V, V₂, V₃, V₄))
 
 function move_ifcs(ehe::HarmonicEstimator, outpath::String)
     check_ifc_paths(ehe)
