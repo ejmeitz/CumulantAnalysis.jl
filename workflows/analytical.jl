@@ -52,6 +52,6 @@ for T in Ts
             ucposcar_path = ucposcar_path,
             ssposcar_path = ssposcar_path,
             size_study = true,
-            quamtum = quantum
+            quantum = quantum
         )
 end
