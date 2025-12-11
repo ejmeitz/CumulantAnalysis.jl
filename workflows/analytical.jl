@@ -4,7 +4,7 @@ using CumulantAnalysis
 nconf = 100_000 
 nboot = 5000
 
-base_outpath = "/mnt/merged/emeitz/CumulantAnalysisTest/SW_ANALYTICAL"
+quantum = true
 getoutpath = (T) -> joinpath(base_outpath,  "T$(T)")
 
 # LENNARD JONES
@@ -28,6 +28,12 @@ ifc4_path = (T) -> "/mnt/merged/emeitz/SW_IFC_NODES/IFCs/T$(T)_0/infile.forcecon
 sw_pot = "/home/emeitz/software/lammps/potentials/Si.sw"
 pot_cmds = ["pair_style sw", "pair_coeff * * \"$(sw_pot)\" Si"]
 
+if quantum
+    base_outpath = "/mnt/merged/emeitz/CumulantAnalysisTest/$(pot)_ANALYTICAL"
+else
+    base_outpath = "/mnt/merged/emeitz/CumulantAnalysisTest/$(pot)_ANALYTICAL_QUANTUM"
+end
+
 for T in Ts
     @info "T = $(T)"
 
@@ -45,6 +51,7 @@ for T in Ts
             pot_cmds;
             ucposcar_path = ucposcar_path,
             ssposcar_path = ssposcar_path,
-            size_study = true
+            size_study = true,
+            quamtum = quantum
         )
 end
