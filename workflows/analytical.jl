@@ -28,7 +28,7 @@ ifc4_path = (T) -> "/mnt/merged/emeitz/SW_IFC_NODES/IFCs/T$(T)_0/infile.forcecon
 sw_pot = "/home/emeitz/software/lammps/potentials/Si.sw"
 pot_cmds = ["pair_style sw", "pair_coeff * * \"$(sw_pot)\" Si"]
 
-if quantum
+if !quantum
     base_outpath = "/mnt/merged/emeitz/CumulantAnalysisTest/$(pot)_ANALYTICAL"
 else
     base_outpath = "/mnt/merged/emeitz/CumulantAnalysisTest/$(pot)_ANALYTICAL_QUANTUM"
