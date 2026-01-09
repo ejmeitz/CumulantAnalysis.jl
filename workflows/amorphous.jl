@@ -8,8 +8,7 @@ base_outpath = "/mnt/merged/emeitz/CumulantAnalysisTest/aSi_Cumulant"
 getoutpath = (T) -> joinpath(base_outpath,  "T$(T)")
 
 pot = "SW"
-Ts = [100]
-# Ts = [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]
+Ts = [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]
 ucposcar_path = raw"/home/emeitz/scripts/aSi/N192/infile.ucposcar"
 ssposcar_path = raw"/home/emeitz/scripts/aSi/N192/infile.ssposcar"
 ifc2_path = (T) -> "/mnt/mntsdb/emeitz/ForceConstants/aSi/IFC2_T$(T)_N192.h5"
