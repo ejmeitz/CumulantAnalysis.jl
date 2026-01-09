@@ -45,8 +45,7 @@ function estimate(
 
     @info "Calculating Harmonic Properties"
     if is_amorphous(ce)
-        F₀, S₀, U₀, Cᵥ₀ = Hartree_to_eV .* harmonic_properties(T, ifc_kwargs.ifc2, sc, L;
-                                                 n_threads = n_threads)
+        F₀, S₀, U₀, Cᵥ₀ = Hartree_to_eV .* harmonic_properties(T, ifc_kwargs.ifc2, sc, L)
     else
         F₀, S₀, U₀, Cᵥ₀ = Hartree_to_eV .* harmonic_properties(T, uc, ifc_kwargs.ifc2, q_mesh, L;
                                                  n_threads = n_threads)
