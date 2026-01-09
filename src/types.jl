@@ -94,6 +94,7 @@ function load_ifcs(he::HarmonicEstimator, ucposcar_path::String, basepath::Strin
     return (ifc2, )
 end
 
+is_amorphous(he::HarmonicEstimator) = he.amorphous
 
 ###########################
 
@@ -140,6 +141,7 @@ function load_ifcs(::AnalyticalEstimator, ucposcar_path::String, basepath::Strin
     return ifc2, ifc3, ifc4
 end
 
+is_amorphous(::AnalyticalEstimator) = false
 
 ########################################
 
