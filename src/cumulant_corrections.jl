@@ -19,10 +19,10 @@ function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{0}, ce::SamplingCum
     ∂V₀ = ∂A_∂T(X, V₂, T)
     ∂²V₀ = ∂²A_∂T²(X, V₂, T, ∂V₀)
 
-    # This estimator uses a user provided V0
-    if ce isa MixedEstimator
-        V₀ = get_V₀(ce, V, V₂, V₃, V₄)
-    end
+    # # This estimator uses a user provided V0
+    # if ce isa MixedEstimator
+    #     V₀ = get_V₀(ce, V, V₂, V₃, V₄)
+    # end
 
     return CumulantData{0, typeof(V₀), typeof(∂V₀), typeof(∂²V₀)}(V₀, ∂V₀, ∂²V₀)
 
