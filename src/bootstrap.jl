@@ -20,8 +20,8 @@ function calculate_cumulants(V, V₂, V₃, V₄, T, n_atoms, ce::SamplingCumula
 
 end
 
-function calculate_cumulants(V, V₂, V₃, V₄, T, n_atoms, ce::AnalyticalEstimator)
-    c0 = CumulantData(V, V₂, V₃, V₄, T, n_atoms, Val{0}(), ce)
+function calculate_cumulants(V, V₂, V₃, V₄, T, n_atoms, ce::AnalyticalEstimator, V4_analytical)
+    c0 = CumulantData(V, V₂, V₃, V₄, T, n_atoms, Val{0}(), ce, V4_analytical)
     return constant_corrections(c0, T)
 end
 
@@ -34,9 +34,8 @@ function bootstrap_corrections(
         Nat::Int, ::Type{L}
     ) where {L <: Limit}
 
-
     F_const, S_const, U_const, Cv_const = 
-        calculate_cumulants(V, V₂, V₃, V₄, T, Nat, ce)
+        calculate_cumulants(V, V₂, V₃, V₄, T, Nat, ce, ac.F4*Nat)
 
     kBNat = CumulantAnalysis.kB * Nat
 
@@ -69,23 +68,23 @@ function bootstrap_corrections(
     U_SE = std(ΔUs) / Nat; Cv_SE = std(ΔCᵥs) / kBNat
 
     F = BootstrapCumualantEstimate(
-        F₀, SVector(F_const / Nat, ac.F3, ac.F4), SVector(F_SE, 0.0, 0.0),
+        F₀, SVector(F_const / Nat, ac.F4, ac.F3), SVector(F_SE, 0.0, 0.0),
         F_total_point, F_SE, "F", "[eV/atom]"
     )
 
     S = BootstrapCumualantEstimate(
-        S₀, SVector(S_const / kBNat, ac.S3, ac.S4),
+        S₀, SVector(S_const / kBNat, ac.S4, ac.S3),
         SVector(S_SE, 0.0, 0.0), S_total_point,
         S_SE, "S", "[kB / atom]"
     )
 
     U = BootstrapCumualantEstimate(
-        U₀, SVector(U_const / Nat, ac.U3, ac.U4), SVector(U_SE, 0.0, 0.0),
+        U₀, SVector(U_const / Nat, ac.U4, ac.U3), SVector(U_SE, 0.0, 0.0),
         U_total_point, U_SE, "U", "[eV/atom]"
     )
 
     Cᵥ = BootstrapCumualantEstimate(
-        Cᵥ₀, SVector(Cv_const / kBNat, ac.Cv3, ac.Cv4),
+        Cᵥ₀, SVector(Cv_const / kBNat, ac.Cv4, ac.Cv3),
         SVector(Cv_SE, 0.0, 0.0) ./ kBNat, Cᵥ_total_point,
         Cv_SE, "Cv", "[kB / atom]"
     )

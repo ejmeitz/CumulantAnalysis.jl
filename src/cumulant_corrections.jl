@@ -11,17 +11,9 @@ end
 skew(X) = central_moment(X, 3)
 
 ## CONSTANT CORRECTION (Order Zero) ##
-function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{0}, ce::CumulantEstimator)
-
-    # if ce isa EffectiveHamiltonianEstimator
-    #     @warn "Cannot estimate derivatives of V₀ for EffectiveHamiltonianEstimator." maxlog=1
-    #     V₀ = get_V₀(ce, V, V₂, V₃, V₄)
-    #     return CumulantData{0, typeof(V₀), typeof(NaN), typeof(NaN)}(V₀, NaN, NaN)
-    # end
+function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{0}, ce::SamplingCumulantEstimator)
 
     X = V₀_rv(ce, V, V₂, V₃, V₄)
-
-    # V₀, cvd1, ∂V₀, cvd2, ∂²V₀, cvd3 = get_cv_estimates(X, V₂, V₃, T, n_atoms, use_cvs)
 
     V₀ = mean(X)
     ∂V₀ = ∂A_∂T(X, V₂, T)
@@ -36,12 +28,27 @@ function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{0}, ce::CumulantEst
 
 end
 
+function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{0}, ce::AnalyticalEstimator, V4_analytical)
+
+    X = V₀_rv(ce, V, V₂, V₃, V₄)
+
+    # Uses V3/V4 as control variates for estimating <V - V2 - V3 - V4>_0
+    # Allocates each iteration...
+    # Xcv, α = cv_analytical_estimator(X, V₃, V₄, V4_analytical)
+
+    V₀ = mean(X)
+    ∂V₀ = ∂A_∂T(X, V₂, T)
+    ∂²V₀ = ∂²A_∂T²(X, V₂, T, ∂V₀)
+
+    return CumulantData{0, typeof(V₀), typeof(∂V₀), typeof(∂²V₀)}(V₀, ∂V₀, ∂²V₀)
+
+end
+
 
 ## FIRST CUMULANTS ##
 function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{1}, ce::SamplingCumulantEstimator)
 
     X = X1(ce, V, V₂, V₃, V₄)
-    # κ₁, cvd1, ∂κ₁_∂T, cvd2, ∂²κ₁_∂T², cvd3 = get_cv_estimates(X, V₂, V₃, T, n_atoms)
 
     κ₁ = mean(X)
     ∂κ₁_∂T = ∂A_∂T(X, V₂, T)

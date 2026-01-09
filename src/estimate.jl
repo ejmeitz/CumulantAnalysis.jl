@@ -11,7 +11,7 @@ function estimate(
         n_threads::Int = Threads.nthreads(),
         size_study::Bool = false,
         quantum::Bool = false,
-        q_mesh::AbstractVector{<:Integer} = [30,30,30]
+        q_mesh::AbstractVector{<:Integer} = [30,30,30],
     ) where {O}
 
     @assert O <= 2 "Up to second order cumulant corrections are supported. Asked for $(O)."
@@ -85,7 +85,6 @@ function estimate(
 
     return res
 end
-
 
 function estimate(
         ce::AnalyticalEstimator,

@@ -1,6 +1,30 @@
 # export cv_estimate
 
-# #! NOT SURE TEHSE ARE RIGHT
+function fit_cv_alpha(X::AbstractVector{<:Real}, Cs::AbstractMatrix{<:Real})
+    N = length(X)
+    @assert size(Cs, 1) == N
+    Xc = X .- mean(X)
+    Cc = Cs .- mean(Cs, dims=1)
+    # population covariances (1/N). ddof doesn't matter for alpha.
+    Σ_CC = (Cc' * Cc) / N
+    Σ_CX = (Cc' * Xc) / N
+    # tiny ridge for numerical safety
+    ridge = 1e-14 * tr(Σ_CC) / max(1, size(Σ_CC,1))
+    return (Σ_CC + ridge*I) \ Σ_CX
+end
+
+function cv_analytical_estimator(X, V₃, V₄, V4_analytical)
+    # Controls and known means
+    C = hcat(V₃, V₄)
+    μ = [0.0, V4_analytical] # <V3>_0 = 0
+
+    α = fit_cv_alpha(X, C)
+
+    # X_cv = X - (C - μ)*α
+    # (broadcast μ over rows)
+    Xcv = X .- (C .- reshape(μ, 1, :)) * α
+    return Xcv, α
+end
 
 # # ⟨X⟩ - αᵀ (⟨W⟩ - μ_W)
 # function apply_cv(X::AbstractVector{T},
