@@ -161,7 +161,7 @@ end
 
 # Potentially useful for gauging convergence of different approaches
 # Bootstrap estimates error on kappa and its derivatives for all orders
-function do_size_study(ce::AnalyticalEstimator, outpath, V, V₂, V₃, V₄, T, n_atoms)
+function do_size_study(ce::AnalyticalEstimator, ac, outpath, V, V₂, V₃, V₄, T, n_atoms)
 
     min_samples = (length(V) < 500) ? 10 : 100
 
@@ -190,7 +190,7 @@ function do_size_study(ce::AnalyticalEstimator, outpath, V, V₂, V₃, V₄, T,
         V₄_sub = @views V₄[1:N]
 
         # Get Point Estimate of Mean
-        c0 = CumulantData(V_sub, V₂_sub, V₃_sub, V₄_sub, T, n_atoms, Val{0}(), ce)
+        c0 = CumulantData(V_sub, V₂_sub, V₃_sub, V₄_sub, T, n_atoms, Val{0}(), ce, ac.F4*n_atoms)
       
         κ_point[i] = c0.κ
         ∂κ_point[i] = c0.∂κ_∂T
@@ -206,7 +206,7 @@ function do_size_study(ce::AnalyticalEstimator, outpath, V, V₂, V₃, V₄, T,
             V₃_samples = V₃_sub[idxs]
             V₄_samples = V₄_sub[idxs]
 
-            c0 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, T, n_atoms, Val{0}(), ce)
+            c0 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, T, n_atoms, Val{0}(), ce, ac.F4*n_atoms)
             κs[i, j] = c0.κ
             ∂κs[i, j] = c0.∂κ_∂T
             ∂²κs[i, j] = c0.∂²κ_∂T²

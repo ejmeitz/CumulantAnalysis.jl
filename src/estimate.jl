@@ -183,7 +183,7 @@ function estimate(
     save.(res, Ref(outpath), Ref(ce.n_boot))
 
     # Compute some statistics to assess convergence with N
-    size_study && do_size_study(ce, outpath, V, V₂, V₃, V₄, T, n_atoms)
+    size_study && do_size_study(ce, analytical_corrections, outpath, V, V₂, V₃, V₄, T, n_atoms)
 
     return res
 end
