@@ -35,8 +35,8 @@ for T in Ts
             T, 
             o,
             pot_cmds;
-            ucposcar_path = ucposcar_path,
-            ssposcar_path = ssposcar_path,
+            ucposcar_path = ucposcar_path(T),
+            ssposcar_path = ssposcar_path(T),
             size_study = true,
             quantum = quantum
         )
