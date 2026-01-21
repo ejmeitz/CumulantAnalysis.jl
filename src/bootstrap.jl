@@ -31,7 +31,6 @@ function bootstrap_corrections(
     ΔFs = zeros(ce.n_boot); ΔSs = zeros(ce.n_boot)
     ΔUs = zeros(ce.n_boot); ΔCᵥs = zeros(ce.n_boot)
 
-    # Re-use control variate coefficients from point estimates
     p = Progress(ce.n_boot, "Bootstrapping Corrections")
     for i in 1:ce.n_boot
         sample!(1:length(V), is; replace = true)
