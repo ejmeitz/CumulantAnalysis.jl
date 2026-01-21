@@ -47,55 +47,6 @@ function check_ifc_paths(ce::CumulantEstimator)
     end
 end
 
-########################################
-
-struct HarmonicEstimator{O} <: SamplingCumulantEstimator{O}
-    ifc2_path::String
-    nconf::Int
-    n_boot::Int
-    amorphous::Bool
-end
-
-function HarmonicEstimator(order::Int, ifc2_path, nconf, n_boot; amorphous::Bool = false)
-    return HarmonicEstimator{order}(ifc2_path, nconf, n_boot, amorphous)
-end
-
-function AmorphousEstimator(order::Int, ifc2_path, nconf, n_boot)
-    return HarmonicEstimator{order}(ifc2_path, nconf, n_boot, true)
-end
-
-
-V₀_rv(::HarmonicEstimator, V, V₂, V₃, V₄) = V .- V₂
-get_V₀(he::HarmonicEstimator, V, V₂, V₃, V₄) = mean(V₀_rv(he, V, V₂, V₃, V₄))
-rv(he::HarmonicEstimator, V, V₂, V₃, V₄) = V .- V₂ .- get_V₀(he, V, V₂, V₃, V₄)
-
-# Random variable used in nth cumulant
-X1(::HarmonicEstimator, V, V₂, V₃, V₄) = zero.(V₄)
-X2(he::HarmonicEstimator, V, V₂, V₃, V₄) = rv(he, V, V₂, V₃, V₄)
-X3(he::HarmonicEstimator, V, V₂, V₃, V₄) = rv(he, V, V₂, V₃, V₄)
-
-ifc_paths(ehe::HarmonicEstimator) = [ehe.ifc2_path]
-needs_true_V(::HarmonicEstimator) = true
-
-function move_ifcs(ehe::HarmonicEstimator, outpath::String)
-    check_ifc_paths(ehe)
-    new_ifc2_path = joinpath(outpath, "infile.forceconstant")
-    isfile(new_ifc2_path) || cp(ehe.ifc2_path, new_ifc2_path; force = true)
-end
-
-function load_ifcs(he::HarmonicEstimator, ucposcar_path::String, basepath::String)
-    ifc2_path = joinpath(basepath, "infile.forceconstant")
-    if he.amorphous
-        ifc2 = read_ifc2(ifc2_path, AmorphousIFC2)
-    else
-        ifc2 = read_ifc2(ifc2_path, ucposcar_path)
-    end
-
-    return (ifc2, )
-end
-
-is_amorphous(he::HarmonicEstimator) = he.amorphous
-
 ###########################
 
 # Uses <V4> and <V3*V3> analytically
@@ -142,6 +93,55 @@ function load_ifcs(::AnalyticalEstimator, ucposcar_path::String, basepath::Strin
 end
 
 is_amorphous(::AnalyticalEstimator) = false
+
+########################################
+
+# struct HarmonicEstimator{O} <: SamplingCumulantEstimator{O}
+#     ifc2_path::String
+#     nconf::Int
+#     n_boot::Int
+#     amorphous::Bool
+# end
+
+# function HarmonicEstimator(order::Int, ifc2_path, nconf, n_boot; amorphous::Bool = false)
+#     return HarmonicEstimator{order}(ifc2_path, nconf, n_boot, amorphous)
+# end
+
+# function AmorphousEstimator(order::Int, ifc2_path, nconf, n_boot)
+#     return HarmonicEstimator{order}(ifc2_path, nconf, n_boot, true)
+# end
+
+
+# V₀_rv(::HarmonicEstimator, V, V₂, V₃, V₄) = V .- V₂
+# get_V₀(he::HarmonicEstimator, V, V₂, V₃, V₄) = mean(V₀_rv(he, V, V₂, V₃, V₄))
+# rv(he::HarmonicEstimator, V, V₂, V₃, V₄) = V .- V₂ .- get_V₀(he, V, V₂, V₃, V₄)
+
+# # Random variable used in nth cumulant
+# X1(::HarmonicEstimator, V, V₂, V₃, V₄) = zero.(V₄)
+# X2(he::HarmonicEstimator, V, V₂, V₃, V₄) = rv(he, V, V₂, V₃, V₄)
+# X3(he::HarmonicEstimator, V, V₂, V₃, V₄) = rv(he, V, V₂, V₃, V₄)
+
+# ifc_paths(ehe::HarmonicEstimator) = [ehe.ifc2_path]
+# needs_true_V(::HarmonicEstimator) = true
+
+# function move_ifcs(ehe::HarmonicEstimator, outpath::String)
+#     check_ifc_paths(ehe)
+#     new_ifc2_path = joinpath(outpath, "infile.forceconstant")
+#     isfile(new_ifc2_path) || cp(ehe.ifc2_path, new_ifc2_path; force = true)
+# end
+
+# function load_ifcs(he::HarmonicEstimator, ucposcar_path::String, basepath::String)
+#     ifc2_path = joinpath(basepath, "infile.forceconstant")
+#     if he.amorphous
+#         ifc2 = read_ifc2(ifc2_path, AmorphousIFC2)
+#     else
+#         ifc2 = read_ifc2(ifc2_path, ucposcar_path)
+#     end
+
+#     return (ifc2, )
+# end
+
+# is_amorphous(he::HarmonicEstimator) = he.amorphous
 
 ########################################
 

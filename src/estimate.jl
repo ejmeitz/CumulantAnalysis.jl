@@ -1,96 +1,5 @@
 export estimate, save
 
-
-function estimate(
-        ce::SamplingCumulantEstimator{O},
-        T::Real, # Kelvin
-        outpath::String,
-        lammps_potential_cmds::Union{String, Vector{String}};
-        ucposcar_path::String = joinpath(outpath, "infile.ucposcar"),
-        ssposcar_path::String = joinpath(outpath, "infile.ssposcar"),
-        n_threads::Int = Threads.nthreads(),
-        size_study::Bool = false,
-        quantum::Bool = false,
-        q_mesh::AbstractVector{<:Integer} = [30,30,30],
-    ) where {O}
-
-    @assert O <= 2 "Up to second order cumulant corrections are supported. Asked for $(O)."
-
-    T = Float64(T)
-    
-    if !needs_true_V(ce)
-        error("The provided SamplingCumulantEstimator, $(typeof(ce)), does not use the true potential energies V. You probably didnt meant to call this method.")
-    end
-
-    isfile(ucposcar_path) || throw(ArgumentError("ucposcar path is not a file: $(ucposcar_path)"))
-    isfile(ssposcar_path) || throw(ArgumentError("ssposcar path is not a file: $(ssposcar_path)"))
-
-    new_uc_path = joinpath(outpath, "infile.ucposcar")
-    new_ss_path = joinpath(outpath, "infile.ssposcar")
-    isfile(new_uc_path) || cp(ucposcar_path, new_uc_path; force = true)
-    isfile(new_ss_path) || cp(ssposcar_path, new_ss_path; force = true)
-
-    uc = CrystalStructure(ucposcar_path)
-    sc = CrystalStructure(ssposcar_path)
-    n_atoms = length(sc)
-
-    L = ifelse(quantum, Quantum, Classical)
-    settings = ConfigSettings(ce.nconf, T, L)
-
-    move_ifcs(ce, outpath)
-    ifcs = load_ifcs(ce, ucposcar_path, outpath)
-    ifc_kwargs = LatticeDynamicsToolkit.build_kwargs(ifcs...)
-    
-    make_calc = (sc) -> LAMMPSCalculator(sc, lammps_potential_cmds)
-
-    @info "Calculating Harmonic Properties"
-    if is_amorphous(ce)
-        F₀, S₀, U₀, Cᵥ₀ = Hartree_to_eV .* harmonic_properties(T, ifc_kwargs.ifc2, sc, L)
-    else
-        F₀, S₀, U₀, Cᵥ₀ = Hartree_to_eV .* harmonic_properties(T, uc, ifc_kwargs.ifc2, q_mesh, L;
-                                                 n_threads = n_threads)
-    end
-
-
-    tep_energies, V = make_energy_dataset(
-        settings,
-        uc,
-        sc,
-        make_calc;
-        ifc_kwargs...,
-        n_threads = n_threads
-    )
-
-    V₂ = getindex.(tep_energies, 1)
-    V₃ = getindex.(tep_energies, 2)
-    V₄ = getindex.(tep_energies, 3)
-    Vₚ = zeros(length(V))
-
-    header = ["V" "Vp" "V2" "V3" "V4"]
-    str_fmt_str = (N) -> Printf.Format(join(fill("%15s", N), " "))
-    open(joinpath(outpath, "outfile.all_energies"), "w") do f
-        println(f, "# Energies in eV, N atoms = $(n_atoms), tempearture [K] = $(T)")
-        println(f, Printf.format(str_fmt_str(length(header)), header...))
-        writedlm(f, [V Vₚ V₂ V₃ V₄])
-    end
-
-    res = bootstrap_corrections(
-            V, V₂, V₃, V₄, T,
-            outpath,
-            F₀, S₀, U₀, Cᵥ₀,
-            ce,
-            n_atoms,
-            L
-        )
-
-    save.(res, Ref(outpath), Ref(ce.n_boot))
-
-    # Compute some statistics to assess convergence with N
-    size_study && do_size_study(ce, outpath, V, V₂, V₃, V₄, T, n_atoms)
-
-    return res
-end
-
 function estimate(
         ce::AnalyticalEstimator,
         T::Real, # Kelvin
@@ -136,7 +45,7 @@ function estimate(
     F₀, S₀, U₀, Cᵥ₀ = Hartree_to_eV .* harmonic_properties(T, uc, ifc_kwargs.ifc2, harmonic_q_mesh, L;
                                                  n_threads = n_threads)
 
-    tep_energies, V = make_energy_dataset(
+    tep_energies, V, V₂_tilde = make_energy_dataset(
         settings,
         uc,
         sc,
@@ -150,12 +59,12 @@ function estimate(
     V₄ = getindex.(tep_energies, 3)
     Vₚ = zeros(length(V))
 
-    header = ["V" "Vp" "V2" "V3" "V4"]
+    header = ["V" "Vp" "V2" "V3" "V4" "V2_tilde"]
     str_fmt_str = (N) -> Printf.Format(join(fill("%15s", N), " "))
     open(joinpath(outpath, "outfile.all_energies"), "w") do f
         println(f, "# Energies in eV, N atoms = $(n_atoms), tempearture [K] = $(T)")
         println(f, Printf.format(str_fmt_str(length(header)), header...))
-        writedlm(f, [V Vₚ V₂ V₃ V₄])
+        writedlm(f, [V Vₚ V₂ V₃ V₄ V₂_tilde])
     end
 
     # Get analytical corrections
@@ -170,9 +79,11 @@ function estimate(
         n_threads = n_threads
     )
 
+    # If classical V2 should == V2_tilde....
+    V_ref = quantum ? V₂_tilde : V₂
+
     res = bootstrap_corrections(
-            V, V₂, V₃, V₄, T,
-            outpath,
+            V, V₂, V₃, V₄, V_ref, T,
             F₀, S₀, U₀, Cᵥ₀,
             analytical_corrections,
             ce,
@@ -234,6 +145,97 @@ function save(bce::BootstrapCumualantEstimate{L}, outdir::String, n_boot) where 
         end
     end
 end
+
+
+# function estimate(
+#         ce::SamplingCumulantEstimator{O},
+#         T::Real, # Kelvin
+#         outpath::String,
+#         lammps_potential_cmds::Union{String, Vector{String}};
+#         ucposcar_path::String = joinpath(outpath, "infile.ucposcar"),
+#         ssposcar_path::String = joinpath(outpath, "infile.ssposcar"),
+#         n_threads::Int = Threads.nthreads(),
+#         size_study::Bool = false,
+#         quantum::Bool = false,
+#         q_mesh::AbstractVector{<:Integer} = [30,30,30],
+#     ) where {O}
+
+#     @assert O <= 2 "Up to second order cumulant corrections are supported. Asked for $(O)."
+
+#     T = Float64(T)
+    
+#     if !needs_true_V(ce)
+#         error("The provided SamplingCumulantEstimator, $(typeof(ce)), does not use the true potential energies V. You probably didnt meant to call this method.")
+#     end
+
+#     isfile(ucposcar_path) || throw(ArgumentError("ucposcar path is not a file: $(ucposcar_path)"))
+#     isfile(ssposcar_path) || throw(ArgumentError("ssposcar path is not a file: $(ssposcar_path)"))
+
+#     new_uc_path = joinpath(outpath, "infile.ucposcar")
+#     new_ss_path = joinpath(outpath, "infile.ssposcar")
+#     isfile(new_uc_path) || cp(ucposcar_path, new_uc_path; force = true)
+#     isfile(new_ss_path) || cp(ssposcar_path, new_ss_path; force = true)
+
+#     uc = CrystalStructure(ucposcar_path)
+#     sc = CrystalStructure(ssposcar_path)
+#     n_atoms = length(sc)
+
+#     L = ifelse(quantum, Quantum, Classical)
+#     settings = ConfigSettings(ce.nconf, T, L)
+
+#     move_ifcs(ce, outpath)
+#     ifcs = load_ifcs(ce, ucposcar_path, outpath)
+#     ifc_kwargs = LatticeDynamicsToolkit.build_kwargs(ifcs...)
+    
+#     make_calc = (sc) -> LAMMPSCalculator(sc, lammps_potential_cmds)
+
+#     @info "Calculating Harmonic Properties"
+#     if is_amorphous(ce)
+#         F₀, S₀, U₀, Cᵥ₀ = Hartree_to_eV .* harmonic_properties(T, ifc_kwargs.ifc2, sc, L)
+#     else
+#         F₀, S₀, U₀, Cᵥ₀ = Hartree_to_eV .* harmonic_properties(T, uc, ifc_kwargs.ifc2, q_mesh, L;
+#                                                  n_threads = n_threads)
+#     end
+
+
+#     tep_energies, V = make_energy_dataset(
+#         settings,
+#         uc,
+#         sc,
+#         make_calc;
+#         ifc_kwargs...,
+#         n_threads = n_threads
+#     )
+
+#     V₂ = getindex.(tep_energies, 1)
+#     V₃ = getindex.(tep_energies, 2)
+#     V₄ = getindex.(tep_energies, 3)
+#     Vₚ = zeros(length(V))
+
+#     header = ["V" "Vp" "V2" "V3" "V4"]
+#     str_fmt_str = (N) -> Printf.Format(join(fill("%15s", N), " "))
+#     open(joinpath(outpath, "outfile.all_energies"), "w") do f
+#         println(f, "# Energies in eV, N atoms = $(n_atoms), tempearture [K] = $(T)")
+#         println(f, Printf.format(str_fmt_str(length(header)), header...))
+#         writedlm(f, [V Vₚ V₂ V₃ V₄])
+#     end
+
+#     res = bootstrap_corrections(
+#             V, V₂, V₃, V₄, T,
+#             outpath,
+#             F₀, S₀, U₀, Cᵥ₀,
+#             ce,
+#             n_atoms,
+#             L
+#         )
+
+#     save.(res, Ref(outpath), Ref(ce.n_boot))
+
+#     # Compute some statistics to assess convergence with N
+#     size_study && do_size_study(ce, outpath, V, V₂, V₃, V₄, T, n_atoms)
+
+#     return res
+# end
 
 
 

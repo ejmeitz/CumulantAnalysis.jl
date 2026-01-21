@@ -11,24 +11,8 @@ end
 skew(X) = central_moment(X, 3)
 
 ## CONSTANT CORRECTION (Order Zero) ##
-function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{0}, ce::SamplingCumulantEstimator)
 
-    X = V₀_rv(ce, V, V₂, V₃, V₄)
-
-    V₀ = mean(X)
-    ∂V₀ = ∂A_∂T(X, V₂, T)
-    ∂²V₀ = ∂²A_∂T²(X, V₂, T, ∂V₀)
-
-    # # This estimator uses a user provided V0
-    # if ce isa MixedEstimator
-    #     V₀ = get_V₀(ce, V, V₂, V₃, V₄)
-    # end
-
-    return CumulantData{0, typeof(V₀), typeof(∂V₀), typeof(∂²V₀)}(V₀, ∂V₀, ∂²V₀)
-
-end
-
-function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{0}, ce::AnalyticalEstimator, V4_analytical)
+function CumulantData(V, V₂, V₃, V₄, V_ref, T, ::Val{0}, ce::AnalyticalEstimator, V4_analytical)
 
     X = V₀_rv(ce, V, V₂, V₃, V₄)
 
@@ -37,46 +21,12 @@ function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{0}, ce::AnalyticalE
     # Xcv, α = cv_analytical_estimator(X, V₃, V₄, V4_analytical)
 
     V₀ = mean(X)
-    ∂V₀ = ∂A_∂T(X, V₂, T)
-    ∂²V₀ = ∂²A_∂T²(X, V₂, T, ∂V₀)
+    ∂V₀ = ∂A_∂T(X, V_ref, T)
+    ∂²V₀ = ∂²A_∂T²(X, V_ref, T, ∂V₀)
 
     return CumulantData{0, typeof(V₀), typeof(∂V₀), typeof(∂²V₀)}(V₀, ∂V₀, ∂²V₀)
 
 end
-
-
-## FIRST CUMULANTS ##
-function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{1}, ce::SamplingCumulantEstimator)
-
-    X = X1(ce, V, V₂, V₃, V₄)
-
-    κ₁ = mean(X)
-    ∂κ₁_∂T = ∂A_∂T(X, V₂, T)
-    ∂²κ₁_∂T² = ∂²A_∂T²(X, V₂, T)
-
-    return CumulantData{1, typeof(κ₁), typeof(∂κ₁_∂T), typeof(∂²κ₁_∂T²)}(κ₁, ∂κ₁_∂T, ∂²κ₁_∂T²)
-end
-
-
-## SECOND CUMULANTS ##
-function CumulantData(V, V₂, V₃, V₄, T, n_atoms, c1::CumulantData{1}, ::Val{2}, ce::SamplingCumulantEstimator)
-
-    X = X2(ce, V, V₂, V₃, V₄)
-    X² = X .^ 2
-
-    # μX², cvd1, ∂X²_∂T, cvd2, ∂²X²_∂T², cvd3 = get_cv_estimates(X², V₂, V₃, T, n_atoms, use_cvs)
-    # κ₂ =  μX² - c1.κ^2
-
-    κ₂ = var(X; corrected = true)
-    ∂X²_∂T = ∂A_∂T(X², V₂, T)
-    ∂²X²_∂T² = ∂²A_∂T²(X², V₂, T)
-
-    ∂κ₂_∂T = ∂X²_∂T - (2*c1.κ*c1.∂κ_∂T)
-    ∂²κ₂_∂T² = ∂²X²_∂T² - 2*(((c1.∂κ_∂T)^2) + (c1.κ*c1.∂²κ_∂T²))
-
-    return CumulantData{2, typeof(κ₂), typeof(∂κ₂_∂T), typeof(∂²κ₂_∂T²)}(κ₂, ∂κ₂_∂T, ∂²κ₂_∂T²)
-end
-
 
 function constant_corrections(c0::CumulantData{0}, T)
 
@@ -112,6 +62,57 @@ function second_order_corrections(c2::CumulantData{2}, T, stochastic::Bool)
 
     return F_correction, S_correction, U_correction, Cv_correction
 end
+
+
+## CONSTANT CORRECTION ##
+# function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{0}, ce::SamplingCumulantEstimator)
+
+#     X = V₀_rv(ce, V, V₂, V₃, V₄)
+
+#     V₀ = mean(X)
+#     ∂V₀ = ∂A_∂T(X, V₂, T)
+#     ∂²V₀ = ∂²A_∂T²(X, V₂, T, ∂V₀)
+
+#     # # This estimator uses a user provided V0
+#     # if ce isa MixedEstimator
+#     #     V₀ = get_V₀(ce, V, V₂, V₃, V₄)
+#     # end
+
+#     return CumulantData{0, typeof(V₀), typeof(∂V₀), typeof(∂²V₀)}(V₀, ∂V₀, ∂²V₀)
+
+# end
+
+# ## FIRST CUMULANTS ##
+# function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{1}, ce::SamplingCumulantEstimator)
+
+#     X = X1(ce, V, V₂, V₃, V₄)
+
+#     κ₁ = mean(X)
+#     ∂κ₁_∂T = ∂A_∂T(X, V₂, T)
+#     ∂²κ₁_∂T² = ∂²A_∂T²(X, V₂, T)
+
+#     return CumulantData{1, typeof(κ₁), typeof(∂κ₁_∂T), typeof(∂²κ₁_∂T²)}(κ₁, ∂κ₁_∂T, ∂²κ₁_∂T²)
+# end
+
+
+# ## SECOND CUMULANTS ##
+# function CumulantData(V, V₂, V₃, V₄, T, n_atoms, c1::CumulantData{1}, ::Val{2}, ce::SamplingCumulantEstimator)
+
+#     X = X2(ce, V, V₂, V₃, V₄)
+#     X² = X .^ 2
+
+#     # μX², cvd1, ∂X²_∂T, cvd2, ∂²X²_∂T², cvd3 = get_cv_estimates(X², V₂, V₃, T, n_atoms, use_cvs)
+#     # κ₂ =  μX² - c1.κ^2
+
+#     κ₂ = var(X; corrected = true)
+#     ∂X²_∂T = ∂A_∂T(X², V₂, T)
+#     ∂²X²_∂T² = ∂²A_∂T²(X², V₂, T)
+
+#     ∂κ₂_∂T = ∂X²_∂T - (2*c1.κ*c1.∂κ_∂T)
+#     ∂²κ₂_∂T² = ∂²X²_∂T² - 2*(((c1.∂κ_∂T)^2) + (c1.κ*c1.∂²κ_∂T²))
+
+#     return CumulantData{2, typeof(κ₂), typeof(∂κ₂_∂T), typeof(∂²κ₂_∂T²)}(κ₂, ∂κ₂_∂T, ∂²κ₂_∂T²)
+# end
 
 
 ## THRID CUMULANTS ##
