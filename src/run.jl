@@ -23,6 +23,8 @@ function crystal_thermodynamic_properties(
 
     for T in temperatures
 
+        mkpath(outpath(T))
+
         estim = AnalyticalEstimator(
                 ifc2_path(T), ifc3_path(T), ifc4_path(T), nconf, nboot
             )

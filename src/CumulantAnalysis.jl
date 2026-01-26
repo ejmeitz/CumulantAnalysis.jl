@@ -29,4 +29,7 @@ include("cumulant_corrections.jl")
 include("bootstrap.jl")
 include("estimate.jl")
 
+include("postprocess.jl")
+include("run.jl")
+
 end # CumulantAnalysis
