@@ -88,7 +88,7 @@ function first_order_harmonic_corrections(
             ω_vec = @views freqs_all[i_q, :, i_mode]
             # Savitzky-Golay derivative (w.r.t. index), then scale by 1/ΔT
             sg_deriv = savitzky_golay(ω_vec, window_size, order; deriv=1, rate = 1 / T_spacing[1])
-            dωdT_all[i_q, :, i_mode] .= sg_deriv.y ./ ΔT
+            dωdT_all[i_q, :, i_mode] .= sg_deriv.y
         end
     end
 
