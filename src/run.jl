@@ -71,9 +71,9 @@ function crystal_thermodynamic_properties(
 
     # Save corrections to files
     for (c, prop) in zip((U_corr, S_corr, cv_offset_sg), ("U", "S", "Cv"))
-        p = joinpath(outpath(T), prop*"_raw_corrections.txt")
+        p = joinpath(dirname(outpath(1.0)), prop*"_raw_corrections.txt")
         open(p, "w") do f
-            writedlm(f, [T c])
+            writedlm(f, [temperatures c])
         end
     end
 
