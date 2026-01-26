@@ -85,7 +85,7 @@ function first_order_harmonic_corrections(
     for i_q in 1:n_q
         for i_mode in 1:nb
             # Extract ω(T) for this mode
-            ω_vec = freqs_all[i_q, :, i_mode]
+            ω_vec = @views freqs_all[i_q, :, i_mode]
             # Savitzky-Golay derivative (w.r.t. index), then scale by 1/ΔT
             sg_deriv = savitzky_golay(ω_vec, window_size, order; deriv=1, rate = 1 / T_spacing[1])
             dωdT_all[i_q, :, i_mode] .= sg_deriv.y ./ ΔT
@@ -98,7 +98,7 @@ function first_order_harmonic_corrections(
 
     for i_T in 1:n_T
         T = Float64(Ts[i_T])
-        kBT = kB_Hartree * T
+        kBT = LatticeDynamicsToolkit.kB_Hartree * T
 
         corr_sum = 0.0 
         
@@ -156,7 +156,7 @@ function estimate_cv_constant_correction(
     cv_offset_sg = savitzky_golay(U_offsets, window_size, order;
                                    deriv = 1, rate = 1 / T_spacing[1])
 
-    return cv_offset_sg.y ./ kB_eV # Convert to [kB/atom]
+    return cv_offset_sg.y ./ LatticeDynamicsToolkit.kB_eV # Convert to [kB/atom]
 end
 
 function improve_constant_corrections(
