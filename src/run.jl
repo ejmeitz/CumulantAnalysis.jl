@@ -75,8 +75,16 @@ function crystal_thermodynamic_properties(
             p = joinpath(outpath(T), prop*"_mean.h5")
             h5open(p, "r") do f
                 harm = read(f, prop_name*"0")
-                corrs = SVector{order+1}([read(f, prop_name * string(i)) for i in 0:order]...)
-                corr_SEs = SVector{order+1}([read(f, prop_name * string(i) * "_SE") for i in 0:order]...)
+                corrs = SVector{order+1}(
+                    read(f, prop_name*"_offset"),
+                    read(f, prop_name*"1"),
+                    read(f, prop_name*"2"),
+                )
+                corr_SEs = SVector{order+1}(
+                    read(f, prop_name*"_offset_SE"),
+                    read(f, prop_name*"1_SE"),
+                    read(f, prop_name*"2_SE"),
+                )
                 total = read(f, prop_name*"_total")
                 total_SE = read(f, prop_name*"_total_SE")
                 if prop == "Cv"
