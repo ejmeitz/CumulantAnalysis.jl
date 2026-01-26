@@ -19,26 +19,18 @@ pot_cmds = ["pair_style lj/cut 6.955", "pair_coeff * * 0.0032135 2.782", "pair_m
 
 base_outpath = "/mnt/merged/emeitz/CumulantAnalysisTest/Neon_ANALYTICAL_TEST"
 
+crystal_thermodynamic_properties(
+    Ts,
+    getoutpath,
+    ucposcar_path,
+    ssposcar_path,
+    ifc2_path,
+    ifc3_path,
+    ifc4_path,
+    pot_cmds;
+    quantum = quantum,
+    nconf = nconf,
+    nboot = nboot,
+    size_study = true
+)
 
-for T in Ts
-    @info "T = $(T)"
-
-    o = getoutpath(T)
-    mkpath(o)
-
-    crystal_thermodynamic_properties(
-        Ts,
-        getoutpath,
-        ucposcar_path,
-        ssposcar_path,
-        ifc2_path,
-        ifc3_path,
-        ifc4_path,
-        pot_cmds;
-        quantum = quantum,
-        nconf = nconf,
-        nboot = nboot,
-        size_study = true
-    )
-
-end

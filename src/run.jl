@@ -69,6 +69,14 @@ function crystal_thermodynamic_properties(
         kwargs...
     )
 
+    # Save corrections to files
+    for (c, prop) in zip((U_corr, S_corr, cv_offset_sg), ("U", "S", "Cv"))
+        p = joinpath(outpath(T), prop*"_raw_corrections.txt")
+        open(p, "w") do f
+            writedlm(f, [T c])
+        end
+    end
+
     # Make new S/U/Cv files with correction terms
     for (c, prop) in zip((U_corr, S_corr, cv_offset_sg), ("U", "S", "Cv"))
         for (i,T) in enumerate(temperatures)
@@ -93,13 +101,13 @@ function crystal_thermodynamic_properties(
                     bce = BootstrapCumualantEstimate(
                         harm, SVector(c[i], corrs[2], corrs[3]),
                         corr_SEs, new_total,
-                        total_SE, prop * "_corrected_", "[kB / atom]"
+                        total_SE, prop * "_corrected", "[kB / atom]"
                     )
                 else # U / S
                     units = prop == "U" ? "[eV/atom]" : "[kB / atom]"
                     bce = BootstrapCumualantEstimate(
                         harm + c[i], corrs, corr_SEs, total + c[i],
-                        total_SE, prop * "_corrected_", units
+                        total_SE, prop * "_corrected", units
                     )
                 end
                 save(bce, outpath(T), nboot)
