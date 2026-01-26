@@ -1,3 +1,5 @@
+export crystal_thermodynamic_properties
+
 function crystal_thermodynamic_properties(
     temperatures::AbstractVector{<:Real},
     outpath::Function,
