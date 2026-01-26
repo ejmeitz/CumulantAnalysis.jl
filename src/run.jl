@@ -54,7 +54,7 @@ function crystal_thermodynamic_properties(
         @warn "Fewer than 5 temperatures provided. Temperature dependent corrections may be inaccurate."
     end
 
-    @info 
+    @info "Calculating Temperature Dependent Corrections"
 
     # Post-Processing Across Temperatures
     # 1) Differentiate freuqencies to get dω/dT
