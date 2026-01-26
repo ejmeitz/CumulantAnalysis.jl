@@ -73,7 +73,7 @@ function first_order_harmonic_corrections(
         q = ibz.k_ibz[i_q]
         for i_T in 1:n_T
             D_q = LatticeDynamicsToolkit.dynmat_q(ifc2s[i_T], ucs[i_T], q)
-            freqs_sq, _ = get_modes(D_q, Val{LatticeDynamicsToolkit.is_gamma(q)}())
+            freqs_sq, _ = get_modes(Hermitian(D_q), Val{LatticeDynamicsToolkit.is_gamma(q)}())
             freqs_all[i_q, i_T, :] .= LatticeDynamicsToolkit.negsqrt.(freqs_sq)
         end
     end
