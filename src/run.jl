@@ -23,7 +23,7 @@ function crystal_thermodynamic_properties(
 
     LIMIT = quantum ? Quantum : Classical
 
-    for T in temperatures
+    for (i,T) in enumerate(temperatures)
 
         mkpath(outpath(T))
 
@@ -31,7 +31,7 @@ function crystal_thermodynamic_properties(
                 ifc2_path(T), ifc3_path(T), ifc4_path(T), nconf, nboot
             )
 
-        res, ifc2 = estimate(
+        res, all_ifcs[i] = estimate(
             estim,
             Float64(T),
             outpath(T),
@@ -45,8 +45,7 @@ function crystal_thermodynamic_properties(
             free_energy_q_mesh = free_energy_q_mesh
         )
 
-        push!(all_ifcs, ifc2)
-        push!(all_ucs, CrystalStructure(ucposcar_path(T)))
+        all_ucs[i] = CrystalStructure(ucposcar_path(T))
 
     end
 
