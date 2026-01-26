@@ -87,17 +87,18 @@ function crystal_thermodynamic_properties(
                 )
                 total = read(f, prop*"_total")
                 total_SE = read(f, prop*"_total_SE")
+                #! this definitely does not propagate error correctly
                 if prop == "Cv"
-                    new_total = total - corrs[1] + c
+                    new_total = total - corrs[1] + c[i]
                     bce = BootstrapCumualantEstimate(
-                        harm, SVector(c, corrs[2], corrs[3]),
+                        harm, SVector(c[i], corrs[2], corrs[3]),
                         corr_SEs, new_total,
                         total_SE, prop * "_corrected_", "[kB / atom]"
                     )
                 else # U / S
                     units = prop == "U" ? "[eV/atom]" : "[kB / atom]"
                     bce = BootstrapCumualantEstimate(
-                        harm + c, corrs, corr_SEs, total + c,
+                        harm + c[i], corrs, corr_SEs, total + c[i],
                         total_SE, prop * "_corrected_", units
                     )
                 end
