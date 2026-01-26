@@ -1,7 +1,4 @@
-export 
-    HarmonicEstimator, 
-    AmorphousEstimator,
-    AnalyticalEstimator
+export AnalyticalEstimator
 
 
 ########################################

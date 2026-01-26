@@ -7,7 +7,6 @@ using Statistics
 using StatsBase
 using Unitful
 using DelimitedFiles
-using Measurements
 using ProgressMeter
 using HDF5
 using FileIO
@@ -16,6 +15,7 @@ using Printf
 using OrderedCollections
 using Random
 using LAMMPS
+using SavitzkyGolay
 using LatticeDynamicsToolkit
 import LatticeDynamicsToolkit: Hartree_to_eV
 
