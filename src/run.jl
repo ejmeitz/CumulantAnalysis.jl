@@ -74,19 +74,19 @@ function crystal_thermodynamic_properties(
         for (i,T) in enumerate(temperatures)
             p = joinpath(outpath(T), prop*"_mean.h5")
             h5open(p, "r") do f
-                harm = read(f, prop_name*"0")
+                harm = read(f, prop*"0")
                 corrs = SVector{order+1}(
-                    read(f, prop_name*"_offset"),
-                    read(f, prop_name*"1"),
-                    read(f, prop_name*"2"),
+                    read(f, prop*"_offset"),
+                    read(f, prop*"1"),
+                    read(f, prop*"2"),
                 )
                 corr_SEs = SVector{order+1}(
-                    read(f, prop_name*"_offset_SE"),
-                    read(f, prop_name*"1_SE"),
-                    read(f, prop_name*"2_SE"),
+                    read(f, prop*"_offset_SE"),
+                    read(f, prop*"1_SE"),
+                    read(f, prop*"2_SE"),
                 )
-                total = read(f, prop_name*"_total")
-                total_SE = read(f, prop_name*"_total_SE")
+                total = read(f, prop*"_total")
+                total_SE = read(f, prop*"_total_SE")
                 if prop == "Cv"
                     new_total = total - corrs[1] + c
                     bce = BootstrapCumualantEstimate(
@@ -101,8 +101,8 @@ function crystal_thermodynamic_properties(
                         total_SE, prop * "_corrected_", units
                     )
                 end
+                save(bce, outpath(T), nboot)
             end
-            save(bce, outpath(T), nboot)
         end
     end
 
