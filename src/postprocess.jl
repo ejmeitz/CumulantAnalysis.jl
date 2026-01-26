@@ -53,7 +53,7 @@ function first_order_harmonic_corrections(
         @assert length(uc) == ifc2.na "IFC2[$i] built on $(ifc2.na) atoms, but unitcell[$i] has $(length(uc)) atoms"
     end
 
-    T_spacing = temperatures[2:end] .- temperatures[1:end-1]
+    T_spacing = Ts[2:end] .- Ts[1:end-1]
 
     if !allequal(T_spacing)
         error("Temperature spacing is not uniform. Cannot use Savitzky-Golay filter to improve heat capacity estimate.")
