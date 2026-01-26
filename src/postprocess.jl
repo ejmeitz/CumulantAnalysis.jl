@@ -109,7 +109,7 @@ function first_order_harmonic_corrections(
                 ω = freqs_all[i_q, i_T, i_mode]
                 dωdT = dωdT_all[i_q, i_T, i_mode]
                 
-                if ω > lo_freqtol
+                if ω > LatticeDynamicsToolkit.lo_freqtol
                     # Correction term: (n + 1/2)(dω/dT) = (∂F/∂ω)(dω/dT)
                     corr_sum += w * dF_dω_single(ω, kBT, L) * dωdT
                 end
