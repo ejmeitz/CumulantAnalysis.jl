@@ -169,8 +169,8 @@ function improve_constant_corrections(
         kwargs...
     ) where {L <: Limit}
 
-    S_corr, U_corr = first_order_harmonic_corrections(temperatures, ucs, ifcs, mesh, L; kwargs...)
     cv_offset_sg = estimate_cv_constant_correction(temperatures, outpath; kwargs...)
+    S_corr, U_corr = first_order_harmonic_corrections(temperatures, ucs, ifcs, mesh, L; kwargs...)
 
     return S_corr, U_corr, cv_offset_sg
 
