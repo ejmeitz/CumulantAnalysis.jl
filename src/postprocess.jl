@@ -116,8 +116,8 @@ function first_order_harmonic_corrections(
             end
         end
         
-        S_corr[i_T] = -corr_sum / N
-        U_corr[i_T] = -T * corr_sum / N
+        S_corr[i_T] = -corr_sum * LatticeDynamicsToolkit.Hartree_to_eV / (N * LatticeDynamicsToolkit.kB_eV)
+        U_corr[i_T] = -T * corr_sum * LatticeDynamicsToolkit.Hartree_to_eV / N
     end
 
     return S_corr, U_corr
