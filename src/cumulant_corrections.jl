@@ -1,7 +1,18 @@
 # Various derivatives of ⟨O⟩
 ∂A_∂T(A, V, T) = cov(A, V; corrected=false) / (kB * T * T)
 ∂AB_∂T(A, B, V, T, dA = ∂A_∂T(A, V, T), dB =  ∂A_∂T(B, V, T)) = (mean(A) * dB) + (mean(B) * dA)
-∂²A_∂T²(A, V, T, dA = ∂A_∂T(A, V, T)) = (-2*dA/T) + ((1/(kB*T*T)) * (∂A_∂T(A.*V, V, T) - ∂AB_∂T(A, V, V, T, dA)))
+
+# centered versions of second-derivative
+dmean_cov(A, V, T) = mean((A .- mean(A)) .* (V .- mean(V))) / (kB*T^2)
+d_prod_mean(A, B, dA, dB) = mean(A)*dB + mean(B)*dA
+function ∂²A_∂T²(A, V, T, dA = dmean_cov(A, V, T))
+    dAV = ∂A_∂T(A.*V, V, T)
+    dVV = ∂A_∂T(V, V, T)  
+    d_prod = d_prod_mean(A, V, dA, dVV)
+    return (-2*dA/T) + (1/(kB*T^2)) * (dAV - d_prod)
+end
+
+# ∂²A_∂T²(A, V, T, dA = ∂A_∂T(A, V, T)) = (-2*dA/T) + ((1/(kB*T*T)) * (∂A_∂T(A.*V, V, T) - ∂AB_∂T(A, V, V, T, dA)))
 
 # probably biased
 function central_moment(X, n::Int)
@@ -16,21 +27,22 @@ function CumulantData(V, V₂, V₃, V₄, V_ref, T, ::Val{0}, ce::AnalyticalEst
                         use_hot::Bool = false)
 
     X = V₀_rv(ce, V, V₂, V₃, V₄)
+    mu_X = mean(X)
     beta = 1 / (CumulantAnalysis.kB * T)
 
-    V₀ = mean(X)
+    V₀ = mu_X
     ∂V₀ = ∂A_∂T(X, V_ref, T)
     ∂²V₀ = ∂²A_∂T²(X, V_ref, T, ∂V₀)
 
 
     if use_hot
-        var_X = var(X; corrected=false)
+        Xc = X .- mu_X
+        Xc_sq = Xc .^ 2
+        var_X = mean(Xc_sq)
 
         # build zero mean r.v. with same derivative as X^2
-        # this should be better conditioned. V0 = <X> here,
-        # just re-using
-        Y_sq = (X .- V₀).^2
-        term1 = beta*∂A_∂T(Y_sq, V_ref, T)
+        # this should be better conditioned
+        term1 = beta*∂A_∂T(Xc_sq, V_ref, T)
         term2 = -var_X * (beta/T)
 
         V₀ -= beta*var_X
