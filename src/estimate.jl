@@ -12,7 +12,8 @@ function estimate(
         quantum::Bool = false,
         write_result::Bool = true,
         harmonic_q_mesh::AbstractVector{<:Integer} = [30,30,30],
-        free_energy_q_mesh::AbstractVector{<:Integer} = [25,25,25]
+        free_energy_q_mesh::AbstractVector{<:Integer} = [25,25,25],
+        use_hot::Bool = false
     )
 
     T = Float64(T)
@@ -89,13 +90,14 @@ function estimate(
             analytical_corrections,
             ce,
             n_atoms,
-            L
+            L,
+            use_hot
         )
 
     write_result && save.(res, Ref(outpath), Ref(ce.n_boot))
 
     # Compute some statistics to assess convergence with N
-    size_study && do_size_study(ce, analytical_corrections, outpath, V, V₂, V₃, V₄, V_ref, T, n_atoms)
+    size_study && do_size_study(ce, outpath, V, V₂, V₃, V₄, V_ref, T, n_atoms, use_hot)
 
     return res, ifc_kwargs.ifc2
 end

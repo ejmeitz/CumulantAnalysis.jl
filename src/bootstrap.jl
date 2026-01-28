@@ -1,5 +1,5 @@
-function calculate_cumulants(V, V₂, V₃, V₄, V_ref, T, ce::AnalyticalEstimator, V4_analytical)
-    c0 = CumulantData(V, V₂, V₃, V₄, V_ref, T, Val{0}(), ce, V4_analytical)
+function calculate_cumulants(V, V₂, V₃, V₄, V_ref, T, ce::AnalyticalEstimator, use_hot::Bool)
+    c0 = CumulantData(V, V₂, V₃, V₄, V_ref, T, Val{0}(), ce, use_hot = use_hot)
     return constant_corrections(c0, T)
 end
 
@@ -9,11 +9,12 @@ function bootstrap_corrections(
         F₀, S₀, U₀, Cᵥ₀,
         ac, # analytical corrections
         ce::AnalyticalEstimator, 
-        Nat::Int, ::Type{L}
+        Nat::Int, ::Type{L},
+        use_hot
     ) where {L <: Limit}
 
     F_const, S_const, U_const, Cv_const = 
-        calculate_cumulants(V, V₂, V₃, V₄, V_ref, T, ce, ac.F4*Nat)
+        calculate_cumulants(V, V₂, V₃, V₄, V_ref, T, ce, use_hot)
 
     kBNat = CumulantAnalysis.kB * Nat
 
@@ -35,7 +36,7 @@ function bootstrap_corrections(
     for i in 1:ce.n_boot
         sample!(1:length(V), is; replace = true)
         ΔFs[i], ΔSs[i], ΔUs[i], ΔCᵥs[i] =
-             calculate_cumulants(V[is], V₂[is], V₃[is], V₄[is], V_ref[is], T, ce, ac.F4*Nat)
+             calculate_cumulants(V[is], V₂[is], V₃[is], V₄[is], V_ref[is], T, ce, use_hot)
         next!(p)
     end
     finish!(p)
@@ -72,7 +73,7 @@ end
 
 # Potentially useful for gauging convergence of different approaches
 # Bootstrap estimates error on kappa and its derivatives for all orders
-function do_size_study(ce::AnalyticalEstimator, ac, outpath, V, V₂, V₃, V₄, V_ref, T, n_atoms)
+function do_size_study(ce::AnalyticalEstimator, outpath, V, V₂, V₃, V₄, V_ref, T, n_atoms, use_hot)
 
     min_samples = (length(V) < 500) ? 10 : 100
 
@@ -102,7 +103,7 @@ function do_size_study(ce::AnalyticalEstimator, ac, outpath, V, V₂, V₃, V₄
         V_ref_sub = @views V_ref[1:N]
 
         # Get Point Estimate of Mean
-        c0 = CumulantData(V_sub, V₂_sub, V₃_sub, V₄_sub, V_ref_sub, T, Val{0}(), ce, ac.F4*n_atoms)
+        c0 = CumulantData(V_sub, V₂_sub, V₃_sub, V₄_sub, V_ref_sub, T, Val{0}(), ce, use_hot = use_hot)
       
         κ_point[i] = c0.κ
         ∂κ_point[i] = c0.∂κ_∂T
@@ -119,7 +120,7 @@ function do_size_study(ce::AnalyticalEstimator, ac, outpath, V, V₂, V₃, V₄
             V₄_samples = V₄_sub[idxs]
             V_ref_samples = V_ref_sub[idxs]
 
-            c0 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, V_ref_samples, T, Val{0}(), ce, ac.F4*n_atoms)
+            c0 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, V_ref_samples, T, Val{0}(), ce, use_hot = use_hot)
             κs[i, j] = c0.κ
             ∂κs[i, j] = c0.∂κ_∂T
             ∂²κs[i, j] = c0.∂²κ_∂T²

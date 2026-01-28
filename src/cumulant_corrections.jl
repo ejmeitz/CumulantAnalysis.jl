@@ -12,17 +12,27 @@ skew(X) = central_moment(X, 3)
 
 ## CONSTANT CORRECTION (Order Zero) ##
 
-function CumulantData(V, V₂, V₃, V₄, V_ref, T, ::Val{0}, ce::AnalyticalEstimator, V4_analytical)
+function CumulantData(V, V₂, V₃, V₄, V_ref, T, ::Val{0}, ce::AnalyticalEstimator;
+                        use_hot::Bool = false)
 
     X = V₀_rv(ce, V, V₂, V₃, V₄)
-
-    # Uses V3/V4 as control variates for estimating <V - V2 - V3 - V4>_0
-    # Allocates each iteration...
-    # Xcv, α = cv_analytical_estimator(X, V₃, V₄, V4_analytical)
+    beta = 1 / (CumulantAnalysis.kB * T)
 
     V₀ = mean(X)
     ∂V₀ = ∂A_∂T(X, V_ref, T)
     ∂²V₀ = ∂²A_∂T²(X, V_ref, T, ∂V₀)
+
+
+    if use_hot
+        var_X = var(X)
+        V₀ -= beta*var_X
+
+        term1 = 2*beta*V₀*∂V₀ # V0 = <X> here, just re-using
+        term2 = (beta/T)*var_X
+        term3 = -beta*∂A_∂T(X.^2, V_ref, T) #! is this one gonna converge??
+
+        ∂V₀ += term1 + term2 + term3
+    end
 
     return CumulantData{0, typeof(V₀), typeof(∂V₀), typeof(∂²V₀)}(V₀, ∂V₀, ∂²V₀)
 

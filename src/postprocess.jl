@@ -116,7 +116,7 @@ function first_order_harmonic_corrections(
             end
         end
 
-        corr_sum *= LatticeDynamicsToolkit.Hartree_to_eV 
+        corr_sum *= LatticeDynamicsToolkit.Hartree_to_eV # now eV/K
         
         S_corr[i_T] = -corr_sum / (N * LatticeDynamicsToolkit.kB_eV)
         U_corr[i_T] = -T * corr_sum / N
@@ -128,7 +128,6 @@ end
 # Derivative of F with respect to ω: ∂F/∂ω
 dF_dω_single(ω, kBT, ::Type{Quantum}) = (1 / (exp(ω/kBT) - 1)) + 0.5
 dF_dω_single(ω, kBT, ::Type{Classical}) = kBT / ω
-
 
 
 function estimate_cv_constant_correction(
