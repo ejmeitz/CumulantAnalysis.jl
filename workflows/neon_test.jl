@@ -8,7 +8,7 @@ quantum = true
 getoutpath = (T) -> joinpath(base_outpath,  "T$(T)")
 
 # LENNARD JONES
-Ts = [4,6,8,10,12]
+Ts = [4,6,8,10,12,14,16,18,20,22,24]
 ucposcar_path = (T) -> "/mnt/merged/emeitz/Neon_sTDEP/results/T$(T)/infile.ucposcar"
 ssposcar_path = (T) -> "/mnt/merged/emeitz/Neon_sTDEP/results/T$(T)/infile.ssposcar"
 ifc2_path = (T) -> "/mnt/merged/emeitz/Neon_sTDEP/results/T$(T)/infile.forceconstant"

@@ -27,26 +27,23 @@ function CumulantData(V, V₂, V₃, V₄, V_ref, T, ::Val{0}, ce::AnalyticalEst
                         use_hot::Bool = false)
 
     X = V₀_rv(ce, V, V₂, V₃, V₄)
-    mu_X = mean(X)
-    beta = 1 / (CumulantAnalysis.kB * T)
+    μX = mean(X)
+    β = 1 / (CumulantAnalysis.kB * T)
 
-    V₀ = mu_X
+    V₀ = μX
     ∂V₀ = ∂A_∂T(X, V_ref, T)
     ∂²V₀ = ∂²A_∂T²(X, V_ref, T, ∂V₀)
 
 
     if use_hot
-        Xc = X .- mu_X
-        Xc_sq = Xc .^ 2
-        var_X = mean(Xc_sq)
+        ΔV = V .- V₂ # V₃ .+ V₄
+        cov_X_ΔV = cov(X, ΔV)
 
-        # build zero mean r.v. with same derivative as X^2
-        # this should be better conditioned
-        term1 = beta*∂A_∂T(Xc_sq, V_ref, T)
-        term2 = -var_X * (beta/T)
+        W    = (X .- μX) .* (ΔV .- mean(ΔV))
+        dWdT  = ∂A_∂T(W, V_ref, T) # = d/dT cov0(X,ΔV)
 
-        V₀ -= beta*var_X
-        ∂V₀ -= term1 + term2
+        V₀ += -β*cov_X_ΔV
+        ∂V₀ += (cov_X_ΔV*β/T) - (β*dWdT)
     end
 
     return CumulantData{0, typeof(V₀), typeof(∂V₀), typeof(∂²V₀)}(V₀, ∂V₀, ∂²V₀)
@@ -57,7 +54,8 @@ function constant_corrections(c0::CumulantData{0}, T)
 
     F_corr = c0.κ
     S_corr = -c0.∂κ_∂T
-    U_corr = c0.κ - T*c0.∂κ_∂T
+    U_corr = F_corr + T*S_corr
+    # U_corr = c0.κ - T*c0.∂κ_∂T
     Cv_corr = -T * c0.∂²κ_∂T²
 
     return F_corr, S_corr, U_corr, Cv_corr

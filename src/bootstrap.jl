@@ -63,7 +63,7 @@ function bootstrap_corrections(
 
     Cᵥ = BootstrapCumualantEstimate(
         Cᵥ₀, SVector(Cv_const / kBNat, ac.Cv4, ac.Cv3),
-        SVector(Cv_SE, 0.0, 0.0) ./ kBNat, Cᵥ_total_point,
+        SVector(Cv_SE, 0.0, 0.0), Cᵥ_total_point,
         Cv_SE, "Cv", "[kB / atom]"
     )
 
@@ -72,7 +72,7 @@ function bootstrap_corrections(
 end
 
 # Potentially useful for gauging convergence of different approaches
-# Bootstrap estimates error on kappa and its derivatives for all orders
+# Bootstrap estimates error on zeroth-order corrections (F, S, U, Cv) vs sample size
 function do_size_study(ce::AnalyticalEstimator, outpath, V, V₂, V₃, V₄, V_ref, T, n_atoms, use_hot)
 
     min_samples = (length(V) < 500) ? 10 : 100
@@ -80,15 +80,17 @@ function do_size_study(ce::AnalyticalEstimator, outpath, V, V₂, V₃, V₄, V_
     lg_pts = range(log10(min_samples), log10(length(V)), length = 12)
     Ns = round.(Int, 10 .^ lg_pts)
 
-    κs = zeros(length(Ns), ce.n_boot)
-    ∂κs = zeros(length(Ns), ce.n_boot)
-    ∂²κs = zeros(length(Ns), ce.n_boot)
+    Fs = zeros(length(Ns), ce.n_boot)
+    Ss = zeros(length(Ns), ce.n_boot)
+    Us = zeros(length(Ns), ce.n_boot)
+    Cvs = zeros(length(Ns), ce.n_boot)
 
     p = Progress(length(Ns) * ce.n_boot, "Sampling Study")
 
-    κ_point = zeros(length(Ns))
-    ∂κ_point = zeros(length(Ns))
-    ∂²κ_point = zeros(length(Ns))
+    F_point = zeros(length(Ns))
+    S_point = zeros(length(Ns))
+    U_point = zeros(length(Ns))
+    Cv_point = zeros(length(Ns))
     
     for (i,N) in enumerate(Ns)
         # pre-allocate things
@@ -104,10 +106,7 @@ function do_size_study(ce::AnalyticalEstimator, outpath, V, V₂, V₃, V₄, V_
 
         # Get Point Estimate of Mean
         c0 = CumulantData(V_sub, V₂_sub, V₃_sub, V₄_sub, V_ref_sub, T, Val{0}(), ce, use_hot = use_hot)
-      
-        κ_point[i] = c0.κ
-        ∂κ_point[i] = c0.∂κ_∂T
-        ∂²κ_point[i] = c0.∂²κ_∂T²
+        F_point[i], S_point[i], U_point[i], Cv_point[i] = constant_corrections(c0, T)
 
         # Do bootstrap to estimate standard error
         for j in 1:ce.n_boot
@@ -121,40 +120,42 @@ function do_size_study(ce::AnalyticalEstimator, outpath, V, V₂, V₃, V₄, V_
             V_ref_samples = V_ref_sub[idxs]
 
             c0 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, V_ref_samples, T, Val{0}(), ce, use_hot = use_hot)
-            κs[i, j] = c0.κ
-            ∂κs[i, j] = c0.∂κ_∂T
-            ∂²κs[i, j] = c0.∂²κ_∂T²
+            Fs[i, j], Ss[i, j], Us[i, j], Cvs[i, j] = constant_corrections(c0, T)
 
             next!(p)
         end
     end
     finish!(p)
 
-    #! TODO NON-DIMENSONALIZE
-    β = 1 / (kB*T)
+    # Normalize to per-atom units
+    kBNat = kB * n_atoms
 
-    κ_estimates = κ_point
-    ∂κ_estimates = ∂κ_point
-    ∂²κ_estimates = ∂²κ_point
+    F_estimates = F_point ./ n_atoms
+    S_estimates = S_point ./ kBNat
+    U_estimates = U_point ./ n_atoms
+    Cv_estimates = Cv_point ./ kBNat
 
-    κ_SEs = std(κs; dims = 2)
-    ∂κ_SEs = std(∂κs; dims = 2)
-    ∂²κ_SEs = std(∂²κs; dims = 2)
+    F_SEs = std(Fs; dims = 2) ./ n_atoms
+    S_SEs = std(Ss; dims = 2) ./ kBNat
+    U_SEs = std(Us; dims = 2) ./ n_atoms
+    Cv_SEs = std(Cvs; dims = 2) ./ kBNat
 
     data_fmt_str = (N) -> Printf.Format("%7d"*join(fill("%15.8f", N), " "))
-    d_fmt = data_fmt_str(6)
+    d_fmt = data_fmt_str(8)
     str_fmt_str = (N) -> Printf.Format("%7s"*join(fill("%15s", N-1), " "))
 
-    header = ["N" "k" "k_SE" "dk_dT" "dk_dT_SE" "d2k_dT2" "d2k_dT2_SE"]
+    header = ["N" "F" "F_SE" "S" "S_SE" "U" "U_SE" "Cv" "Cv_SE"]
 
-    open(joinpath(outpath, "outfile.nsamples_study_order0"), "w") do f
-        println(f, "# Standard Error estimated from $(ce.n_boot) bootstraps of size N from origianl dataset which had $(length(V)) samples")
+    open(joinpath(outpath, "outfile.nsamples_study_corrections"), "w") do f
+        println(f, "# Standard Error estimated from $(ce.n_boot) bootstraps of size N from original dataset which had $(length(V)) samples")
         println(f, "# Temperature $(T), N_atoms $(n_atoms)")
+        println(f, "# Units: F [eV/atom], S [kB/atom], U [eV/atom], Cv [kB/atom]")
         println(f, Printf.format(str_fmt_str(length(header)), header...))
         for i in eachindex(Ns)
-            println(f, Printf.format(d_fmt, Ns[i], κ_estimates[i], κ_SEs[i, 1],
-                                                    ∂κ_estimates[i], ∂κ_SEs[i, 1], 
-                                                    ∂²κ_estimates[i], ∂²κ_SEs[i, 1]))
+            println(f, Printf.format(d_fmt, Ns[i], F_estimates[i], F_SEs[i, 1],
+                                                    S_estimates[i], S_SEs[i, 1], 
+                                                    U_estimates[i], U_SEs[i, 1],
+                                                    Cv_estimates[i], Cv_SEs[i, 1]))
         end
     end
 
