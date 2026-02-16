@@ -3,11 +3,11 @@ export crystal_thermodynamic_properties
 function crystal_thermodynamic_properties(
     temperatures::AbstractVector{<:Real},
     outpath::Function,
-    ucposcar_path::Function,
-    ssposcar_path::Function,
-    ifc2_path::Function,
-    ifc3_path::Function,
-    ifc4_path::Function,
+    ucposcar_path::Function, #! ACCEPT STRING OR FUNCTION
+    ssposcar_path::Function, #! ACCEPT STRING OR FUNCTION
+    ifc2_path::Function, #! ACCEPT STRING OR FUNCTION
+    ifc3_path::Function, #! ACCEPT STRING OR FUNCTION
+    ifc4_path::Function, #! ACCEPT STRING OR FUNCTION
     pot_cmds::Union{String, Vector{String}};
     quantum::Bool = false,
     nconf::Int = 100_000,

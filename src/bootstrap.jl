@@ -149,7 +149,7 @@ function do_size_study(ce::AnalyticalEstimator, outpath, V, V₂, V₃, V₄, V_
     open(joinpath(outpath, "outfile.nsamples_study_corrections"), "w") do f
         println(f, "# Standard Error estimated from $(ce.n_boot) bootstraps of size N from original dataset which had $(length(V)) samples")
         println(f, "# Temperature $(T), N_atoms $(n_atoms)")
-        println(f, "# Units: F [eV/atom], S [kB/atom], U [eV/atom], Cv [kB/atom]")
+        println(f, "# Units: F0 [eV/atom], S0 [kB/atom], U0 [eV/atom], Cv0 [kB/atom]")
         println(f, Printf.format(str_fmt_str(length(header)), header...))
         for i in eachindex(Ns)
             println(f, Printf.format(d_fmt, Ns[i], F_estimates[i], F_SEs[i, 1],
