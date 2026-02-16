@@ -9,8 +9,8 @@ getoutpath = (T) -> joinpath(base_outpath,  "T$(T)")
 
 # LENNARD JONES
 Ts = [10, 20, 30, 40, 50, 60, 70, 80]
-ucposcar_path = "/mnt/merged/emeitz/LJ_IFC_INTERPOLATION_NODES_FINE/infile.ucposcar"
-ssposcar_path = "/mnt/merged/emeitz/LJ_IFC_INTERPOLATION_NODES_FINE/infile.ssposcar" #4UC
+ucposcar_path = (T) -> "/mnt/merged/emeitz/LJ_IFC_INTERPOLATION_NODES_FINE/infile.ucposcar"
+ssposcar_path = (T) -> "/mnt/merged/emeitz/LJ_IFC_INTERPOLATION_NODES_FINE/infile.ssposcar" #4UC
 pot_cmds = ["pair_style lj/cut 8.5", "pair_coeff * * 0.010423 3.4", "pair_modify shift yes"]
 
 # MD-TDEP IFCs
