@@ -93,31 +93,29 @@ function do_size_study(ce::AnalyticalEstimator, outpath, V, V₂, V₃, V₄, V_
     Cv_point = zeros(length(Ns))
     
     for (i,N) in enumerate(Ns)
-        # pre-allocate things
-        idxs = zeros(Int, N)
-
-        # Samples are IID so our "fake" smaller dataset we'll
-        # just take as the first N samples 
-        V_sub  = @views V[1:N]
-        V₂_sub = @views V₂[1:N]
-        V₃_sub = @views V₃[1:N]
-        V₄_sub = @views V₄[1:N]
-        V_ref_sub = @views V_ref[1:N]
+        # Randomly sample N points from full dataset (independent subset for each N)
+        subset_idxs = sample(1:length(V), N; replace = false)
+        V_sub = V[subset_idxs]
+        V₂_sub = V₂[subset_idxs]
+        V₃_sub = V₃[subset_idxs]
+        V₄_sub = V₄[subset_idxs]
+        V_ref_sub = V_ref[subset_idxs]
 
         # Get Point Estimate of Mean
         c0 = CumulantData(V_sub, V₂_sub, V₃_sub, V₄_sub, V_ref_sub, T, Val{0}(), ce, use_hot = use_hot)
         F_point[i], S_point[i], U_point[i], Cv_point[i] = constant_corrections(c0, T)
 
         # Do bootstrap to estimate standard error
+        boot_idxs = zeros(Int, N)
         for j in 1:ce.n_boot
 
-            sample!(1:N, idxs; replace = true)
+            sample!(1:N, boot_idxs; replace = true)
 
-            V_samples = V_sub[idxs]
-            V₂_samples = V₂_sub[idxs]
-            V₃_samples = V₃_sub[idxs]
-            V₄_samples = V₄_sub[idxs]
-            V_ref_samples = V_ref_sub[idxs]
+            V_samples = V_sub[boot_idxs]
+            V₂_samples = V₂_sub[boot_idxs]
+            V₃_samples = V₃_sub[boot_idxs]
+            V₄_samples = V₄_sub[boot_idxs]
+            V_ref_samples = V_ref_sub[boot_idxs]
 
             c0 = CumulantData(V_samples, V₂_samples, V₃_samples, V₄_samples, V_ref_samples, T, Val{0}(), ce, use_hot = use_hot)
             Fs[i, j], Ss[i, j], Us[i, j], Cvs[i, j] = constant_corrections(c0, T)
