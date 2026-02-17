@@ -21,7 +21,7 @@ pot_cmds = ["pair_style lj/cut 6.955", "pair_coeff * * 0.0032135 2.782", "pair_m
 
 
 ## PIMD IFCs
-ifc_basepath = (T) -> "/mnt/merged/emeitz/Neon_PIMD_IFCs/collected_outputs/T$(T)"
+ifc_basepath = (T) -> "/mnt/merged/emeitz/Neon_PIMD_IFCs/collected_outputs/T$(T)K"
 ucposcar_path = (T) -> joinpath(ifc_basepath(T), "infile.ucposcar")
 ssposcar_path = (T) -> joinpath(ifc_basepath(T), "infile.ssposcar")
 ifc2_path = (T) -> joinpath(ifc_basepath(T), "infile.forceconstant")
