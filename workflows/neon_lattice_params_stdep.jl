@@ -30,7 +30,7 @@ for i in 1:n_lattice_params
             pot_cmds,
             n_iter,
             maximum_frequency,
-            quantum,
+            quantum
         )
     end
 end
