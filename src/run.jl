@@ -1,5 +1,7 @@
-export crystal_thermodynamic_properties
+export crystal_thermodynamic_properties, make_stdep_ifcs
 
+"""
+"""
 function crystal_thermodynamic_properties(
     temperatures::AbstractVector{<:Real},
     outpath::Function,
@@ -116,5 +118,38 @@ function crystal_thermodynamic_properties(
             end
         end
     end
+
+end
+
+"""
+"""
+function make_stdep_ifcs(
+    ucposcar_path::String,
+    ssposcar_path::String,
+    outdir::String,
+    pot_cmds::Vector{String},
+    n_iter::Int,
+    maximum_frequency::Float64,
+    quantum::Bool,
+    kwargs...
+)
+
+    sys = CrystalStructure(ssposcar_path)
+    lc = LAMMPSCalculator(sys, pot_cmds)
+
+    cp(ucposcar_path, outdir; force = true)
+    cp(ssposcar_path, outdir; force = true)
+
+    sTDEP(
+        sys,
+        lc,
+        outdir,
+        n_iter,
+        r_cut,
+        T,
+        maximum_frequency;
+        quantum = quantum,
+        kwargs...
+    )
 
 end

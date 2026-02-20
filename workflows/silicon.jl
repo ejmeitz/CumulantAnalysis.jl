@@ -11,13 +11,6 @@ Ts = [100,200,300,400,500,600,700,800,900,1000,1100,1200,1300]
 sw_pot = "/home/emeitz/software/lammps/potentials/Si.sw"
 pot_cmds = ["pair_style sw", "pair_coeff * * \"$(sw_pot)\" Si"]
 
-# MD-TDEP IFCs
-# ucposcar_path = raw"/mnt/merged/emeitz/SW_IFC_NODES/infile.ucposcar"
-# ssposcar_path = raw"/mnt/merged/emeitz/SW_IFC_NODES/infile.ssposcar" #3UC
-# ifc2_path = (T) -> "/mnt/merged/emeitz/SW_IFC_NODES/IFCs/T$(T)_0/infile.forceconstant"
-# ifc3_path = (T) -> "/mnt/merged/emeitz/SW_IFC_NODES/IFCs/T$(T)_0/infile.forceconstant_thirdorder"
-# ifc4_path = (T) -> "/mnt/merged/emeitz/SW_IFC_NODES/IFCs/T$(T)_0/infile.forceconstant_fourthorder"
-
 # sTDEP IFCs
 stdep_basepath = (T) -> "/mnt/merged/emeitz/SW_sTDEP/RESULTS/T$(T)_0"
 ucposcar_path = (T) -> joinpath(stdep_basepath(T), "infile.ucposcar")
@@ -41,3 +34,11 @@ crystal_thermodynamic_properties(
     nboot = nboot,
     size_study = true
 )
+
+
+# MD-TDEP IFCs
+# ucposcar_path = raw"/mnt/merged/emeitz/SW_IFC_NODES/infile.ucposcar"
+# ssposcar_path = raw"/mnt/merged/emeitz/SW_IFC_NODES/infile.ssposcar" #3UC
+# ifc2_path = (T) -> "/mnt/merged/emeitz/SW_IFC_NODES/IFCs/T$(T)_0/infile.forceconstant"
+# ifc3_path = (T) -> "/mnt/merged/emeitz/SW_IFC_NODES/IFCs/T$(T)_0/infile.forceconstant_thirdorder"
+# ifc4_path = (T) -> "/mnt/merged/emeitz/SW_IFC_NODES/IFCs/T$(T)_0/infile.forceconstant_fourthorder"

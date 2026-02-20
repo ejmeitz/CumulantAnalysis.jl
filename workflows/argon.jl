@@ -13,12 +13,6 @@ ucposcar_path = (T) -> "/mnt/merged/emeitz/LJ_IFC_INTERPOLATION_NODES_FINE/infil
 ssposcar_path = (T) -> "/mnt/merged/emeitz/LJ_IFC_INTERPOLATION_NODES_FINE/infile.ssposcar" #4UC
 pot_cmds = ["pair_style lj/cut 8.5", "pair_coeff * * 0.010423 3.4", "pair_modify shift yes"]
 
-# MD-TDEP IFCs
-# mdtdep_basepath = (T) -> "/mnt/merged/emeitz/LJ_IFC_INTERPOLATION_NODES_FINE/IFCs/T$(T)_0"
-# ifc2_path = (T) -> "$(mdtdep_basepath(T))/infile.forceconstant"
-# ifc3_path = (T) -> "$(mdtdep_basepath(T))/infile.forceconstant_thirdorder"
-# ifc4_path = (T) -> "$(mdtdep_basepath(T))/infile.forceconstant_fourthorder"
-
 # sTDEP IFCs
 stdep_basepath = (T) -> "/mnt/merged/emeitz/LJ_sTDEP/RESULTS/T$(T)_0"
 ifc2_path = (T) -> "$(stdep_basepath(T))/infile.forceconstant"
@@ -39,4 +33,10 @@ crystal_thermodynamic_properties(
     nboot = nboot,
     size_study = true
 )
+
+# MD-TDEP IFCs
+# mdtdep_basepath = (T) -> "/mnt/merged/emeitz/LJ_IFC_INTERPOLATION_NODES_FINE/IFCs/T$(T)_0"
+# ifc2_path = (T) -> "$(mdtdep_basepath(T))/infile.forceconstant"
+# ifc3_path = (T) -> "$(mdtdep_basepath(T))/infile.forceconstant_thirdorder"
+# ifc4_path = (T) -> "$(mdtdep_basepath(T))/infile.forceconstant_fourthorder"
 
