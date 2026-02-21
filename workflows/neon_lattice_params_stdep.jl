@@ -23,7 +23,7 @@ for i in 1:n_lattice_params
 
         make_stdep_ifcs(
             joinpath(sb, "infile.ucposcar"),
-            joinpath(sb, "infile.ucposcar"),
+            joinpath(sb, "infile.ssposcar"),
             outpath_T,
             pot_cmds,
             n_iter,
