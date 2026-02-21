@@ -1,4 +1,5 @@
 # Runs sTDEP for all the lattice parameter and temperature combinations
+using CumulantAnalysis
 
 Ts = [4,6,8,10,12,14,16,18,20,22,24]
 pot_cmds = ["pair_style lj/cut 6.955", "pair_coeff * * 0.0032135 2.782", "pair_modify shift yes"]
