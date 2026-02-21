@@ -9,7 +9,7 @@ n_iter = 9
 maximum_frequency = 2.5 # THz
 
 base_outpath = "/mnt/merged/emeitz/CumulantAnalysisTest/Neon_ThermalExpansion_IFCs_sTDEP"
-structures_basepath = (T,a) = "/mnt/merged/emeitz/CumulantAnalysisTest/thermal_expansion_series/T$(T)/a$(a)"
+structures_basepath = (T,a) -> "/mnt/merged/emeitz/CumulantAnalysisTest/thermal_expansion_series/T$(T)/a$(a)"
 
 for i in 1:n_lattice_params
 
