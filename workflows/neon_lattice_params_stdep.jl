@@ -7,7 +7,7 @@ pot_cmds = ["pair_style lj/cut $(r_cut)", "pair_coeff * * 0.0032135 2.782", "pai
 
 quantum = true
 n_lattice_params = 8
-n_iter = 9
+n_iter = 10
 maximum_frequency = 2.5 # THz
 
 base_outpath = "/mnt/merged/emeitz/CumulantAnalysisTest/Neon_ThermalExpansion_IFCs_sTDEP"

@@ -129,9 +129,9 @@ function make_stdep_ifcs(
     outdir::String,
     pot_cmds::Vector{String},
     n_iter::Int,
-    r_cut::Float64,
-    T::Float64,
-    maximum_frequency::Float64,
+    r_cut::Real,
+    T::Real,
+    maximum_frequency::Real,
     quantum::Bool,
     kwargs...
 )
