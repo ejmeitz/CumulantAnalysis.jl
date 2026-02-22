@@ -10,7 +10,9 @@ base_outpath = "/mnt/merged/emeitz/CumulantAnalysisTest/Neon_ThermalExpansion_Ru
 Ts = [4,6,8,10,12,14,16,18,20,22,24]
 pot_cmds = ["pair_style lj/cut 6.955", "pair_coeff * * 0.0032135 2.782", "pair_modify shift yes"]
 
-for (i,a) in enumerate(trial_lattice_constants)
+n_trial_lattice_constants = 8
+
+for i in 1:n_trial_lattice_constants
 
     ## sTDEP IFCs
     ifc_basepath = (T) -> "/mnt/merged/emeitz/CumulantAnalysisTest/Neon_ThermalExpansion_IFCs_sTDEP/a$(i)/T$(T)/iter009"
