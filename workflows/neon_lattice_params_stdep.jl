@@ -3,10 +3,10 @@ using CumulantAnalysis
 
 Ts = [4,6,8,10,12,14,16,18,20,22,24]
 r_cut = 6.955
-pot_cmds = ["pair_style lj/cut $(r_cut)", "pair_coeff * * 0.0032135 2.782", "pair_modify shift yes"]
+pot_cmds = ["pair_style lj/cut $(r_cut)", "pair_coeff * * 0.003084 2.782", "pair_modify shift yes"]
 
 quantum = true
-n_lattice_params = 8
+n_lattice_params = 10
 n_iter = 10
 maximum_frequency = 2.5 # THz
 
