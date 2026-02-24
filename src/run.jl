@@ -139,6 +139,7 @@ function make_stdep_ifcs(
     sys = CrystalStructure(ssposcar_path)
     lc = LAMMPSCalculator(sys, pot_cmds)
 
+    mkpath(outdir)
     cp(ucposcar_path, joinpath(outdir, "infile.ucposcar"); force = true)
     cp(ssposcar_path, joinpath(outdir, "infile.ssposcar"); force = true)
 
