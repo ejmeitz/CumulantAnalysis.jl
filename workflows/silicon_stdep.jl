@@ -11,7 +11,7 @@ n_lattice_params = 10
 n_iter = 10
 maximum_frequency = 18 # THz
 
-base_outpath = "/mnt/merged/emeitz/CumulantAnalysisTest/Silicon_HighT_sTDEP_IFCs/T$(T)"
+base_outpath = (T) -> "/mnt/merged/emeitz/CumulantAnalysisTest/Silicon_HighT_sTDEP_IFCs/T$(T)"
 structure_basepath = "/mnt/merged/emeitz/SW_sTDEP"
 
 for T in Ts
