@@ -19,7 +19,7 @@ for T in Ts
     make_stdep_ifcs(
         joinpath(structure_basepath, "infile.ucposcar"),
         joinpath(structure_basepath, "infile.ssposcar"),
-        base_outpath,
+        base_outpath(T),
         pot_cmds,
         n_iter,
         r_cut,
