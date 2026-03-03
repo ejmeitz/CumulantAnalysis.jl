@@ -8,9 +8,9 @@ quantum = true
 base_outpath = "/mnt/merged/emeitz/CumulantAnalysisTest/Neon_ThermalExpansion_Runs"
 
 Ts = [4,6,8,10,12,14,16,18,20,22,24]
-pot_cmds = ["pair_style lj/cut 6.955", "pair_coeff * * 0.003084 2.782", "pair_modify shift yes"]
+pot_cmds = ["pair_style lj/cut 6.955", "pair_coeff * * 0.0032135 2.782", "pair_modify shift yes"]
 
-n_trial_lattice_constants = 10
+n_trial_lattice_constants = 12
 
 for i in 1:n_trial_lattice_constants
 
