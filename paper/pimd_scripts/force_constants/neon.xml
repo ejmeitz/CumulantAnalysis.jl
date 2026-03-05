@@ -1,0 +1,67 @@
+<simulation verbosity="medium">
+  <!-- ========================================================= -->
+  <!-- Samples for Force Constant Fits -->
+  <!-- ========================================================= -->
+
+  <!-- Global settings -->
+  <output prefix="neon">
+    <properties filename="data.out" stride="DATA_STRIDE">
+        [ step, time{picosecond}, conserved, potential,
+          kinetic_cv ]
+    </properties>
+    <trajectory filename="neon.x_centroid" cell_units="angstrom" stride="DATA_STRIDE" format="xyz">
+    	x_centroid{angstrom}
+    </trajectory>
+
+    <trajectory filename="neon.f_centroid" cell_units="angstrom" stride="DATA_STRIDE" format="xyz">
+    	f_centroid{ev/ang}
+    </trajectory>
+  </output>
+
+   <!-- LJ: external socket forcefield -->
+  <ffsocket mode="unix" name="lj" pbc="true">
+    <slots>NCLIENTS</slots>
+    <address>ADDR</address>
+  </ffsocket>
+ 
+  <total_steps>600000</total_steps>  <!-- 1e5 equil + 5e5 production -->
+
+  <prng>
+    <seed>RNG_SEED</seed>
+  </prng>
+
+  <!-- ======================= -->
+  <!-- System definition -->
+  <!-- ======================= -->
+  <system>
+    <!--  initialization  -->
+    <initialize nbeads="NBEADS">
+      <file mode="xyz" units="angstrom">neon_TTEMP_K.xyz</file>
+      <velocities mode="thermal" units="kelvin">TEMP_K</velocities>
+    </initialize>
+
+    <!-- forces -->
+    <forces>
+      <force forcefield="lj"/>
+    </forces>
+
+    <ensemble>
+      <temperature units='kelvin'>TEMP_K</temperature>
+    </ensemble>
+
+    <!-- motion / dynamics -->
+    <motion mode="dynamics">
+      <!-- 3 fs timestep as in the arXiv paper -->
+      <dynamics mode="nvt">
+        <timestep units="femtosecond">DT_FS</timestep>
+        <!-- thermostat for ring polymer dynamics -->
+        <!-- PILE-L is a safe default for PIMD solids -->
+        <thermostat mode="pile_g">
+          <tau units="femtosecond">TAU_FS</tau>
+        </thermostat>
+      </dynamics>
+    </motion>
+
+  </system>
+
+</simulation>

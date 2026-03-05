@@ -1,0 +1,52 @@
+<simulation verbosity="medium">
+  <!-- ========================================================= -->
+  <!-- Heat capacity of solid Ne via PIMD + scaledcoords estimator -->
+  <!-- ========================================================= -->
+
+  <!-- Global settings -->
+  <output prefix="neon">
+    <properties filename="data.out" stride="DATA_STRIDE">
+        [ step, time{picosecond}, conserved, potential,
+          kinetic_cv, scaledcoords(fd_delta=5e-3) ]
+    </properties>
+  </output>
+
+   <!-- LJ: external socket forcefield -->
+  <ffsocket mode="unix" name="lj" pbc="true">
+    <slots>NCLIENTS</slots>
+    <address>ADDR</address>
+  </ffsocket>
+ 
+  <total_steps>600000</total_steps>  <!-- 1e5 equil + 5e5 production -->
+
+  <prng>
+    <seed>RNG_SEED</seed>
+  </prng>
+
+  <system>
+    <!--  initialization  -->
+    <initialize nbeads="NBEADS">
+      <file mode="xyz" units="angstrom">neon_TTEMP_K.xyz</file>
+      <velocities mode="thermal" units="kelvin">TEMP_K</velocities>
+    </initialize>
+
+    <forces>
+      <force forcefield="lj"/>
+    </forces>
+
+    <ensemble>
+      <temperature units='kelvin'>TEMP_K</temperature>
+    </ensemble>
+
+    <motion mode="dynamics">
+      <dynamics mode="nvt">
+        <timestep units="femtosecond">DT_FS</timestep>
+        <thermostat mode="pile_g">
+          <tau units="femtosecond">TAU_FS</tau>
+        </thermostat>
+      </dynamics>
+    </motion>
+
+  </system>
+
+</simulation>

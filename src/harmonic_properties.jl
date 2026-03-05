@@ -1,106 +1,105 @@
 
-function harmonic_properties(T, lim, ω::AbstractVector, normalization)
-    F₀ = F_harmonic(ω, T, lim) / normalization
-    S₀ = S_harmonic(ω, T, lim) / normalization
-    U₀ = U_harmonic(ω, T, lim) / normalization
-    Cᵥ₀ = Cᵥ_harmonic(ω, T, lim) / normalization
+# function harmonic_properties(T, lim, ω::AbstractVector, normalization)
+#     F₀ = F_harmonic(ω, T, lim) / normalization
+#     S₀ = S_harmonic(ω, T, lim) / normalization
+#     U₀ = U_harmonic(ω, T, lim) / normalization
+#     Cᵥ₀ = Cᵥ_harmonic(ω, T, lim) / normalization
 
-    return F₀, S₀, U₀, Cᵥ₀
-end
-
-# Returns in eV/atom, eV/K/atom, and eV/K/atom
-# function read_tdep_thermo_props(ifc_dir)
-#     f = open(joinpath(ifc_dir, "outfile.free_energy"), "r")
-#     data = readlines(f)
-#     close(f)
-#     _, F₀, S₀, Cᵥ₀ = parse.(Float64, strip(split(data)))
-#     return F₀, S₀, Cᵥ₀
+#     return F₀, S₀, U₀, Cᵥ₀
 # end
 
-function harmonic_properties(T, ::Type{L}, ifc_dir::String) where {L <: Limit}
-    pdr = PhononDispersionRelations(; dumpgrid = true, temperature = Float64(ustrip(T)))
+# # Returns in eV/atom, eV/K/atom, and eV/K/atom
+# # function read_tdep_thermo_props(ifc_dir)
+# #     f = open(joinpath(ifc_dir, "outfile.free_energy"), "r")
+# #     data = readlines(f)
+# #     close(f)
+# #     _, F₀, S₀, Cᵥ₀ = parse.(Float64, strip(split(data)))
+# #     return F₀, S₀, Cᵥ₀
+# # end
+
+# function harmonic_properties(T, ::Type{L}, dir::String) where {L <: Limit}
+#     pdr = PhononDispersionRelations(; dumpgrid = true, temperature = Float64(ustrip(T)))
     
-    isdir(ifc_dir) || error(ArgumentError("ifc_dir passed to harmonic_properties is not a valid directory: $(ifc_dir)"))
-    isfile(joinpath(ifc_dir, "infile.ucposcar")) || error(ArgumentError("Missing infile.ucposcar when attempting to calculate harmonic properties"))
-    
-    cd(ifc_dir) do
-        execute(pdr, ifc_dir, Threads.nthreads(), false)
-    end
+#     isdir(dir) || error(ArgumentError("dir passed to harmonic_properties is not a valid directory: $(dir)"))
+#     isfile(joinpath(dir, "infile.ucposcar")) || error(ArgumentError("Missing infile.ucposcar when attempting to calculate harmonic properties"))
+#     isfile(joinpath(dir, "infile.forceconstant")) || error(ArgumentError("Missing infile.forceconstant when attempting to calculate harmonic properties"))
 
-    p = joinpath(ifc_dir, "outfile.grid_dispersions.hdf5")
-    isfile(p) || error("Could not find grid dispersion file to calculate harmonic properties")
-    freqs_rad_s = h5read(p, "frequencies")
 
-    N_branch, N_full_q_point = size(freqs_rad_s)
+#     cd(dir) do
+#         execute(pdr, dir, Threads.nthreads(), false)
+#     end
 
-    # Converts it to per-atom
-    # N_branch / 3 == N_atoms_per_unitcell
-    N = N_full_q_point * (N_branch / 3)
+#     p = joinpath(dir, "outfile.grid_dispersions.hdf5")
+#     isfile(p) || error("Could not find grid dispersion file to calculate harmonic properties")
+#     freqs_rad_s = h5read(p, "frequencies")
 
-    return harmonic_properties(Float64(ustrip(T)), L, reduce(vcat, freqs_rad_s), N)
-end
+#     N_branch, N_full_q_point = size(freqs_rad_s)
 
-function harmonic_properties(estim::ThermoEstimator, ifc_dir::String)
-    return harmonic_properties(ustrip(estim.temperature), limit(estim), ifc_dir)
-end
+#     # Converts it to per-atom
+#     # N_branch / 3 == N_atoms_per_unitcell
+#     N = Int(N_full_q_point * (N_branch / 3))
 
-#* FIX CONTRIBUTION FROM Zero-Point MOTION ON RIGID TRANSLATION MODES??
-#* SEE HOW TDEP IMPLEMENTS THINGS LIKE FREE ENERGY
+#     return harmonic_properties(Float64(ustrip(T)), L, reduce(vcat, freqs_rad_s), N)
+# end
 
-function V_harmonic(ifc2::AbstractMatrix, u::AbstractVector)
-    return 0.5 * ((transpose(u) * ifc2) * u)
-end
 
-function sum_over_freqs(freqs, f::Function)
-    res = 0.0
-    for freq in freqs
-        if freq > FREQ_TOL
-            res += f(freq)
-        end
-    end
-    return res
-end
+# #* FIX CONTRIBUTION FROM Zero-Point MOTION ON RIGID TRANSLATION MODES??
+# #* SEE HOW TDEP IMPLEMENTS THINGS LIKE FREE ENERGY
 
-function U_harmonic(ω, T, ::Type{Quantum})
-    f = (freq) -> (ħ*freq) * ((1 / (exp(ħ*freq/(kB*T)) - 1)) + 0.5)
-    return sum_over_freqs(ω, f)
-end
+# function V_harmonic(ifc2::AbstractMatrix, u::AbstractVector)
+#     return 0.5 * ((transpose(u) * ifc2) * u)
+# end
 
-function U_harmonic(ω, T, ::Type{Classical})
-    n_nonzero = count(freq -> freq > FREQ_TOL, ω)
-    return n_nonzero*kB*T
-end
+# function sum_over_freqs(freqs, f::Function)
+#     res = 0.0
+#     for freq in freqs
+#         if freq > FREQ_TOL
+#             res += f(freq)
+#         end
+#     end
+#     return res
+# end
 
-function F_harmonic(ω, T, ::Type{Quantum})
-    kBT = kB * T
-    f = (freq) -> (0.5*ħ*freq) + kBT * log(1 - exp(-ħ*freq/kBT))
-    return sum_over_freqs(ω, f)
-end
+# function U_harmonic(ω, T, ::Type{Quantum})
+#     f = (freq) -> (ħ*freq) * ((1 / (exp(ħ*freq/(kB*T)) - 1)) + 0.5)
+#     return sum_over_freqs(ω, f)
+# end
 
-function F_harmonic(ω, T, ::Type{Classical})
-    kBT = kB * T
-    f = (freq) -> log(ħ*freq/kBT)
-    return kBT * sum_over_freqs(ω, f)
-end
+# function U_harmonic(ω, T, ::Type{Classical})
+#     n_nonzero = count(freq -> freq > FREQ_TOL, ω)
+#     return n_nonzero*kB*T
+# end
 
-function S_harmonic(ω, T, ::Type{Quantum})
-    kBT = kB * T
-    f = (freq) -> ((ħ*freq/kBT) / (exp(ħ*freq/kBT) - 1)) - log(1 - exp(-ħ*freq/kBT))
-    return kB * sum_over_freqs(ω, f)
-end
+# function F_harmonic(ω, T, ::Type{Quantum})
+#     kBT = kB * T
+#     f = (freq) -> (0.5*ħ*freq) + kBT * log(1 - exp(-ħ*freq/kBT))
+#     return sum_over_freqs(ω, f)
+# end
 
-function S_harmonic(ω, T, ::Type{Classical})
-    f = (freq) -> (1 - log(ħ*freq/(kB * T)))
-    return kB * sum_over_freqs(ω, f)
-end
+# function F_harmonic(ω, T, ::Type{Classical})
+#     kBT = kB * T
+#     f = (freq) -> log(ħ*freq/kBT)
+#     return kBT * sum_over_freqs(ω, f)
+# end
 
-function Cᵥ_harmonic(ω, T, ::Type{Quantum})
-    tkBT =  2 * kB * T
-    f = (freq) -> ((ħ*freq/tkBT)^2) * (csch(ħ*freq/tkBT)^2)
-    return kB * sum_over_freqs(ω, f)
-end
+# function S_harmonic(ω, T, ::Type{Quantum})
+#     kBT = kB * T
+#     f = (freq) -> ((ħ*freq/kBT) / (exp(ħ*freq/kBT) - 1)) - log(1 - exp(-ħ*freq/kBT))
+#     return kB * sum_over_freqs(ω, f)
+# end
 
-function Cᵥ_harmonic(ω, T, ::Type{Classical})
-    n_nonzero = count(freq -> freq > FREQ_TOL, ω)
-    return n_nonzero*kB
-end
+# function S_harmonic(ω, T, ::Type{Classical})
+#     f = (freq) -> (1 - log(ħ*freq/(kB * T)))
+#     return kB * sum_over_freqs(ω, f)
+# end
+
+# function Cᵥ_harmonic(ω, T, ::Type{Quantum})
+#     tkBT =  2 * kB * T
+#     f = (freq) -> ((ħ*freq/tkBT)^2) * (csch(ħ*freq/tkBT)^2)
+#     return kB * sum_over_freqs(ω, f)
+# end
+
+# function Cᵥ_harmonic(ω, T, ::Type{Classical})
+#     n_nonzero = count(freq -> freq > FREQ_TOL, ω)
+#     return n_nonzero*kB
+# end

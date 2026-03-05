@@ -1,337 +1,406 @@
-export estimate
+export estimate, save
 
-function calculate_corrections(T, O, V, ΔV, is_stochastic::Bool)
+function estimate(
+        ce::AnalyticalEstimator,
+        T::Real, # Kelvin
+        outpath::String,
+        lammps_potential_cmds::Union{String, Vector{String}};
+        ucposcar_path::String = joinpath(outpath, "infile.ucposcar"),
+        ssposcar_path::String = joinpath(outpath, "infile.ssposcar"),
+        n_threads::Int = Threads.nthreads(),
+        size_study::Bool = false,
+        quantum::Bool = false,
+        write_result::Bool = true,
+        harmonic_q_mesh::AbstractVector{<:Integer} = [30,30,30],
+        free_energy_q_mesh::AbstractVector{<:Integer} = [25,25,25],
+        use_hot::Bool = false
+    )
 
-    ΔF = zeros(O); ΔS = zeros(O)
-    ΔU = zeros(O); ΔCᵥ = zeros(O)
-
-    c1 = CumulantData(V, ΔV, kB, T, Val{1}())
-    ΔF[1], ΔS[1], ΔU[1], ΔCᵥ[1] = first_order_corrections(c1, T) 
-
-    if O >= 2
-        c2 = CumulantData(V, ΔV, kB, T, c1, Val{2}())
-        ΔF[2], ΔS[2], ΔU[2], ΔCᵥ[2] = second_order_corrections(c2, kB, T, is_stochastic)
-    end
-
-    if O >= 3
-        c3 = CumulantData(V, ΔV, kB, T, c1, Val{3}())
-        ΔF[3], ΔS[3], ΔU[3], ΔCᵥ[3] = third_order_corrections(c3, kB, T)
-    end
-
-    return ΔF, ΔS, ΔU, ΔCᵥ
-
-end
-
-struct BootstrapCumualantEstimate{O,H}
-    harmonic::H
-    corrections::SVector{O, H}
-    correction_SEs::SVector{O, H}
-    total::H
-    total_SE::H
-    property::String
-    unit_str::String
-end
-
-function bootstrap_corrections(T, V, ΔV, n_boot, boot_size, ifc_dir::String,
-                                 Nat::Int, O::Int, is_stochastic::Bool, ::Type{L}) where {L <: Limit}
-
-    # these are returned per-atom
-    F₀, S₀, U₀, Cᵥ₀ = harmonic_properties(T, L, ifc_dir)
-
-    idx_storage = zeros(Int, boot_size)
-
-    ΔFs = zeros(O, n_boot); ΔSs = zeros(O, n_boot)
-    ΔUs = zeros(O, n_boot); ΔCᵥs = zeros(O, n_boot)
-
-    p = Progress(n_boot, "Bootstrapping Corrections")
-    for i in 1:n_boot
-        sample!(1:length(V), idx_storage; replace = true)
-        ΔFs[:,i], ΔSs[:,i], ΔUs[:,i], ΔCᵥs[:,i] = calculate_corrections(T, O, V[idx_storage], ΔV[idx_storage], is_stochastic)
-        next!(p)
-    end
-    finish!(p)
-
-    F_totals = sum(ΔFs, dims = 1) .+ (F₀*Nat)
-    S_totals = sum(ΔSs, dims = 1) .+ (S₀*Nat)
-    U_totals = sum(ΔUs, dims = 1) .+ (U₀*Nat)
-    Cᵥ_totals = sum(ΔCᵥs, dims = 1) .+ (Cᵥ₀*Nat)
-
-    ΔF = mean(ΔFs, dims = 2); ΔS = mean(ΔSs, dims = 2)
-    ΔU = mean(ΔUs, dims = 2); ΔCᵥ = mean(ΔCᵥs, dims = 2)
+    T = Float64(T)
     
-    F_SEs = std(ΔFs, dims = 2); S_SEs = std(ΔSs, dims = 2)
-    U_SEs = std(ΔUs, dims = 2); Cᵥ_SEs = std(ΔCᵥs, dims = 2)
+    if !needs_true_V(ce)
+        error("The provided SamplingCumulantEstimator, $(typeof(ce)), does not use the true potential energies V. You probably didnt meant to call this method.")
+    end
 
-    kBNat = ustrip(CumulantAnalysis.kB) * Nat
+    isfile(ucposcar_path) || throw(ArgumentError("ucposcar path is not a file: $(ucposcar_path)"))
+    isfile(ssposcar_path) || throw(ArgumentError("ssposcar path is not a file: $(ssposcar_path)"))
 
-    F = BootstrapCumualantEstimate(
-        F₀, SVector(ΔF...) ./ Nat, SVector(F_SEs...) ./ Nat,
-        mean(F_totals) / Nat, std(F_totals) / Nat, "F", "[eV/atom]"
-    )
+    new_uc_path = joinpath(outpath, "infile.ucposcar")
+    new_ss_path = joinpath(outpath, "infile.ssposcar")
+    isfile(new_uc_path) || cp(ucposcar_path, new_uc_path; force = true)
+    isfile(new_ss_path) || cp(ssposcar_path, new_ss_path; force = true)
 
-    S = BootstrapCumualantEstimate(
-        S₀ / kB, SVector(ΔS...) ./ kBNat, SVector(S_SEs...) ./ kBNat,
-        mean(S_totals) / kBNat, std(S_totals) / kBNat, "S", "[kB / atom]"
-    )
+    uc = CrystalStructure(ucposcar_path)
+    sc = CrystalStructure(ssposcar_path)
+    n_atoms = length(sc)
 
-    U = BootstrapCumualantEstimate(
-        U₀, SVector(ΔU...) ./ Nat, SVector(U_SEs...) ./ Nat,
-        mean(U_totals) / Nat, std(U_totals) / Nat, "U", "[eV/atom]"
-    )
+    L = ifelse(quantum, Quantum, Classical)
+    settings = ConfigSettings(ce.nconf, T, L)
 
-    Cᵥ = BootstrapCumualantEstimate(
-        Cᵥ₀ / kB, SVector(ΔCᵥ...) ./ kBNat, SVector(Cᵥ_SEs...) ./ kBNat,
-        mean(Cᵥ_totals) / kBNat, std(Cᵥ_totals) / kBNat, "Cv", "[kB / atom]"
-    )
-
-    return F, S, U, Cᵥ
-
-end
-
-function convert_freq_units(freqs)
+    move_ifcs(ce, outpath)
+    ifcs = load_ifcs(ce, ucposcar_path, outpath)
+    ifc_kwargs = LatticeDynamicsToolkit.build_kwargs(ifcs...)
     
-    freq_unit = unit(first(freqs))
-    freq_dim = dimension(freq_unit)
+    make_calc = (sc) -> LAMMPSCalculator(sc, lammps_potential_cmds)
 
-    if freq_dim != Unitful.𝐓^-1
-        error(ArgumentError("Frequency units should be inverse time. Got dimensions of $(freq_dim)"))
+    @info "Calculating Harmonic Properties"
+    F₀, S₀, U₀, Cᵥ₀ = Hartree_to_eV .* harmonic_properties(T, uc, ifc_kwargs.ifc2, harmonic_q_mesh, L;
+                                                 n_threads = n_threads)
+
+    tep_energies, V, V₂_tilde = make_energy_dataset(
+        settings,
+        uc,
+        sc,
+        make_calc;
+        ifc_kwargs...,
+        n_threads = n_threads
+    )
+
+    V₂ = getindex.(tep_energies, 1)
+    V₃ = getindex.(tep_energies, 2)
+    V₄ = getindex.(tep_energies, 3)
+    Vₚ = zeros(length(V))
+
+    header = ["V" "Vp" "V2" "V3" "V4" "V2_tilde"]
+    str_fmt_str = (N) -> Printf.Format(join(fill("%15s", N), " "))
+    open(joinpath(outpath, "outfile.all_energies"), "w") do f
+        println(f, "# Energies in eV, N atoms = $(n_atoms), tempearture [K] = $(T)")
+        println(f, Printf.format(str_fmt_str(length(header)), header...))
+        writedlm(f, [V Vₚ V₂ V₃ V₄ V₂_tilde])
     end
 
-    return  ustrip.(u"rad/s", freqs)
+    # Get analytical corrections
+    analytical_corrections = free_energy_corrections(
+        T,
+        uc,
+        ifc_kwargs.ifc2,
+        ifc_kwargs.ifc3,
+        ifc_kwargs.ifc4;
+        mesh = free_energy_q_mesh,
+        quantum = quantum,
+        n_threads = n_threads
+    )
 
+    # If classical V2 should == V2_tilde....
+    V_ref = quantum ? V₂_tilde : V₂
+
+    res = bootstrap_corrections(
+            V, V₂, V₃, V₄, V_ref, T,
+            F₀, S₀, U₀, Cᵥ₀,
+            analytical_corrections,
+            ce,
+            n_atoms,
+            L,
+            use_hot
+        )
+
+    write_result && save.(res, Ref(outpath), Ref(ce.n_boot))
+
+    # Compute some statistics to assess convergence with N
+    size_study && do_size_study(ce, outpath, V, V₂, V₃, V₄, V_ref, T, n_atoms, use_hot)
+
+    return res, ifc_kwargs.ifc2
 end
 
-# Ensures that:
-# Length Units are Angstrom
-# Energy Units are eV
-# Mass Units can either be u or g/mol
-function convert_units(freqs, ifc2)
+function save(bce::BootstrapCumualantEstimate{L}, outdir::String, n_boot) where L
+    prop_name = bce.property
+    unit_str = bce.unit_str
 
-    ifc_unit = unit(first(ifc2))
-    ifc_dim = dimension(ifc_unit)
+    outpath_mean = (ext) -> joinpath(outdir, prop_name * "_mean.$(ext)")
+    mean_data = OrderedDict(prop_name*"0" => bce.harmonic)
+    SE_data = OrderedDict(prop_name*"0_SE" => 0.0)
 
-    if ifc_unit == NoUnits && freq_unit == NoUnits
-        @warn "You did not use Unitful quantities for freuqency or force constants. Assuming frequencies are rad/s and force constants are eV/Å^2"
-        return freqs, ifc2
-    end
-
-    if ifc_dim != Unitful.𝐌*Unitful.𝐍^-1*Unitful.𝐓^-2 || ifc_dim != Unitful.𝐌*Unitful.𝐓^-2
-        error(ArgumentError("Force constant dimensions should be energy / length^2, but got $(ifc_dim)"))
-    end
-
-    ifc_units_molar = ifc_dim == Unitful.𝐌*Unitful.𝐍^-1*Unitful.𝐓^-2
-
-    ifc2_ev_ang = ifc_units_molar ? ustrip.(u"eV/Å^2", ifc2 ./ Unitful.Na) : ustrip.(u"eV/Å^2", ifc2)
-    freqs_rad_s =  convert_freq_units(freqs)
-
-    return freqs_rad_s, ifc2_ev_ang
-end
-
-#### sTDEP ESTIMATOR ####
-
-function get_V(cc, calc, ssposcar_path, basedir, verbose)
-
-    sys_ss = TDEPSystem(ssposcar_path)
-    n_atoms = length(sys_ss)
-
-    get_filepath = (i) -> joinpath(basedir, "contcar_conf$(lpad(i, 4, '0'))")
-    energy_unit = (AtomsCalculators.energy_unit(calc) == NoUnits) ? NoUnits : u"eV"
-
-    if energy_unit == NoUnits
-        @warn "Your energy calculator did not have units. Assuming eV."
-    end
-
-    @info "Generating Configurations"
-    execute(cc, basedir, 1, verbose)
-
-    V = zeros(typeof(1.0 * energy_unit), cc.nconf)
-    V2 = zeros(typeof(1.0 * energy_unit), cc.nconf)
-
-    posns = zeros(Float64, 3, n_atoms)
-
-    p = Progress(cc.nconf, desc = "Calculating Energies")
-    L = typeof(1.0u"Å")
-    for i in 1:cc.nconf   
-        filepath = get_filepath(i)
-        TDEP.read_poscar_positions!(posns, filepath; n_atoms = n_atoms)
-        
-        new_sys = TDEPSystem(sys_ss, vec(collect(reinterpret(SVector{3, L}, posns))))
-
-        V[i] = uconvert(energy_unit, AtomsCalculators.potential_energy(new_sys, calc))
-
-        next!(p)
-    end
-    finish!(p)
-
-    # Parse V2 from logfile
-    open(joinpath(basedir, "$(TDEP.cmd_name(cc)).log")) do f
-
-        while strip(readline(f)) != "... remapped fc" end
-        readline(f)
-
-        for i in 1:cc.nconf
-            data = split(strip(readline(f)))
-            V2[i] = (1.5 * ustrip(kB) * parse(Float64, data[4])) * energy_unit
+    for order in 0:(L-1)
+        if order == 0
+            mean_data[prop_name * "_offset"] = bce.corrections[order+1]
+            SE_data[prop_name * "_offset_SE"] = bce.correction_SEs[order+1]
+        else
+            mean_data[prop_name * "$(order)"] = bce.corrections[order+1]
+            SE_data[prop_name * "$(order)_SE"] = bce.correction_SEs[order+1]
         end
     end
 
-    return ustrip.(V), ustrip.(V2), n_atoms
-end
+    mean_data[prop_name*"_total"] = bce.total
+    SE_data[prop_name*"_total_SE"] = bce.total_SE
 
-function estimate(
-    e::sTDEPEstimator,
-    calc,
-    basedir::String;
-    ucposcar_path::String = joinpath(basedir, "infile.ucposcar"),
-    ssposcar_path::String = joinpath(basedir, "infile.ssposcar"),
-    ifc_path::String = joinpath(basedir, "infile.forceconstant"),
-    verbose::Bool = true,
-    n_boot::Int = 100,
-    boot_size::Int = 10_000
-)
+    float_fmt_str = (N) -> Printf.Format(join(fill("%15.7f", N), " "))
+    str_fmt_str = (N) -> Printf.Format(join(fill("%15s", N), " "))
 
-    if e.cc.nconf < boot_size
-        error("Number of configurations $(e.cc.nconf) is less than the number of bootstrap samples $(boot_size).")
+    # Human Readable Version
+    header = collect(keys(mean_data))
+    mean_values = collect(values(mean_data))
+    SE_values = collect(values(SE_data))
+    N = length(header)
+    open(outpath_mean("txt"), "w") do f
+        println(f, "# $(prop_name) Units: $(unit_str)")
+        println(f, "# Row 1: Values, Row 2: Standard Error estimated from $(n_boot) bootstraps")
+        println(f, Printf.format(str_fmt_str(N), header...))
+        println(f, Printf.format(float_fmt_str(N), mean_values...))
+        println(f, Printf.format(float_fmt_str(N), SE_values...))
     end
-
-    config_dir = joinpath(basedir, "configs")
-    mkpath(config_dir)
-
-    isfile(ifc_path) || error(ArgumentError("Could not find infile.forceconstant at $(basedir)"))
-    isfile(ucposcar_path) || error(ArgumentError("Could not find infile.ucposcar at $(ucposcar_path)"))
-    isfile(ssposcar_path) || error(ArgumentError("Could not find infile.ssposcar at $(ssposcar_path)"))
-
-    cp(ifc_path, joinpath(config_dir, "infile.forceconstant"); force = true)
-    cp(ifc_path, joinpath(basedir, "infile.forceconstant"); force = true)
-    cp(ucposcar_path, joinpath(config_dir, "infile.ucposcar"); force = true)
-    cp(ucposcar_path, joinpath(basedir, "infile.ucposcar"); force = true)
-    cp(ssposcar_path, joinpath(config_dir, "infile.ssposcar"); force = true)
-
-    V, V2, n_atoms = get_V(e.cc, calc, ssposcar_path, config_dir, verbose)
-    ΔV = V .- V2
-
-    # If lots of configs are made this can take a bit
-    t = Threads.@spawn rm(config_dir, recursive = true)
-
-    header = ["V [eV]" "V2 [eV]" "ΔV [eV]"]
-    open(joinpath(basedir, "potential_energies.txt"), "w") do f
-        writedlm(f, [header; V V2 ΔV])
+    # Save to HDF5
+    h5open(outpath_mean("h5"), "w") do file
+        for (k,v) in mean_data
+            write(file, k, v)
+        end
+        for (k,v) in SE_data
+            write(file, k, v)
+        end
     end
-
-    #! Use V2 in place of V for derivatives??
-    T = Float64(ustrip(e.temperature))
-    res = bootstrap_corrections(T, V2, ΔV, n_boot, boot_size, basedir, n_atoms, order(e), stochastic(e), limit(e))
-
-    wait(t)
-
-    return res
-
 end
 
 
-
-
-#### LAMMPS ESTIMATOR ####
-
-# # name in lammps dump ==> name used in program
-# const header_dict = Dict(
-#     "DisplacementX" => "xu",
-#     "DisplacementY" => "yu",
-#     "DisplacementZ" => "zu",
-# )
-
-# function thermo_prop_checks(lammps_dump_path, order, dump_fields)
-#     if order ∉ [1,2,3]
-#         @error "Can only calculate first and second order cumulant corrections"
-#     end
-
-#     @info "Parsing LAMMPS dump file at $(lammps_dump_path)"
-#     ld = LammpsDump(lammps_dump_path)
-#     @info "Found $(n_samples(ld)) samples and $(n_atoms(ld)) atoms"
-
-#     actual_fields = fields(ld)
-#     @assert issubset(dump_fields, actual_fields) "Dump file needs $(dump_fields) fields, got $(actual_fields). Can re-name with dump_fields kwarg"
-
-#     return ld
-# end
-
-# function parse_files(lammps_eq_dump_path, stat_file_path, T)
-
-#     @info "Parsing Equilibrium Positions"
-#     eq = LammpsDump(lammps_eq_dump_path)
-
-#     parse_timestep!(eq, 1)
-#     atom_masses = get_col(eq, "mass")
-#     #* HARDCODED COL NAMES!!
-#     initial_positions = Matrix(eq.data_storage[!, ["xu", "yu", "zu"]])
-
-#     bulk_properties = readdlm(stat_file_path, comments = true)
-
-#     E_total = bulk_properties[:, 3]
-#     V = bulk_properties[:, 4]
-#     T_sim = bulk_properties[:, 6]
-
-#     if mean(T_sim) - T > 1e-1
-#         @warn "Simulation temperature $(mean(T_sim)) different from target temperature $(T). Results may be inaccurate."
-#     end
-
-#     return initial_positions, atom_masses, E_total, V
-# end
-
-# # ASSUME LAMMPS UNIT SYSTEM IS METAL
 # function estimate(
-#     e::LAMMPSEstimator,
-#     lammps_dump_path::String,
-#     lammps_eq_dump_path::String,
-#     stat_file_path::String,
-#     ifc2::AbstractMatrix{I},
-#     ω::AbstractVector{W};
-#     dump_x_unrolled_names::AbstractVector{String} = ["xu", "yu", "zu"],
-#     true_F = missing
-# ) where {I,W}
+#         ce::SamplingCumulantEstimator{O},
+#         T::Real, # Kelvin
+#         outpath::String,
+#         lammps_potential_cmds::Union{String, Vector{String}};
+#         ucposcar_path::String = joinpath(outpath, "infile.ucposcar"),
+#         ssposcar_path::String = joinpath(outpath, "infile.ssposcar"),
+#         n_threads::Int = Threads.nthreads(),
+#         size_study::Bool = false,
+#         quantum::Bool = false,
+#         q_mesh::AbstractVector{<:Integer} = [30,30,30],
+#     ) where {O}
 
-#     ifc2, ω = convert_units(ω, ifc2)
+#     @assert O <= 2 "Up to second order cumulant corrections are supported. Asked for $(O)."
 
-#     D = length(dump_x_unrolled_names)
-#     N_atoms = Int(length(ω) / 3)
+#     T = Float64(T)
+    
+#     if !needs_true_V(ce)
+#         error("The provided SamplingCumulantEstimator, $(typeof(ce)), does not use the true potential energies V. You probably didnt meant to call this method.")
+#     end
 
-#     ld = thermo_prop_checks(lammps_dump_path, order, dump_x_unrolled_names)
+#     isfile(ucposcar_path) || throw(ArgumentError("ucposcar path is not a file: $(ucposcar_path)"))
+#     isfile(ssposcar_path) || throw(ArgumentError("ssposcar path is not a file: $(ssposcar_path)"))
 
-#     initial_positions, _, E_total, V =
-#         parse_files(lammps_eq_dump_path, stat_file_path, e.temperature)
+#     new_uc_path = joinpath(outpath, "infile.ucposcar")
+#     new_ss_path = joinpath(outpath, "infile.ssposcar")
+#     isfile(new_uc_path) || cp(ucposcar_path, new_uc_path; force = true)
+#     isfile(new_ss_path) || cp(ssposcar_path, new_ss_path; force = true)
 
-#     u = load_displacements(ld, initial_positions, 
-#                             dump_x_unrolled_names = dump_x_unrolled_names, D = D)
+#     uc = CrystalStructure(ucposcar_path)
+#     sc = CrystalStructure(ssposcar_path)
+#     n_atoms = length(sc)
 
-#     V₂ = V_harmonic.(Ref(ifc2), eachcol(u))
-#     ΔV = V .- V₂
+#     L = ifelse(quantum, Quantum, Classical)
+#     settings = ConfigSettings(ce.nconf, T, L)
 
-#! THIS DOESNT RETURN F0 S0 U0 Cv0 anymore..
-#     F₀, ΔF, S₀, ΔS, U₀, ΔU, Cᵥ₀, ΔCᵥ = calculate_corrections(e, ω, V, ΔV)
+#     move_ifcs(ce, outpath)
+#     ifcs = load_ifcs(ce, ucposcar_path, outpath)
+#     ifc_kwargs = LatticeDynamicsToolkit.build_kwargs(ifcs...)
+    
+#     make_calc = (sc) -> LAMMPSCalculator(sc, lammps_potential_cmds)
 
-#     # Estimate true internal energy and heat capacity
-#     U_MD = mean(E_total)
-#     Cᵥ_MD = var(E_total) / (e.kB * e.temperature^2)
+#     @info "Calculating Harmonic Properties"
+#     if is_amorphous(ce)
+#         F₀, S₀, U₀, Cᵥ₀ = Hartree_to_eV .* harmonic_properties(T, ifc_kwargs.ifc2, sc, L)
+#     else
+#         F₀, S₀, U₀, Cᵥ₀ = Hartree_to_eV .* harmonic_properties(T, uc, ifc_kwargs.ifc2, q_mesh, L;
+#                                                  n_threads = n_threads)
+#     end
 
-#     true_S = (U_MD - true_F) / e.temperature
-#     # we should be able to get elastic moduli and thermal expansion too
-#     F_corrections = CumulantCorrections(F₀,
-#                                         SVector(ΔF...) ./  N_atoms,
-#                                         true_F,
-#                                         "F", "[eV/atom]")
-#     S_corrections = CumulantCorrections(S₀ / (ustrip(kB)), 
-#                                         SVector(ΔS...) ./ (ustrip(kB) * N_atoms),
-#                                         true_S,
-#                                         "S", "[kB / atom]")
-#     U_corrections = CumulantCorrections(U₀,
-#                                         SVector(ΔU...) ./  N_atoms,
-#                                         U_MD,
-#                                         "U", "[eV/atom]")
-#     Cv_corrections = CumulantCorrections(Cᵥ₀ / (ustrip(kB)),
-#                                          SVector(ΔCᵥ...) ./ (ustrip(kB) * N_atoms),
-#                                          Cᵥ_MD,
-#                                          "Cv", "[kB / atom]")
 
-#     return F_corrections, S_corrections, U_corrections, Cv_corrections
+#     tep_energies, V = make_energy_dataset(
+#         settings,
+#         uc,
+#         sc,
+#         make_calc;
+#         ifc_kwargs...,
+#         n_threads = n_threads
+#     )
+
+#     V₂ = getindex.(tep_energies, 1)
+#     V₃ = getindex.(tep_energies, 2)
+#     V₄ = getindex.(tep_energies, 3)
+#     Vₚ = zeros(length(V))
+
+#     header = ["V" "Vp" "V2" "V3" "V4"]
+#     str_fmt_str = (N) -> Printf.Format(join(fill("%15s", N), " "))
+#     open(joinpath(outpath, "outfile.all_energies"), "w") do f
+#         println(f, "# Energies in eV, N atoms = $(n_atoms), tempearture [K] = $(T)")
+#         println(f, Printf.format(str_fmt_str(length(header)), header...))
+#         writedlm(f, [V Vₚ V₂ V₃ V₄])
+#     end
+
+#     res = bootstrap_corrections(
+#             V, V₂, V₃, V₄, T,
+#             outpath,
+#             F₀, S₀, U₀, Cᵥ₀,
+#             ce,
+#             n_atoms,
+#             L
+#         )
+
+#     save.(res, Ref(outpath), Ref(ce.n_boot))
+
+#     # Compute some statistics to assess convergence with N
+#     size_study && do_size_study(ce, outpath, V, V₂, V₃, V₄, T, n_atoms)
+
+#     return res
+# end
+
+
+
+# function parse_energies(path, is_hdf5::Val{false})
+
+#     data = readdlm(path, comments = true)
+
+#     # Parse n_atoms and T from header
+#     f = open(path, "r")
+#     readline(f) # skip
+#     T = parse(Float64, split(strip(readline(f)))[end])
+#     n_atoms = parse(Int, split(strip(readline(f)))[end])
+#     close(f)
+
+#     # energies in file are meV / atom, Converts to eV
+#     conv = n_atoms / 1000
+    
+#     @views Vₚ = data[:, 3] .* conv
+#     @views V₂ = data[:, 4] .* conv
+#     @views V₃ = data[:, 5] .* conv
+#     @views V₄ = data[:, 6] .* conv
+
+#     return T, n_atoms, Vₚ, V₂ , V₃, V₄
+# end
+
+# function parse_energies(path, is_hdf5::Val{true})
+
+#     f = h5open(path, "r")
+
+#     Vₚ = read(f, "polar_potential_energy")
+#     V₂ = read(f, "secondorder_potential_energy")
+#     V₃ = read(f, "thirdorder_potential_energy")
+#     V₄ = read(f, "fourthorder_potential_energy")
+
+#     T = Float64(attrs(f)["temperature_thermostat"][1])
+#     n_atoms = Int64(attrs(f)["number_of_atoms"][1])
+
+#     close(f)
+    
+#     return T, n_atoms, Vₚ, V₂, V₃, V₄
+# end
+
+
+# function calculate_true_energies(calc, nconf, ssposcar_path, outpath)
+#     isnothing(calc) && throw(ArgumentError("This SamplingCumulantEstimator requires a calculator for energies, but `calc` was nothing."))
+#     (AtomsCalculators.energy_unit(calc) != u"eV") && throw(ArgumentError("Expected calculator with eV energy units. Got $(AtomsCalculators.energy_unit(calc)) "))
+
+#     sys_ss = TDEPSystem(ssposcar_path)
+#     V = zeros(nconf)
+
+#     p = Progress(nconf, desc = "Calculating True Energies")
+#     L = typeof(1.0u"Å")
+
+#     configs_path = joinpath(outpath, "outfile.canonical_configs.hdf5")
+#     configs = h5read(configs_path, "positions")
+
+#     for i in 1:nconf   
+#         @views c = configs[:,:,i]
+#         #! CAN I REMOVE THIS ALLOCATION?
+#         new_sys = TDEPSystem(sys_ss, vec(collect(reinterpret(SVector{3, L}, c))))
+
+#         V[i] = ustrip(AtomsCalculators.potential_energy(new_sys, calc))
+
+#         next!(p)
+#     end
+#     finish!(p)
+
+#     return V
+# end
+
+# function estimate(
+#         ce::SamplingCumulantEstimator{O,L},
+#         T::Real, # kelvin
+#         outpath::String;
+#         ucposcar_path::String = joinpath(outpath, "infile.ucposcar"),
+#         ssposcar_path::String = joinpath(outpath, "infile.ssposcar"),
+#         nthreads::Int = Threads.nthreads(),
+#         rm_configs::Bool = true,
+#         use_control_variates::Bool = true
+#     ) where {O, L <: Limit}
+
+#     @assert O <= 2 "Up to second order cumulant corrections are supported. Asked for $(O)."
+
+#     isfile(ucposcar_path) || throw(ArgumentError("ucposcar path is not a file: $(ucposcar_path)"))
+#     isfile(ssposcar_path) || throw(ArgumentError("ssposcar path is not a file: $(ssposcar_path)"))
+
+#     new_uc_path = joinpath(outpath, "infile.ucposcar")
+#     new_ss_path = joinpath(outpath, "infile.ssposcar")
+#     isfile(new_uc_path) || cp(ucposcar_path, new_uc_path; force = true)
+#     isfile(new_ss_path) || cp(ssposcar_path, new_ss_path; force = true)
+
+#     move_ifcs(ce, outpath)
+
+#     # Check for mpirun
+#     res = run(`which mpirun`; wait = false)
+#     found_mpirun = success(res)
+#     found_mpirun || @warn "Could not find mpirun on path, defaulting to 1 thread."
+
+#     flags = ""
+#     flags *= (ce isa HarmonicEstimator) ? "" : "--thirdorder --fourthorder "
+#     flags *= (L === Quantum) ? "--quantum " : ""
+#     flags *= needs_true_V(ce) ? "--dumpconfigs " : ""
+
+#     if found_mpirun
+#         cmd_str = `mpirun -np $(nthreads) effective_hamiltonian --nconf $(ce.nconf) --temperature $(T) $(split(flags))`
+#     else
+#         cmd_str = `effective_hamiltonian --nconf $(ce.nconf) --temperature $(T) $(split(flags))`
+#     end
+#     @info cmd_str
+#     cd(outpath) do 
+#         run(cmd_str)
+#     end
+
+#     # If configs are dumped to calculate V, use HDF5
+#     # this gurantees order of positions and energies matches.
+#     if needs_true_V(ce)
+#         tep_energies_path = joinpath(outpath, "outfile.canonical_configs.hdf5")
+#         is_hdf5 = Val{true}()
+#     else
+#         tep_energies_path = joinpath(outpath, "outfile.energies")
+#         is_hdf5 = Val{false}()
+#     end
+
+#     @info "Parsing Energies"
+#     T_file, n_atoms, Vₚ, V₂, V₃, V₄ = parse_energies(tep_energies_path, is_hdf5)
+
+#     if T_file != T
+#         @warn "You said tempearture was $T, but parsed temperature as $(T_file) from outfile.energies"
+#     end
+
+#     if !(sum(Vₚ) ≈ 0.0)
+#         error("Got non-zero polar term. I don't know what to do with that.")
+#     end
+
+#     if needs_true_V(ce)
+#         V = calculate_true_energies(ce.force_calculator, ce.nconf, ssposcar_path, outpath)   
+#     else
+#         V = NaN .* zeros(eltype(V₂), size(V₂))
+#     end
+
+#     #!TODO ADD TEMP/n_ATOMS DATA AND UNITS TO FILE
+#     # This energy file will have the correct ordering it is not always correct 
+#     # to load V from outfile.true_potential_energy and V2/V3/V4 from outfile.energies
+#     header = ["V" "Vp" "V2" "V3" "V4"]
+#     str_fmt_str = (N) -> Printf.Format(join(fill("%15s", N), " "))
+#     open(joinpath(outpath, "outfile.all_energies"), "w") do f
+#         println(f, Printf.format(str_fmt_str(length(header)), header...))
+#         writedlm(f, [V Vₚ V₂ V₃ V₄])
+#     end
+
+#     if rm_configs
+#         rm(joinpath(outpath, "outfile.canonical_configs.hdf5"); force = true)
+#     end
+
+#     res = bootstrap_corrections(V, V₂, V₃, V₄, T, outpath, ce, n_atoms, use_control_variates)
+#     save.(res, Ref(outpath), Ref(ce.n_boot))
+
+#     # Compute some statistics to assess convergence with N
+#     do_size_study(ce, outpath, V, V₂, V₃, V₄, T, n_atoms, use_control_variates)
+
+#     return res
 
 # end
+
+

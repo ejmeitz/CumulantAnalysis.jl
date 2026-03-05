@@ -1,82 +1,65 @@
-export estimate_thermo_properties, CumulantData
-
 # Various derivatives of ⟨O⟩
-∂A_∂T(A, V, kB, T) = cov(A, V; corrected = false) / (kB * T * T)
-∂AB_∂T(A, B, V, kB, T, dA = ∂A_∂T(A, V, kB, T), dB =  ∂A_∂T(B, V, kB, T)) = (mean(A) * dB) + (mean(B) * dA)
-∂²A_∂T²(A, V, kB, T, dA = ∂A_∂T(A, V, kB, T)) = (-2*dA/T) + ((1/(kB*T*T)) * (∂A_∂T(A.*V, V, kB, T) - ∂AB_∂T(A, V, V, kB, T, dA)))
+∂A_∂T(A, V, T) = cov(A, V; corrected=false) / (kB * T * T)
+∂AB_∂T(A, B, V, T, dA = ∂A_∂T(A, V, T), dB =  ∂A_∂T(B, V, T)) = (mean(A) * dB) + (mean(B) * dA)
 
+# centered versions of second-derivative
+dmean_cov(A, V, T) = mean((A .- mean(A)) .* (V .- mean(V))) / (kB*T^2)
+d_prod_mean(A, B, dA, dB) = mean(A)*dB + mean(B)*dA
+function ∂²A_∂T²(A, V, T, dA = dmean_cov(A, V, T))
+    dAV = ∂A_∂T(A.*V, V, T)
+    dVV = ∂A_∂T(V, V, T)  
+    d_prod = d_prod_mean(A, V, dA, dVV)
+    return (-2*dA/T) + (1/(kB*T^2)) * (dAV - d_prod)
+end
+
+# ∂²A_∂T²(A, V, T, dA = ∂A_∂T(A, V, T)) = (-2*dA/T) + ((1/(kB*T*T)) * (∂A_∂T(A.*V, V, T) - ∂AB_∂T(A, V, V, T, dA)))
+
+# probably biased
 function central_moment(X, n::Int)
     return mean( (X .- mean(X)) .^ n )
 end
 
 skew(X) = central_moment(X, 3)
 
-struct CumulantData{O,A,B,C}
-    κ::A
-    ∂κ_∂T::B
-    ∂²κ_∂T²::C
+## CONSTANT CORRECTION (Order Zero) ##
+
+function CumulantData(V, V₂, V₃, V₄, V_ref, T, ::Val{0}, ce::AnalyticalEstimator;
+                        use_hot::Bool = false)
+
+    X = V₀_rv(ce, V, V₂, V₃, V₄)
+    μX = mean(X)
+    β = 1 / (CumulantAnalysis.kB * T)
+
+    V₀ = μX
+    ∂V₀ = ∂A_∂T(X, V_ref, T)
+    ∂²V₀ = ∂²A_∂T²(X, V_ref, T, ∂V₀)
+
+
+    if use_hot
+        ΔV = V .- V₂ # V₃ .+ V₄
+        cov_X_ΔV = cov(X, ΔV)
+
+        W    = (X .- μX) .* (ΔV .- mean(ΔV))
+        dWdT  = ∂A_∂T(W, V_ref, T) # = d/dT cov0(X,ΔV)
+
+        V₀ += -β*cov_X_ΔV
+        ∂V₀ += (cov_X_ΔV*β/T) - (β*dWdT)
+    end
+
+    return CumulantData{0, typeof(V₀), typeof(∂V₀), typeof(∂²V₀)}(V₀, ∂V₀, ∂²V₀)
+
 end
 
-order(::CumulantData{O}) where O = O
+function constant_corrections(c0::CumulantData{0}, T)
 
-function CumulantData(V, ΔV, kB, T, ::Val{1})
+    F_corr = c0.κ
+    S_corr = -c0.∂κ_∂T
+    U_corr = F_corr + T*S_corr
+    # U_corr = c0.κ - T*c0.∂κ_∂T
+    Cv_corr = -T * c0.∂²κ_∂T²
 
-    t1 = Threads.@spawn mean(ΔV)
-    t2 = Threads.@spawn ∂A_∂T(ΔV, V, kB, T)
-    t3 = Threads.@spawn ∂²A_∂T²(ΔV, V, kB, T)
-
-    κ₁ = fetch(t1)
-    ∂κ₁_∂T = fetch(t2)
-    ∂²κ₁_∂T² = fetch(t3)
-
-    return CumulantData{1, typeof(κ₁), typeof(∂κ₁_∂T), typeof(∂²κ₁_∂T²)}(
-                            κ₁, ∂κ₁_∂T, ∂²κ₁_∂T²)
-end
-
-function CumulantData(V, ΔV, kB, T, c1::CumulantData{1}, ::Val{2})
-
-    ΔV² = ΔV .^ 2
-
-    t1 = Threads.@spawn var(ΔV; corrected = false)
-    t2 = Threads.@spawn ∂A_∂T(ΔV², V, kB, T)
-    t3 = Threads.@spawn ∂²A_∂T²(ΔV², V, kB, T)
-
-    κ₂ = fetch(t1)
-    ∂ΔV²_∂T = fetch(t2)
-    ∂²ΔV²_∂T² = fetch(t3)
-
-    ∂κ₂_∂T = ∂ΔV²_∂T - (2*c1.κ*c1.∂κ_∂T)
-    ∂²κ₂_∂T² = ∂²ΔV²_∂T² - 2*(((c1.∂κ_∂T)^2) + (c1.κ*c1.∂²κ_∂T²))
-
-    return CumulantData{2, typeof(κ₂), typeof(∂κ₂_∂T), typeof(∂²κ₂_∂T²)}(
-                        κ₂, ∂κ₂_∂T, ∂²κ₂_∂T²)
-end
-
-function CumulantData(V, ΔV, kB, T, c1::CumulantData{1}, ::Val{3})
-
-    ΔV² = ΔV .^ 2
-    ΔV³ = ΔV .^ 3
-
-    t1 = Threads.@spawn skew(ΔV)
-    t2 = Threads.@spawn ∂A_∂T(ΔV³, V, kB, T)
-    t3 = Threads.@spawn ∂²A_∂T²(ΔV³, V, kB, T)
-    t4 = Threads.@spawn mean(ΔV²)
-    # These are both re calculated from second order
-    t5 = Threads.@spawn ∂A_∂T(ΔV², V, kB, T)
-    t6 = Threads.@spawn ∂²A_∂T²(ΔV², V, kB, T)
-
-    κ₃ = fetch(t1)
-    ∂ΔV³_∂T = fetch(t2)
-    ∂²ΔV³_∂T² = fetch(t3)
-    μ_ΔV² = fetch(t4)
-    ∂ΔV²_∂T = fetch(t5)
-    ∂²ΔV²_∂T² = fetch(t6)
-
-    ∂κ₃_∂T = ∂ΔV³_∂T - 3*c1.κ*∂ΔV²_∂T + 3*μ_ΔV²*c1.∂κ_∂T
-    ∂²κ₃_∂T² = ∂²ΔV³_∂T² - 3*(c1.∂κ_∂T*∂ΔV²_∂T + c1.κ*∂²ΔV²_∂T²) + 3*(∂ΔV²_∂T*c1.∂κ_∂T + μ_ΔV²*c1.∂²κ_∂T²)
-
-    return CumulantData{3, typeof(κ₃), typeof(∂κ₃_∂T), typeof(∂²κ₃_∂T²)}(
-                            κ₃, ∂κ₃_∂T, ∂²κ₃_∂T²)
+    return F_corr, S_corr, U_corr, Cv_corr
+    
 end
 
 function first_order_corrections(c1::CumulantData{1}, T)
@@ -89,7 +72,7 @@ function first_order_corrections(c1::CumulantData{1}, T)
     return F_correction, S_correction, U_correction, Cv_correction
 end
 
-function second_order_corrections(c2::CumulantData{2}, kB, T, stochastic::Bool)
+function second_order_corrections(c2::CumulantData{2}, T, stochastic::Bool)
 
     pref = stochastic ? -1.0 : 1.0
     β = 1 / (kB*T)
@@ -103,16 +86,99 @@ function second_order_corrections(c2::CumulantData{2}, kB, T, stochastic::Bool)
     return F_correction, S_correction, U_correction, Cv_correction
 end
 
-function third_order_corrections(c3::CumulantData{3}, kB, T)
 
-    β = 1 / (kB*T)
-    β² = β^2; β³ = β^3
+## CONSTANT CORRECTION ##
+# function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{0}, ce::SamplingCumulantEstimator)
 
-    # no clue which of these are correct
-    F_correction = c3.κ * β² / 6
-    S_correction = 0.0 #(c3.κ*kB*β³/3) - (β²*c3.∂κ_∂T/6)
-    U_correction = 0.0 #T*((0.5*kB*β³*c3.κ) - (β²*c3.∂κ_∂T/6))
-    Cv_correction = 0.0 #(U_correction/T) - (3*β²*c3.κ/2) + (5*β²*c3.∂κ_∂T/6) + (T*β²*c3.∂²κ_∂T²/6)
+#     X = V₀_rv(ce, V, V₂, V₃, V₄)
 
-    return F_correction, S_correction, U_correction, Cv_correction
-end
+#     V₀ = mean(X)
+#     ∂V₀ = ∂A_∂T(X, V₂, T)
+#     ∂²V₀ = ∂²A_∂T²(X, V₂, T, ∂V₀)
+
+#     # # This estimator uses a user provided V0
+#     # if ce isa MixedEstimator
+#     #     V₀ = get_V₀(ce, V, V₂, V₃, V₄)
+#     # end
+
+#     return CumulantData{0, typeof(V₀), typeof(∂V₀), typeof(∂²V₀)}(V₀, ∂V₀, ∂²V₀)
+
+# end
+
+# ## FIRST CUMULANTS ##
+# function CumulantData(V, V₂, V₃, V₄, T, n_atoms, ::Val{1}, ce::SamplingCumulantEstimator)
+
+#     X = X1(ce, V, V₂, V₃, V₄)
+
+#     κ₁ = mean(X)
+#     ∂κ₁_∂T = ∂A_∂T(X, V₂, T)
+#     ∂²κ₁_∂T² = ∂²A_∂T²(X, V₂, T)
+
+#     return CumulantData{1, typeof(κ₁), typeof(∂κ₁_∂T), typeof(∂²κ₁_∂T²)}(κ₁, ∂κ₁_∂T, ∂²κ₁_∂T²)
+# end
+
+
+# ## SECOND CUMULANTS ##
+# function CumulantData(V, V₂, V₃, V₄, T, n_atoms, c1::CumulantData{1}, ::Val{2}, ce::SamplingCumulantEstimator)
+
+#     X = X2(ce, V, V₂, V₃, V₄)
+#     X² = X .^ 2
+
+#     # μX², cvd1, ∂X²_∂T, cvd2, ∂²X²_∂T², cvd3 = get_cv_estimates(X², V₂, V₃, T, n_atoms, use_cvs)
+#     # κ₂ =  μX² - c1.κ^2
+
+#     κ₂ = var(X; corrected = true)
+#     ∂X²_∂T = ∂A_∂T(X², V₂, T)
+#     ∂²X²_∂T² = ∂²A_∂T²(X², V₂, T)
+
+#     ∂κ₂_∂T = ∂X²_∂T - (2*c1.κ*c1.∂κ_∂T)
+#     ∂²κ₂_∂T² = ∂²X²_∂T² - 2*(((c1.∂κ_∂T)^2) + (c1.κ*c1.∂²κ_∂T²))
+
+#     return CumulantData{2, typeof(κ₂), typeof(∂κ₂_∂T), typeof(∂²κ₂_∂T²)}(κ₂, ∂κ₂_∂T, ∂²κ₂_∂T²)
+# end
+
+
+## THRID CUMULANTS ##
+
+# function CumulantData(V, V₂, V₃, V₄, T, c1::CumulantData{1}, ::Val{3}, ce::SamplingCumulantEstimator)
+
+#     X = X3(ce, V, V₂, V₃, V₄)
+#     X² = X .^ 2
+#     X³ = X .^ 3
+
+#     t1 = Threads.@spawn skew(X)
+#     t2 = Threads.@spawn ∂A_∂T(X³, V₂, T)
+#     t3 = Threads.@spawn ∂²A_∂T²(X³, V₂, T)
+#     t4 = Threads.@spawn mean(X²)
+
+#     # These are both re calculated from second order
+#     t5 = Threads.@spawn ∂A_∂T(X², V₂, T)
+#     t6 = Threads.@spawn ∂²A_∂T²(X², V₂, T)
+
+#     κ₃ = fetch(t1)
+#     ∂X³_∂T = fetch(t2)
+#     ∂²X³_∂T² = fetch(t3)
+#     μ_X² = fetch(t4)
+#     ∂X²_∂T = fetch(t5)
+#     ∂²X²_∂T² = fetch(t6)
+
+#     ∂κ₃_∂T = ∂X³_∂T - 3*c1.κ*∂X²_∂T + 3*μ_X²*c1.∂κ_∂T
+#     ∂²κ₃_∂T² = ∂²X³_∂T² - 3*(c1.∂κ_∂T*∂X²_∂T + c1.κ*∂²X²_∂T²) + 3*(∂X²_∂T*c1.∂κ_∂T + μ_X²*c1.∂²κ_∂T²)
+
+#     return CumulantData{3, typeof(κ₃), typeof(∂κ₃_∂T), typeof(∂²κ₃_∂T²)}(
+#                             κ₃, ∂κ₃_∂T, ∂²κ₃_∂T²)
+# end
+
+# function third_order_corrections(c3::CumulantData{3}, T)
+
+#     β = 1 / (kB*T)
+#     β² = β^2; β³ = β^3
+
+#     # no clue which of these are correct
+#     F_correction = c3.κ * β² / 6
+#     S_correction = 0.0 #(c3.κ*kB*β³/3) - (β²*c3.∂κ_∂T/6)
+#     U_correction = 0.0 #T*((0.5*kB*β³*c3.κ) - (β²*c3.∂κ_∂T/6))
+#     Cv_correction = 0.0 #(U_correction/T) - (3*β²*c3.κ/2) + (5*β²*c3.∂κ_∂T/6) + (T*β²*c3.∂²κ_∂T²/6)
+
+#     return F_correction, S_correction, U_correction, Cv_correction
+# end
