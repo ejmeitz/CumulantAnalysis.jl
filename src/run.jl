@@ -53,71 +53,71 @@ function crystal_thermodynamic_properties(
 
     end
 
-    if length(temperatures) < 5
-        @warn "Fewer than 5 temperatures provided. Temperature dependent corrections may be inaccurate."
-    end
+    # if length(temperatures) < 5
+    #     @warn "Fewer than 5 temperatures provided. Temperature dependent corrections may be inaccurate."
+    # end
 
-    @info "Calculating Temperature Dependent Corrections"
+    # @info "Calculating Temperature Dependent Corrections"
 
-    # Post-Processing Across Temperatures
-    # 1) Differentiate freuqencies to get dω/dT
-    # 2) Differentiate internal energy constant correction
-    #      to get better heat capacity predictions
-    S_corr, U_corr, cv_offset_sg = improve_constant_corrections(
-        temperatures,
-        outpath,
-        all_ifcs,
-        all_ucs,
-        harmonic_q_mesh,
-        LIMIT;
-        kwargs...
-    )
+    # # Post-Processing Across Temperatures
+    # # 1) Differentiate freuqencies to get dω/dT
+    # # 2) Differentiate internal energy constant correction
+    # #      to get better heat capacity predictions
+    # S_corr, U_corr, cv_offset_sg = improve_constant_corrections(
+    #     temperatures,
+    #     outpath,
+    #     all_ifcs,
+    #     all_ucs,
+    #     harmonic_q_mesh,
+    #     LIMIT;
+    #     kwargs...
+    # )
 
-    # Save corrections to files
-    for (c, prop) in zip((U_corr, S_corr, cv_offset_sg), ("U", "S", "Cv"))
-        p = joinpath(dirname(outpath(1.0)), prop*"_raw_corrections.txt")
-        open(p, "w") do f
-            writedlm(f, [temperatures c])
-        end
-    end
+    # # Save corrections to files
+    # for (c, prop) in zip((U_corr, S_corr, cv_offset_sg), ("U", "S", "Cv"))
+    #     p = joinpath(dirname(outpath(1.0)), prop*"_raw_corrections.txt")
+    #     open(p, "w") do f
+    #         writedlm(f, [temperatures c])
+    #     end
+    # end
 
-    # Make new S/U/Cv files with correction terms
-    for (c, prop) in zip((U_corr, S_corr, cv_offset_sg), ("U", "S", "Cv"))
-        for (i,T) in enumerate(temperatures)
-            p = joinpath(outpath(T), prop*"_mean.h5")
-            h5open(p, "r") do f
-                harm = read(f, prop*"0")
-                corrs = SVector{3}(
-                    read(f, prop*"_offset"),
-                    read(f, prop*"1"),
-                    read(f, prop*"2"),
-                )
-                corr_SEs = SVector{3}(
-                    read(f, prop*"_offset_SE"),
-                    read(f, prop*"1_SE"),
-                    read(f, prop*"2_SE"),
-                )
-                total = read(f, prop*"_total")
-                total_SE = read(f, prop*"_total_SE")
-                #! this definitely does not propagate error correctly
-                if prop == "Cv"
-                    new_total = total - corrs[1] + c[i]
-                    bce = BootstrapCumualantEstimate(
-                        harm, SVector(c[i], corrs[2], corrs[3]),
-                        corr_SEs, new_total,
-                        total_SE, prop * "_corrected", "[kB / atom]"
-                    )
-                else # U / S
-                    units = prop == "U" ? "[eV/atom]" : "[kB / atom]"
-                    bce = BootstrapCumualantEstimate(
-                        harm + c[i], corrs, corr_SEs, total + c[i],
-                        total_SE, prop * "_corrected", units
-                    )
-                end
-                save(bce, outpath(T), nboot)
-            end
-        end
-    end
+    # # Make new S/U/Cv files with correction terms
+    # for (c, prop) in zip((U_corr, S_corr, cv_offset_sg), ("U", "S", "Cv"))
+    #     for (i,T) in enumerate(temperatures)
+    #         p = joinpath(outpath(T), prop*"_mean.h5")
+    #         h5open(p, "r") do f
+    #             harm = read(f, prop*"0")
+    #             corrs = SVector{3}(
+    #                 read(f, prop*"_offset"),
+    #                 read(f, prop*"1"),
+    #                 read(f, prop*"2"),
+    #             )
+    #             corr_SEs = SVector{3}(
+    #                 read(f, prop*"_offset_SE"),
+    #                 read(f, prop*"1_SE"),
+    #                 read(f, prop*"2_SE"),
+    #             )
+    #             total = read(f, prop*"_total")
+    #             total_SE = read(f, prop*"_total_SE")
+    #             #! this definitely does not propagate error correctly
+    #             if prop == "Cv"
+    #                 new_total = total - corrs[1] + c[i]
+    #                 bce = BootstrapCumualantEstimate(
+    #                     harm, SVector(c[i], corrs[2], corrs[3]),
+    #                     corr_SEs, new_total,
+    #                     total_SE, prop * "_corrected", "[kB / atom]"
+    #                 )
+    #             else # U / S
+    #                 units = prop == "U" ? "[eV/atom]" : "[kB / atom]"
+    #                 bce = BootstrapCumualantEstimate(
+    #                     harm + c[i], corrs, corr_SEs, total + c[i],
+    #                     total_SE, prop * "_corrected", units
+    #                 )
+    #             end
+    #             save(bce, outpath(T), nboot)
+    #         end
+    #     end
+    # end
 
 end
 
