@@ -22,12 +22,13 @@ ifc3_path = (T) -> joinpath(ifc_basepath(T), "infile.forceconstant_thirdorder")
 ifc4_path = (T) -> joinpath(ifc_basepath(T), "infile.forceconstant_fourthorder")
 
 for k in k_meshes
-    neon_outpath = (T) -> joinpath(base_outpath, "Neon", "k$(k)", "T$(T)")
-    mkpath(neon_outpath(T))
+    neon_basepath = joinpath(base_outpath, "Neon", "k$(k)")
+    mkpath(neon_basepath)
+    neon_outpath = (T) -> joinpath(neon_basepath, "T$(T)")
 
     crystal_thermodynamic_properties(
         Ts,
-        getoutpath,
+        neon_outpath,
         ucposcar_path,
         ssposcar_path,
         ifc2_path,
@@ -58,12 +59,13 @@ ifc3_path = (T) -> "$(stdep_basepath(T))/infile.forceconstant_thirdorder"
 ifc4_path = (T) -> "$(stdep_basepath(T))/infile.forceconstant_fourthorder"
 
 for k in k_meshes
-    argon_outpath = (T) -> joinpath(base_outpath, "Argon", "k$(k)", "T$(T)")
-    mkpath(argon_outpath(T))
+    argon_basepath = joinpath(base_outpath, "Argon", "k$(k)")
+    mkpath(argon_basepath)
+    argon_outpath = (T) -> joinpath(argon_basepath, "T$(T)")
 
     crystal_thermodynamic_properties(
         Ts,
-        getoutpath,
+        argon_outpath,
         ucposcar_path,
         ssposcar_path,
         ifc2_path,
@@ -96,12 +98,13 @@ ifc4_path = (T) -> joinpath(stdep_basepath(T), "infile.forceconstant_fourthorder
 
 
 for k in k_meshes
-    silicon_outpath = (T) -> joinpath(base_outpath, "Silicon", "k$(k)", "T$(T)")
-    mkpath(silicon_outpath(T))
+    silicon_basepath = joinpath(base_outpath, "Silicon", "k$(k)")
+    mkpath(silicon_basepath)
+    silicon_outpath = (T) -> joinpath(silicon_basepath, "T$(T)")
 
     crystal_thermodynamic_properties(
         Ts,
-        getoutpath,
+        silicon_outpath,
         ucposcar_path,
         ssposcar_path,
         ifc2_path,
