@@ -52,9 +52,9 @@ for N in Ns
         (T) -> thermo_outpath(N),
         (T) -> ucposcar_path(N),
         (T) -> ssposcar_path(N),
-        ifc2_path,
-        ifc3_path,
-        ifc4_path,
+        (T) -> ifc2_path(N),
+        (T) -> ifc3_path(N),
+        (T) -> ifc4_path(N),
         pot_cmds;
         quantum = quantum,
         nconf = nconf,
