@@ -46,11 +46,12 @@ ifc4_path = (N) -> "$(stdep_basepath(N))/infile.forceconstant_fourthorder"
 
 thermo_outpath = (N) -> joinpath("/mnt/merged/emeitz/CumulantAnalysisTest/LJ_SIZE_EFFECTS_80K/", "N$(N)")
 for N in Ns
+
     crystal_thermodynamic_properties(
         [T],
-        thermo_outpath(N),
-        ucposcar_path(N),
-        ssposcar_path(N),
+        (T) -> thermo_outpath(N),
+        (T) -> ucposcar_path(N),
+        (T) -> ssposcar_path(N),
         ifc2_path,
         ifc3_path,
         ifc4_path,
