@@ -1,15 +1,18 @@
 export crystal_thermodynamic_properties, make_stdep_ifcs
 
+parse_path(path_func::Function, T) = path_func(T)
+parse_path(path::String, T) = path 
+
 """
 """
 function crystal_thermodynamic_properties(
     temperatures::AbstractVector{<:Real},
-    outpath::Function,
-    ucposcar_path::Function, #! ACCEPT STRING OR FUNCTION
-    ssposcar_path::Function, #! ACCEPT STRING OR FUNCTION
-    ifc2_path::Function, #! ACCEPT STRING OR FUNCTION
-    ifc3_path::Function, #! ACCEPT STRING OR FUNCTION
-    ifc4_path::Function, #! ACCEPT STRING OR FUNCTION
+    outpath::Union{Function, String},
+    ucposcar_path::Union{Function, String},
+    ssposcar_path::Union{Function, String},
+    ifc2_path::Union{Function, String},
+    ifc3_path::Union{Function, String},
+    ifc4_path::Union{Function, String},
     pot_cmds::Union{String, Vector{String}};
     quantum::Bool = false,
     nconf::Int = 100_000,
@@ -28,19 +31,26 @@ function crystal_thermodynamic_properties(
 
     for (i,T) in enumerate(temperatures)
 
-        mkpath(outpath(T))
+        outpath_T = parse_path(outpath, T)
+        ifc2_path_T = parse_path(ifc2_path, T)
+        ifc3_path_T = parse_path(ifc3_path, T)
+        ifc4_path_T = parse_path(ifc4_path, T)
+        ucposcar_path_T = parse_path(ucposcar_path, T)
+        ssposcar_path_T = parse_path(ssposcar_path, T)
+
+        mkpath(outpath_T)
 
         estim = AnalyticalEstimator(
-                ifc2_path(T), ifc3_path(T), ifc4_path(T), nconf, nboot
+                ifc2_path_T, ifc3_path_T, ifc4_path_T, nconf, nboot
             )
 
         res, all_ifcs[i] = estimate(
             estim,
             Float64(T),
-            outpath(T),
+            outpath_T,
             pot_cmds;
-            ucposcar_path = ucposcar_path(T),
-            ssposcar_path = ssposcar_path(T),
+            ucposcar_path = ucposcar_path_T,
+            ssposcar_path = ssposcar_path_T,
             n_threads = n_threads,
             size_study = size_study,
             quantum = quantum,
@@ -49,7 +59,7 @@ function crystal_thermodynamic_properties(
             use_hot = use_hot
         )
 
-        all_ucs[i] = CrystalStructure(ucposcar_path(T))
+        all_ucs[i] = CrystalStructure(ucposcar_path_T)
 
     end
 
