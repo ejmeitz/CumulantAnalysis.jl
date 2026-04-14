@@ -28,6 +28,7 @@ To begin clone the repo, it contains some input files.
 git clone --depth 1 --branch v0.1.0 https://github.com/ejmeitz/CumulantAnalysis.jl.git
 ```
 
+##### sTDEP IFCs
 The first step is to get the 2nd, 3rd and 4th order force constants from sTDEP. The method implemented by CumulantAnalysis.jl expects self-consistent phonons (e.g. sTDEP or SSCHA). If you use a method like MD-TDEP or a finite-dispalcement method your results will be less accurate. An in-depth sTDEP tutorial can be found [here](https://github.com/tdep-developers/tdep-tutorials/tree/main/02_sampling), but I also provide a script to compute the IFCs automatically. A more compelx workflow (used in the paper) which loops over multiple volume, temperature pairs can be found [here]("/workflows/neon_lattice_params_stdep.jl").
 
 The force constants obtained from this method can be found [here]("/data/stdep_results). Note that you will not get exactly the same numbers as sTDEP is stochastic, but the IFCs should converge to roughly the same values. The results can be found in the `iter009` folder, and take about a minute to obtain.
@@ -72,6 +73,22 @@ make_stdep_ifcs(
 )
 ```
 
+##### 3rd and 4th Order IFCs
+This has only computed the second-order IFCs. Now you can use a separate TDEP installation or LatticeDynamicsToolkit.jl to get the 3rd and 4th order IFCs. This will take a couple of minutes depending how many threads you have.
+
+```
+import LatticeDynamicsToolkit.TDEPWrapper: execute, ExtractForceConstants
+
+rc2 = 6.955
+rc3 = 6.955
+rc4 = 4.0
+
+efc = ExtractForceConstants(secondorder_cutoff = rc2, thirdorder_cutoff = rc3, fourthorder_cutoff = rc4)
+rundir = joinpath(outpath, "iter009") # Update if you changed n_iter above.
+execute(efc, rundir, Threads.nthreads())
+```
+
+##### Thermodynamic Properties
 The next step is to compute the thermodynamic properties. This script will create an output file for each thermodynamic property (F, U, S, Cv) broken down into the harmonic, 0th, 1st and 2nd order parts. Only the 0th order correction has an associated error. If `size_study` is set to `true` an additional output will contain the 0-th order correction as a function of the number of samples. This can be useful to detect convergence. A full workflow (used in the paper) which loops over multiple temperatures can be found [here]("/workflows/neon.jl").  
 
 The free energy should be roughly -0.0179316 eV/atom. This value is stochastic, but the first 5-ish decimals should definitely match. The full set of expected results can be found [here]("/data/thermo_results).
