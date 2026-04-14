@@ -21,7 +21,6 @@ function crystal_thermodynamic_properties(
     harmonic_q_mesh::AbstractVector{<:Integer} = [30,30,30],
     free_energy_q_mesh::AbstractVector{<:Integer} = [25,25,25],
     n_threads::Integer = Threads.nthreads(),
-    use_hot::Bool = false,
     kwargs...
 )
     all_ifcs = Vector{IFC2}(undef, length(temperatures))
@@ -56,7 +55,6 @@ function crystal_thermodynamic_properties(
             quantum = quantum,
             harmonic_q_mesh = harmonic_q_mesh,
             free_energy_q_mesh = free_energy_q_mesh,
-            use_hot = use_hot
         )
 
         all_ucs[i] = CrystalStructure(ucposcar_path_T)

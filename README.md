@@ -60,7 +60,7 @@ make_stdep_ifcs(
 )
 ```
 
-The force-constants for this example may also be found in the "paper/neon_example" folder of the repo. A full workflow (used in the paper) which loops over multiple temperatures can be found [here]("/workflows/neon.jl"). 
+The force-constants for this example may also be found in the "paper/neon_example" folder of the repo. A full workflow (used in the paper) which loops over multiple temperatures can be found [here]("/workflows/neon.jl"). This script will create an output file for each thermodynamic property broken down into the harmonic, 0th, 1st and 2nd order corrections. Only the 0th order correction has an associated error. If `size_study` is set to `true` an additional output will contain the 0-th order correction as a function of the number of samples. This can be useful to detect convergence. 
 
 ```julia
 using CumulantAnalysis
@@ -75,9 +75,18 @@ T = 24 # Kelvin
 r_cut = 6.955
 pot_cmds = ["pair_style lj/cut $(r_cut)", "pair_coeff * * 0.0032135 2.782", "pair_modify shift yes"]
 
-# Algorithm Parameters
-nconf = 100_000 # Number of configurations sampled to estimate the 0-th order term
-nboot = 5000 # Number of bootstraps done to estimate error of 0-th order term
+# Algorithm Parameters:
+# Number of configurations sampled to estimate the 0-th order term
+nconf = 100_000
+# Number of bootstraps done to estimate error of 0-th order term
+nboot = 5000
+# Optional study to asses convergence of 0-th order term. Increses compute time.
+size_study = true
+# K-Mesh used to integrate harmonic properties, 30x30x30 is the default
+harmonic_q_mesh = [30, 30, 30]
+# K-Mesh sued to integrate 1st and 2nd order corrections, 25x25x25 is default. Typically a small grid is enough.
+free_energy_q_mesh = [15, 15, 15]
+# Other kwargs: n_threads, automatically uses all available threads.
 
 # Must be POSCAR format
 ssposcar_path = joinpath(basepath "ssposcar_T24")
@@ -100,7 +109,9 @@ crystal_thermodynamic_properties(
     quantum = true,
     nconf = nconf,
     nboot = nboot,
-    size_study = true
+    size_study = size_study,
+    harmonic_q_mesh = harmonic_q_mesh
+    free_energy_q_mesh = free_energy_q_mesh
 )
 
 ```
