@@ -119,7 +119,8 @@ harmonic_q_mesh = [30, 30, 30]
 # K-Mesh sued to integrate 1st and 2nd order corrections, 25x25x25 is default. 
 # Typically ~ 15x15x15 grid is sufficient.
 free_energy_q_mesh = [15, 15, 15]
-# Other kwargs: n_threads, automatically uses all available threads. Must set JULIA_NUM_THREADS env var prior to launching Julia.
+# Other kwargs: n_threads, automatically uses all available threads.
+# Must set JULIA_NUM_THREADS env var prior to launching Julia.
 
 # Must be POSCAR format
 ssposcar_path = joinpath(basepath, "infile.ssposcar")
