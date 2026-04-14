@@ -1,0 +1,5 @@
+# F Units: [eV/atom]
+# Row 1: Values, Row 2: Standard Error estimated from 5000 bootstraps
+             F0        F_offset              F1              F2         F_total
+      0.0061408      -0.0237362       0.0001195      -0.0004557      -0.0179316
+      0.0000000       0.0000003       0.0000000       0.0000000       0.0000003

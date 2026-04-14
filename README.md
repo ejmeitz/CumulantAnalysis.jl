@@ -23,7 +23,7 @@ Coming soon.
 
 Before we can compute thermodynamic properties we need to get the 2nd, 3rd and 4th order force constants from sTDEP. The method implemented by CumulantAnalysis.jl expects self-consistent phonons (e.g. sTDEP or SSCHA). If you use a method like MD-TDEP or a finite-dispalcement method your results will be less accurate. An in-depth sTDEP tutorial can be found [here](https://github.com/tdep-developers/tdep-tutorials/tree/main/02_sampling), but I also provide a script to compute the IFCs automatically. A more compelx workflow (used in the paper) which loops over multiple volume, temperature pairs can be found [here]("/workflows/neon_lattice_params_stdep.jl").
 
-The results I obtained from this code may be found in the "paper/neon_example" folder. Note that you will not get exactly the same numbers as sTDEP is stochastic, but the IFCs should converge to roughly the same values.
+The force constants obtained from this method can be found [here]("/data/stdep_results). Note that you will not get exactly the same numbers as sTDEP is stochastic, but the IFCs should converge to roughly the same values.
 
 
 ```julia
@@ -41,11 +41,16 @@ pot_cmds = ["pair_style lj/cut $(r_cut)", "pair_coeff * * 0.0032135 2.782", "pai
 # sTDEP Parameters
 n_iter = 10 # Number of self-consistent iterations
 maximum_frequency = 2.5 # Frequency used to create initial IFC guess for iteration 0
-quantum = true
+quantum = true # Whether to sample quantum or classical configs
+# Other sTDEP kwargs: 
+# - mix = true --> Determines whether configs from prior step are mixed with current step
+# - nconf_init = 8 --> Number of configs used for iteration 0
+# - max_configs = 512 --> Maximum number of configurations for any iteration (doubles every iter)
 
 # Must be POSCAR format
-ssposcar_path = joinpath(repo_root, "paper", "neon_example", "ssposcar_T24")
-ucposcar_path = joinpath(repo_root, "paper", "neon_example", "ucposcar_T24")
+basepath = joinpath(repo_root, "data", "stdep_inputs")
+ssposcar_path = joinpath(basepath, "infile.ssposcar")
+ucposcar_path = joinpath(basepath, "infile.ucposcar")
 
 make_stdep_ifcs(
     ucposcar_path,
@@ -60,14 +65,16 @@ make_stdep_ifcs(
 )
 ```
 
-The force-constants for this example may also be found in the "paper/neon_example" folder of the repo. A full workflow (used in the paper) which loops over multiple temperatures can be found [here]("/workflows/neon.jl"). This script will create an output file for each thermodynamic property broken down into the harmonic, 0th, 1st and 2nd order corrections. Only the 0th order correction has an associated error. If `size_study` is set to `true` an additional output will contain the 0-th order correction as a function of the number of samples. This can be useful to detect convergence. 
+The next step is to compute the thermodynamic properties. This script will create an output file for each thermodynamic property (F, U, S, Cv) broken down into the harmonic, 0th, 1st and 2nd order parts. Only the 0th order correction has an associated error. If `size_study` is set to `true` an additional output will contain the 0-th order correction as a function of the number of samples. This can be useful to detect convergence. A full workflow (used in the paper) which loops over multiple temperatures can be found [here]("/workflows/neon.jl").  
+
+The free energy should be roughly -0.0179316 eV/atom. This value is stochastic, but the first 5-ish decimals should definitely match. The full set of expected results can be found [here]("/data/thermo_results).
 
 ```julia
 using CumulantAnalysis
 
 repo_root = "<path-to-repo-root>" #UPDATE
 outpath = "<whatever-directory-you-want>" # UPDATE
-basepath = joinpath(repo_root, "paper", "neon_example")
+basepath = joinpath(repo_root, "data", "thermo_inputs")
 
 T = 24 # Kelvin
 
@@ -75,7 +82,6 @@ T = 24 # Kelvin
 r_cut = 6.955
 pot_cmds = ["pair_style lj/cut $(r_cut)", "pair_coeff * * 0.0032135 2.782", "pair_modify shift yes"]
 
-# Algorithm Parameters:
 # Number of configurations sampled to estimate the 0-th order term
 nconf = 100_000
 # Number of bootstraps done to estimate error of 0-th order term
@@ -84,13 +90,14 @@ nboot = 5000
 size_study = true
 # K-Mesh used to integrate harmonic properties, 30x30x30 is the default
 harmonic_q_mesh = [30, 30, 30]
-# K-Mesh sued to integrate 1st and 2nd order corrections, 25x25x25 is default. Typically a small grid is enough.
+# K-Mesh sued to integrate 1st and 2nd order corrections, 25x25x25 is default. 
+# Typically ~ 15x15x15 grid is sufficient.
 free_energy_q_mesh = [15, 15, 15]
-# Other kwargs: n_threads, automatically uses all available threads.
+# Other kwargs: n_threads, automatically uses all available threads. Must set JULIA_NUM_THREADS env var prior to launching Julia.
 
 # Must be POSCAR format
-ssposcar_path = joinpath(basepath "ssposcar_T24")
-ucposcar_path = joinpath(basepath "ucposcar_T24")
+ssposcar_path = joinpath(basepath "infile.ssposcar")
+ucposcar_path = joinpath(basepath "infile.ucposcar")
 
 # Expects IFCs in TDEP format
 ifc2_path = joinpath(basepath, "infile.forceconstant")
