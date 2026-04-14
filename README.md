@@ -29,7 +29,7 @@ git clone --depth 1 --branch v0.1.0 https://github.com/ejmeitz/CumulantAnalysis.
 ```
 
 ##### sTDEP IFCs
-The first step is to get the 2nd, 3rd and 4th order force constants from sTDEP. The method implemented by CumulantAnalysis.jl expects self-consistent phonons (e.g. sTDEP or SSCHA). If you use a method like MD-TDEP or a finite-dispalcement method your results will be less accurate. An in-depth sTDEP tutorial can be found [here](https://github.com/tdep-developers/tdep-tutorials/tree/main/02_sampling), but I also provide a script to compute the IFCs automatically. A more compelx workflow (used in the paper) which loops over multiple volume, temperature pairs can be found [here]("/workflows/neon_lattice_params_stdep.jl").
+The first step is to get the 2nd, 3rd and 4th order force constants from sTDEP. If you already have these skip to the [thermodynamic property](#thermodynamic-properties) section The method implemented by CumulantAnalysis.jl expects self-consistent phonons (e.g. sTDEP or SSCHA). If you use a method like MD-TDEP or a finite-dispalcement method your results will be less accurate. An in-depth sTDEP tutorial can be found [here](https://github.com/tdep-developers/tdep-tutorials/tree/main/02_sampling), but I also provide a script to compute the IFCs automatically. A more compelx workflow (used in the paper) which loops over multiple volume, temperature pairs can be found [here]("/workflows/neon_lattice_params_stdep.jl").
 
 The force constants obtained from this method can be found [here]("/data/stdep_results). Note that you will not get exactly the same numbers as sTDEP is stochastic, but the IFCs should converge to roughly the same values. The results can be found in the `iter009` folder, and take about a minute to obtain.
 
@@ -143,7 +143,7 @@ crystal_thermodynamic_properties(
     nconf = nconf,
     nboot = nboot,
     size_study = size_study,
-    harmonic_q_mesh = harmonic_q_mesh
+    harmonic_q_mesh = harmonic_q_mesh,
     free_energy_q_mesh = free_energy_q_mesh
 )
 
