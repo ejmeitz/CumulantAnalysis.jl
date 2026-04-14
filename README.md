@@ -76,7 +76,7 @@ make_stdep_ifcs(
 ##### 3rd and 4th Order IFCs
 This has only computed the second-order IFCs. Now you can use a separate TDEP installation or LatticeDynamicsToolkit.jl to get the 3rd and 4th order IFCs. This will take a couple of minutes depending how many threads you have.
 
-```
+```julia
 import LatticeDynamicsToolkit.TDEPWrapper: execute, ExtractForceConstants
 
 rc2 = 6.955
