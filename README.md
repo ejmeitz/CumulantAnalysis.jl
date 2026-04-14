@@ -15,7 +15,7 @@ Then install CumulantAnalysis.jl into the same environment as LatticeDynamicsToo
 Pkg.add(; url = "https://github.com/ejmeitz/CumulantAnalysis.jl.git", rev = "v0.1.0")
 ```
 
-Note that this package automatically installs LAMMPS and if a GPU is detected it will isntall a GPU version of LAMMPS. If you have compilation errors related to this open a PR. The GPU is not used, but can still cause headaches at compile time if your Linux is too "old".
+Note that this package automatically installs LAMMPS and if a GPU is detected it will install a GPU version of LAMMPS. If you have compilation errors related to this open a PR. The GPU is not used, but can still cause headaches at compile time if your Linux is too "old".
 
 ### Citation
 
