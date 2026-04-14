@@ -122,8 +122,8 @@ free_energy_q_mesh = [15, 15, 15]
 # Other kwargs: n_threads, automatically uses all available threads. Must set JULIA_NUM_THREADS env var prior to launching Julia.
 
 # Must be POSCAR format
-ssposcar_path = joinpath(basepath "infile.ssposcar")
-ucposcar_path = joinpath(basepath "infile.ucposcar")
+ssposcar_path = joinpath(basepath, "infile.ssposcar")
+ucposcar_path = joinpath(basepath, "infile.ucposcar")
 
 # Expects IFCs in TDEP format
 ifc2_path = joinpath(basepath, "infile.forceconstant")
