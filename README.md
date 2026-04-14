@@ -2,7 +2,7 @@
 
 ### Installation
 
-This package depends on LatticeDynamicsToolkit.jl which is an unregistered package. To install in your chosen environment run:
+This package depends on LatticeDynamicsToolkit.jl which is an unregistered package and requires Linux (macOS might work, Windows will not). To install in your chosen environment run:
 
 ```julia
 using Pkg
