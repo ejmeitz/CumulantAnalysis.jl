@@ -88,6 +88,8 @@ rundir = joinpath(outpath, "iter009") # Update if you changed n_iter above.
 execute(efc, rundir, Threads.nthreads())
 ```
 
+If you use the IFCs from this result, you might have to rename them from `outfile.*` to `infile.*` for the next part to work.
+
 ##### Thermodynamic Properties
 The next step is to compute the thermodynamic properties. This script will create an output file for each thermodynamic property (F, U, S, Cv) broken down into the harmonic, 0th, 1st and 2nd order parts. Only the 0th order correction has an associated error. If `size_study` is set to `true` an additional output will contain the 0-th order correction as a function of the number of samples. This can be useful to detect convergence. A full workflow (used in the paper) which loops over multiple temperatures can be found [here]("/workflows/neon.jl").  
 
