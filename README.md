@@ -93,7 +93,7 @@ If you use the IFCs from this result, you might have to rename them from `outfil
 ##### Thermodynamic Properties
 The next step is to compute the thermodynamic properties. You can use the IFCs from above (make sure filenames match paths in this example) or use the IFCs [here](data/thermo_inputs). This script will create an output file for each thermodynamic property (F, U, S, Cv) broken down into the harmonic, 0th, 1st and 2nd order parts. Only the 0th order correction has an associated error. If `size_study` is set to `true` an additional output will contain the 0-th order correction as a function of the number of samples. This can be useful to detect convergence. A full workflow (used in the paper) which loops over multiple temperatures can be found [here](workflows/neon.jl).  
 
-The free energy should be roughly -0.0179316 eV/atom. This value is stochastic, but the first 5-ish decimals should definitely match. The full set of expected results can be found [here](data/thermo_results). On my computer this took ~3 minutes to run on 40 cores.
+The free energy should be roughly -0.0179270 eV/atom. This value is stochastic, but the first few decimals should definitely match. On my computer this took ~3 minutes to run on 40 cores. The full set of expected results can be found [here](data/thermo_results). Note that these used a 25x25x25 mesh for the free energy.
 
 ```julia
 using CumulantAnalysis
