@@ -48,12 +48,7 @@ function crystal_thermodynamic_properties(
     harmonic_q_mesh::AbstractVector{<:Integer} = [30,30,30],
     free_energy_q_mesh::AbstractVector{<:Integer} = [25,25,25],
     n_threads::Integer = Threads.nthreads(),
-    kwargs...
 )
-    all_ifcs = Vector{IFC2}(undef, length(temperatures))
-    all_ucs = Vector{CrystalStructure}(undef, length(temperatures))
-
-    LIMIT = quantum ? Quantum : Classical
 
     for (i,T) in enumerate(temperatures)
 
@@ -70,7 +65,7 @@ function crystal_thermodynamic_properties(
                 ifc2_path_T, ifc3_path_T, ifc4_path_T, nconf, nboot
             )
 
-        res, all_ifcs[i] = estimate(
+        estimate(
             estim,
             Float64(T),
             outpath_T,
@@ -84,8 +79,6 @@ function crystal_thermodynamic_properties(
             free_energy_q_mesh = free_energy_q_mesh,
             use_hot = false
         )
-
-        all_ucs[i] = CrystalStructure(ucposcar_path_T)
 
     end
 end
