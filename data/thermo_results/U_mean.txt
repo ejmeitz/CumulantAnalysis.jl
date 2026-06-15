@@ -1,0 +1,5 @@
+# U Units: [eV/atom]
+# Row 1: Values, Row 2: Standard Error estimated from 5000 bootstraps
+             U0        U_offset              U1              U2         U_total
+      0.0088115      -0.0236623       0.0000371       0.0003184      -0.0144954
+      0.0000000       0.0000027       0.0000000       0.0000000       0.0000027

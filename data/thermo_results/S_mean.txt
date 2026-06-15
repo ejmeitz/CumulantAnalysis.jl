@@ -1,0 +1,5 @@
+# S Units: [kB / atom]
+# Row 1: Values, Row 2: Standard Error estimated from 5000 bootstraps
+             S0        S_offset              S1              S2         S_total
+      1.2913396       0.0357329      -0.0398552       0.3742765       1.6614938
+      0.0000000       0.0013324       0.0000000       0.0000000       0.0013324

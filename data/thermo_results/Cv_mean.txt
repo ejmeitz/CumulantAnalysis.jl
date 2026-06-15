@@ -1,0 +1,5 @@
+# Cv Units: [kB / atom]
+# Row 1: Values, Row 2: Standard Error estimated from 5000 bootstraps
+            Cv0       Cv_offset             Cv1             Cv2        Cv_total
+      1.9769193      -0.3667141      -0.0591857       0.4574312       2.0084507
+      0.0000000       0.0201019       0.0000000       0.0000000       0.0201019
