@@ -28,3 +28,9 @@ python/*.egg-info/
 python/dist/
 python/build/
 python/.pytest_cache/
+__pycache__/
+*.pyc
+*.pyo
+
+# LAMMPS runtime logs
+log.lammps

@@ -6,7 +6,7 @@ nconf = 100_000
 nboot = 5000
 
 quantum = True
-base_outpath = "/mnt/merged/emeitz/CumulantAnalysisTest/Neon_ANALYTICAL_PIMD"
+base_outpath = "/home/emeitz/Neon_ANALYTICAL_PIMD"
 getoutpath = lambda T: join(base_outpath, f"T{T}")
 
 Ts = [4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24]
@@ -17,7 +17,7 @@ pot_cmds = [
 ]
 
 ## sTDEP IFCs
-ifc_basepath = lambda T: f"/mnt/merged/emeitz/Neon_sTDEP/results/T{T}"
+ifc_basepath = lambda T: f"/home/emeitz/Neon_sTDEP/results/T{T}"
 ucposcar_path = lambda T: join(ifc_basepath(T), "infile.ucposcar")
 ssposcar_path = lambda T: join(ifc_basepath(T), "infile.ssposcar")
 ifc2_path = lambda T: join(ifc_basepath(T), "infile.forceconstant")

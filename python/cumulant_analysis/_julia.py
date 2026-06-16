@@ -47,13 +47,19 @@ def get_jl():
     jl = juliacall.newmodule("CumulantAnalysisPy")
     _report_julia_threads(jl)
     jl.seval("using CumulantAnalysis")
+    jl.seval("using PythonCall")
     jl.seval("""
     function _path_from_py(f)
         T -> begin
-            using PythonCall
-            pyconvert(String, f(T))
+            t = Float64(T)
+            py_arg = isinteger(t) ? Int(t) : t
+            pyconvert(String, f(py_arg))
         end
     end
+
+    _float_vector(xs) = Float64.(xs)
+    _int_vector(xs) = Int.(xs)
+    _string_vector(xs) = String.(xs)
     """)
 
     _JL = jl
@@ -70,14 +76,19 @@ def to_julia_path(path: str | Callable[[float], str]):
 
 def to_julia_vector(values: Sequence[float | int]):
     jl, _ = get_jl()
-    return jl.Vector(values)
+    return jl._float_vector(list(values))
+
+
+def to_julia_int_vector(values: Sequence[int]):
+    jl, _ = get_jl()
+    return jl._int_vector(list(values))
 
 
 def to_julia_pot_cmds(pot_cmds: str | Sequence[str]):
     if isinstance(pot_cmds, str):
         return pot_cmds
     jl, _ = get_jl()
-    return jl.Vector([str(cmd) for cmd in pot_cmds])
+    return jl._string_vector([str(cmd) for cmd in pot_cmds])
 
 
 def call_kwargs(**kwargs: Any) -> dict[str, Any]:

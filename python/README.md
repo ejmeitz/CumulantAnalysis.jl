@@ -2,53 +2,26 @@
 
 Python wrapper for [CumulantAnalysis.jl](https://github.com/ejmeitz/CumulantAnalysis.jl).
 
-Julia dependencies are managed automatically by [juliacall](https://juliapy.github.io/PythonCall.jl/stable/juliacall/) via `juliapkg.json` in this package. On first use, juliacall will set up a Julia environment, install `CumulantAnalysis` and its dependencies (including LAMMPS), and may take a few minutes.
+Julia dependencies are managed automatically by [juliacall](https://juliapy.github.io/PythonCall.jl/stable/juliacall/) via `juliapkg.json` in this package. On first use, juliacall will set up a Julia environment, install `CumulantAnalysis` and its dependencies (including LAMMPS). This may take a few minutes. If you have NVIDIA GPUs this might install a CUDA artifact. That is not used, but I have not figured out a great way to prevent this from happening automatically.
+
+> [!IMPORTANT]
+> 1) Be sure to set `PYTHON_JULIACALL_HANDLE_SIGNALS=yes` in your environment or Python will not be able to pass through the threads to Julia. This will prevent Ctrl-C from working to kill the process. You will likely have to manually kill the process to end it.
+> 2) To specify the number of threads set `PYTHON_JULIACALL_THREADS=<n-threads>` in your environment. The default will be 1. You might also need to set `JULIA_NUM_THREADS` in your environment.
 
 ## Requirements
 
 - Python 3.10+
-- Linux (macOS may work; Windows is not supported — same constraint as the Julia package)
+- Linux (macOS may work; Windows is not supported)
 
 ## Installation
-
-From this repository:
-
-```bash
-pip install git+https://github.com/ejmeitz/CumulantAnalysis.jl.git#subdirectory=python
-```
-
-For local development:
 
 ```bash
 pip install -e ./python
 ```
 
-## Threading
-
-`cumulant_analysis` uses Julia threads for parallel work. Configure the thread count **before starting Python** — it cannot be changed after Julia loads.
-
-Either set the environment variable:
-
-```bash
-export PYTHON_JULIACALL_THREADS=8
-python your_script.py
-```
-
-or pass the `-X` flag to the Python interpreter:
-
-```bash
-python -X juliacall-threads=8 your_script.py
-```
-
-If `-X juliacall-threads` is set, it takes precedence over `PYTHON_JULIACALL_THREADS`. Use `auto` to match the number of CPU cores.
-
-On the first call that starts Julia, the package reports the configured setting and the active thread count to stderr. If `PYTHON_JULIACALL_THREADS` is unset (and no `-X juliacall-threads` flag was passed), a warning is emitted showing how many threads Julia is using.
-
-You can also pass `n_threads` to `crystal_thermodynamic_properties`, but that only limits parallelism inside the calculation; the Julia process thread pool is still set at startup.
-
-See the [juliacall configuration docs](https://juliapy.github.io/PythonCall.jl/stable/juliacall/#Configuration) for details.
-
 ## Usage
+
+The `neon.jl` example is ported in the `neon.py` file. A small example for a single tempearture is shown below.
 
 ```python
 from cumulant_analysis import make_stdep_ifcs, crystal_thermodynamic_properties

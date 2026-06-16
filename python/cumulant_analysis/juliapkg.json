@@ -4,7 +4,7 @@
         "LatticeDynamicsToolkit": {
             "uuid": "b29279a7-2984-401e-b335-37c7be833a5d",
             "url": "https://github.com/ejmeitz/LatticeDynamicsToolkit.jl.git",
-            "rev": "v0.1.0"
+            "rev": "v0.1.1"
         },
         "CumulantAnalysis": {
             "uuid": "d62e69c9-3f2a-4699-bf0d-85fb75dc8589",

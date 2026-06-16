@@ -124,4 +124,8 @@ function make_stdep_ifcs(
         kwargs...
     )
 
+    #! TODO FIT 3rd/4th ORDER IFCS
+
+    #! RETURN F_H FOR EACH ITERATION TO CHECK CONVERGENCE
+
 end

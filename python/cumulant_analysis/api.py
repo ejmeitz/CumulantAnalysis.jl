@@ -5,6 +5,7 @@ from collections.abc import Callable, Sequence
 from cumulant_analysis._julia import (
     call_kwargs,
     get_jl,
+    to_julia_int_vector,
     to_julia_path,
     to_julia_pot_cmds,
     to_julia_vector,
@@ -79,8 +80,8 @@ def crystal_thermodynamic_properties(
         "nconf": nconf,
         "nboot": nboot,
         "size_study": size_study,
-        "harmonic_q_mesh": to_julia_vector(harmonic_q_mesh),
-        "free_energy_q_mesh": to_julia_vector(free_energy_q_mesh),
+        "harmonic_q_mesh": to_julia_int_vector(harmonic_q_mesh),
+        "free_energy_q_mesh": to_julia_int_vector(free_energy_q_mesh),
     }
     if n_threads is not None:
         kwargs["n_threads"] = n_threads
