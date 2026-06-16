@@ -1,5 +1,18 @@
 # CumulantAnalysis.jl
 
+A fast implementation of the free energy cumulant expansion for crystals. The code is written in Julia, but we also provide a Python wrapper. There are two entry points to the code:
+- `make_stdep_ifcs` : Computes sTDEP IFCs for a specific temperature
+- `crystal_thermodynamic_properties` : Using the sTDEP IFCs computes the quantum-anharmonic thermodynamic properties using the free energy cumulant expansion.
+
+The discussion below pertains to the Julia package. Please see the README in the `python` directory for more details on installing and using the Python package.
+
+> [!NOTE]
+> The energy from polar interactions is not accounted for. Even if this interaction is present in the `infile.forceconstant` file it will be ignored. The cumulant expansion theory is easily modified to incorporate the polar contribution, but the corresponding code was not implemented or tested.
+
+> [!TIP]
+> 1) Be sure to set `JULIA_NUM_THREADS` or `PYTHON_JULIACALL_THREADS` in your environment to enable multi-threading of the code!
+> 2) The
+
 ### Installation
 
 This package depends on LatticeDynamicsToolkit.jl which is an unregistered package and requires Linux (macOS might work, Windows will not). To install in your chosen environment run:
@@ -16,6 +29,7 @@ Pkg.add(; url = "https://github.com/ejmeitz/CumulantAnalysis.jl.git", rev = "v0.
 ```
 
 Note that this package automatically installs LAMMPS and if a GPU is detected it will install a GPU version of LAMMPS. If you have compilation errors related to this open an issue. The GPU is not used, but can still cause headaches at compile time if your Linux is too "old".
+
 
 ### Citation
 
