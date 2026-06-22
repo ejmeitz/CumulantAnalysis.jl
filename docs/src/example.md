@@ -1,24 +1,13 @@
 # [Example](@id Example)
 
-This page walks through the full CrystalCumulants.jl workflow on solid neon: obtaining temperature-dependent force constants with sTDEP, then computing quantum-anharmonic thermodynamic properties with the free energy cumulant expansion.
+This page walks through the full CrystalCumulants.jl workflow on solid neon at 24K. First we obtain temperature-dependent force constants with sTDEP, then compute quantum-anharmonic thermodynamic properties with the free energy cumulant expansion.
 
 ## Workflow overview
 
-The package has two entry points:
+The package has two entry points, run in order:
 
-1. **`make_stdep_ifcs`** — compute self-consistent TDEP force constants (2nd through 4th order) at a given temperature
-2. **`crystal_thermodynamic_properties`** — use those IFCs to compute free energy, internal energy, entropy, and heat capacity
-
-```mermaid
-flowchart LR
-    subgraph step1 [Step 1: sTDEP]
-        STDEP[make_stdep_ifcs]
-    end
-    subgraph step2 [Step 2: Thermodynamics]
-        Thermo[crystal_thermodynamic_properties]
-    end
-    STDEP --> Thermo
-```
+1. **Step 1 — sTDEP:** [`make_stdep_ifcs`](@ref make_stdep_ifcs) computes self-consistent TDEP force constants (2nd through 4th order) at a given temperature.
+2. **Step 2 — Thermodynamics:** [`crystal_thermodynamic_properties`](@ref crystal_thermodynamic_properties) takes those IFCs and computes free energy, internal energy, entropy, and heat capacity.
 
 Clone the repository for bundled input files:
 
@@ -73,165 +62,7 @@ If `size_study` is enabled, an additional file reports the 0th-order correction 
 | [`workflows/neon_benchmark.py`](https://github.com/ejmeitz/CrystalCumulants.jl/blob/main/workflows/neon_benchmark.py) | Benchmark / seed study |
 | [`workflows/kmesh_studies.jl`](https://github.com/ejmeitz/CrystalCumulants.jl/blob/main/workflows/kmesh_studies.jl) | q-mesh convergence studies |
 
-See the [Theory](@ref Theory) page for background.
-
-## Installation
-
-### Julia
-
-CrystalCumulants.jl depends on [LatticeDynamicsToolkit.jl](https://github.com/ejmeitz/LatticeDynamicsToolkit.jl) (unregistered; Linux required, macOS may work, Windows not supported). LAMMPS is installed automatically; a GPU may trigger a CUDA LAMMPS build that is not used at runtime.
-
-Requirements: Julia 1.10+, Linux. Set `JULIA_NUM_THREADS` before launching Julia.
-
-```julia
-using Pkg
-Pkg.add(; url = "https://github.com/ejmeitz/LatticeDynamicsToolkit.jl.git", rev = "v0.1.2")
-Pkg.add(; url = "https://github.com/ejmeitz/CrystalCumulants.jl.git", rev = "v0.1.1")
-```
-
-### Python
-
-The [Python wrapper](https://github.com/ejmeitz/CrystalCumulants.jl/tree/main/python) uses [juliacall](https://juliapy.github.io/PythonCall.jl/stable/juliacall/) to manage Julia dependencies automatically. First use may take a few minutes while LAMMPS and CrystalCumulants.jl are installed.
-
-Requirements: Python 3.10+, Linux (macOS may work; Windows not supported).
-
-!!! warning
-    1. Set `PYTHON_JULIACALL_HANDLE_SIGNALS=yes`, or Python cannot pass threads through to Julia. Ctrl-C may not stop the process.
-    2. Set `PYTHON_JULIACALL_THREADS=<n-threads>` to control Julia thread count (default 1). You may also need `JULIA_NUM_THREADS`.
-
-```bash
-pip install -e ./python
-```
-
-```python
-from cumulant_analysis import make_stdep_ifcs, crystal_thermodynamic_properties
-```
-
-## API reference
-
-### `make_stdep_ifcs`
-
-**Julia**
-
-```julia
-make_stdep_ifcs(
-    ucposcar_path,
-    ssposcar_path,
-    outdir,
-    pot_cmds,
-    n_iter,
-    r_cut,
-    T,
-    maximum_frequency,
-    quantum,
-    rc3,
-    rc4;
-    kwargs...
-)
-```
-
-**Python**
-
-```python
-make_stdep_ifcs(
-    ucposcar_path,
-    ssposcar_path,
-    outdir,
-    pot_cmds,
-    n_iter,
-    r_cut,
-    T,
-    maximum_frequency,
-    quantum,
-    rc3,
-    rc4,
-    **kwargs,
-)
-```
-
-| Argument | Description |
-|----------|-------------|
-| `ucposcar_path` | Unit-cell POSCAR (TDEP format) |
-| `ssposcar_path` | Supercell POSCAR (TDEP format) |
-| `outdir` | Output directory for sTDEP results |
-| `pot_cmds` | LAMMPS potential commands |
-| `n_iter` | Number of self-consistent sTDEP iterations |
-| `r_cut` | Pair potential cutoff for 2nd-order IFCs |
-| `T` | Temperature (K) |
-| `maximum_frequency` | Maximum frequency for the initial IFC guess |
-| `quantum` | Sample quantum (`true`/`True`) or classical (`false`/`False`) configurations |
-| `rc3` | Cutoff radius for 3rd-order IFC fitting |
-| `rc4` | Cutoff radius for 4th-order IFC fitting |
-| `kwargs` / `**kwargs` | Additional arguments forwarded to sTDEP (e.g. `mix`, `nconf_init`, `max_configs`) |
-
-### `crystal_thermodynamic_properties`
-
-**Julia**
-
-```julia
-crystal_thermodynamic_properties(
-    temperatures,
-    outpath,
-    ucposcar_path,
-    ssposcar_path,
-    ifc2_path,
-    ifc3_path,
-    ifc4_path,
-    pot_cmds;
-    quantum = false,
-    nconf = 100_000,
-    nboot = 2500,
-    size_study = false,
-    harmonic_q_mesh = [30, 30, 30],
-    free_energy_q_mesh = [25, 25, 25],
-    n_threads = Threads.nthreads(),
-)
-```
-
-Path-like parameters may be a `String` or `(T) -> path`:
-
-```julia
-ucposcar_path = (T) -> joinpath("/data", "T$(Int(T))", "infile.ucposcar")
-```
-
-**Python**
-
-```python
-crystal_thermodynamic_properties(
-    temperatures,
-    outpath,
-    ucposcar_path,
-    ssposcar_path,
-    ifc2_path,
-    ifc3_path,
-    ifc4_path,
-    pot_cmds,
-    *,
-    quantum=False,
-    nconf=100_000,
-    nboot=2500,
-    size_study=False,
-    harmonic_q_mesh=(30, 30, 30),
-    free_energy_q_mesh=(25, 25, 25),
-    n_threads=None,
-)
-```
-
-Path-like parameters may be a `str` or `T -> path` callable:
-
-```python
-ucposcar_path = lambda T: f"/data/T{int(T)}/infile.ucposcar"
-```
-
-| Keyword | Default | Description |
-|---------|---------|-------------|
-| `quantum` | `false` / `False` | Quantum or classical statistics |
-| `nconf` | `100_000` | Configurations for the 0th-order correction |
-| `nboot` | `2500` | Bootstrap samples for 0th-order standard error |
-| `size_study` | `false` / `False` | Write 0th-order correction vs. sample count |
-| `harmonic_q_mesh` | `[30, 30, 30]` / `(30, 30, 30)` | q-mesh for harmonic contribution |
-| `free_energy_q_mesh` | `[25, 25, 25]` / `(25, 25, 25)` | q-mesh for cumulant corrections |
-| `n_threads` | all Julia threads / `None` | Parallel thread count |
+See the [Theory](@ref Theory) page for background, the [Installation](@ref Installation) page for setup, and the [API Reference](@ref API) for full argument lists.
 
 ## Julia example
 
@@ -423,21 +254,4 @@ crystal_thermodynamic_properties(
 )
 ```
 
-### Temperature-dependent paths
-
-```python
-from os.path import join
-
-base = "/data/stdep/RESULTS"
-
-crystal_thermodynamic_properties(
-    [100.0, 200.0, 300.0],
-    lambda T: f"/out/T{int(T)}",
-    lambda T: join(base, f"T{int(T)}_0", "infile.ucposcar"),
-    lambda T: join(base, f"T{int(T)}_0", "infile.ssposcar"),
-    lambda T: join(base, f"T{int(T)}_0", "infile.forceconstant"),
-    lambda T: join(base, f"T{int(T)}_0", "infile.forceconstant_thirdorder"),
-    lambda T: join(base, f"T{int(T)}_0", "infile.forceconstant_fourthorder"),
-    pot_cmds,
-)
-```
+For temperature-dependent paths, see the [API Reference](@ref API).
