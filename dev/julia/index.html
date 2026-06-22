@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Julia · CumulantAnalysis.jl</title><meta name="title" content="Julia · CumulantAnalysis.jl"/><meta property="og:title" content="Julia · CumulantAnalysis.jl"/><meta property="twitter:title" content="Julia · CumulantAnalysis.jl"/><meta name="description" content="Documentation for CumulantAnalysis.jl."/><meta property="og:description" content="Documentation for CumulantAnalysis.jl."/><meta property="twitter:description" content="Documentation for CumulantAnalysis.jl."/><meta property="og:url" content="https://ejmeitz.github.io/CumulantAnalysis.jl/julia/"/><meta property="twitter:url" content="https://ejmeitz.github.io/CumulantAnalysis.jl/julia/"/><link rel="canonical" href="https://ejmeitz.github.io/CumulantAnalysis.jl/julia/"/><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../search_index.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">CumulantAnalysis.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li><a class="tocitem" href="../theory/">Theory</a></li><li class="is-active"><a class="tocitem" href>Julia</a><ul class="internal"><li><a class="tocitem" href="#Requirements"><span>Requirements</span></a></li><li><a class="tocitem" href="#Installation"><span>Installation</span></a></li><li><a class="tocitem" href="#API"><span>API</span></a></li><li><a class="tocitem" href="#Output-files"><span>Output files</span></a></li><li><a class="tocitem" href="#Solid-Neon-example"><span>Solid Neon example</span></a></li><li><a class="tocitem" href="#Related-workflows"><span>Related workflows</span></a></li></ul></li><li><a class="tocitem" href="../python/">Python</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Julia</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Julia</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/ejmeitz/CumulantAnalysis.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/ejmeitz/CumulantAnalysis.jl/blob/main/docs/src/julia.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Julia"><a class="docs-heading-anchor" href="#Julia">Julia</a><a id="Julia-1"></a><a class="docs-heading-anchor-permalink" href="#Julia" title="Permalink"></a></h1><p>@id Julia</p><h2 id="Requirements"><a class="docs-heading-anchor" href="#Requirements">Requirements</a><a id="Requirements-1"></a><a class="docs-heading-anchor-permalink" href="#Requirements" title="Permalink"></a></h2><ul><li>Linux (macOS may work; Windows is not supported)</li><li>Julia 1.10+</li><li>Set <code>JULIA_NUM_THREADS</code> before launching Julia for parallel execution</li></ul><h2 id="Installation"><a class="docs-heading-anchor" href="#Installation">Installation</a><a id="Installation-1"></a><a class="docs-heading-anchor-permalink" href="#Installation" title="Permalink"></a></h2><pre><code class="language-julia hljs">using Pkg
+Pkg.add(; url = &quot;https://github.com/ejmeitz/LatticeDynamicsToolkit.jl.git&quot;, rev = &quot;v0.1.2&quot;)
+Pkg.add(; url = &quot;https://github.com/ejmeitz/CrystalCumulants.jl.git&quot;, rev = &quot;v0.1.1&quot;)</code></pre><h2 id="API"><a class="docs-heading-anchor" href="#API">API</a><a id="API-1"></a><a class="docs-heading-anchor-permalink" href="#API" title="Permalink"></a></h2><h3 id="make_stdep_ifcs"><a class="docs-heading-anchor" href="#make_stdep_ifcs"><code>make_stdep_ifcs</code></a><a id="make_stdep_ifcs-1"></a><a class="docs-heading-anchor-permalink" href="#make_stdep_ifcs" title="Permalink"></a></h3><p>Generate self-consistent TDEP force constants with sTDEP.</p><pre><code class="language-julia hljs">make_stdep_ifcs(
+    ucposcar_path,
+    ssposcar_path,
+    outdir,
+    pot_cmds,
+    n_iter,
+    r_cut,
+    T,
+    maximum_frequency,
+    quantum,
+    rc3,
+    rc4;
+    kwargs...
+)</code></pre><table><tr><th style="text-align: right">Argument</th><th style="text-align: right">Description</th></tr><tr><td style="text-align: right"><code>ucposcar_path</code></td><td style="text-align: right">Path to unit-cell POSCAR (TDEP format)</td></tr><tr><td style="text-align: right"><code>ssposcar_path</code></td><td style="text-align: right">Path to supercell POSCAR (TDEP format)</td></tr><tr><td style="text-align: right"><code>outdir</code></td><td style="text-align: right">Output directory for sTDEP results</td></tr><tr><td style="text-align: right"><code>pot_cmds</code></td><td style="text-align: right">LAMMPS potential commands (<code>Vector{String}</code>)</td></tr><tr><td style="text-align: right"><code>n_iter</code></td><td style="text-align: right">Number of self-consistent sTDEP iterations</td></tr><tr><td style="text-align: right"><code>r_cut</code></td><td style="text-align: right">Pair potential cutoff used by sTDEP</td></tr><tr><td style="text-align: right"><code>T</code></td><td style="text-align: right">Temperature (K)</td></tr><tr><td style="text-align: right"><code>maximum_frequency</code></td><td style="text-align: right">Maximum frequency for the initial IFC guess</td></tr><tr><td style="text-align: right"><code>quantum</code></td><td style="text-align: right">Sample quantum (<code>true</code>) or classical (<code>false</code>) configurations</td></tr><tr><td style="text-align: right"><code>rc3</code></td><td style="text-align: right">Cutoff radius for 3rd-order IFC fitting</td></tr><tr><td style="text-align: right"><code>rc4</code></td><td style="text-align: right">Cutoff radius for 4th-order IFC fitting</td></tr><tr><td style="text-align: right"><code>kwargs...</code></td><td style="text-align: right">Additional keyword arguments forwarded to sTDEP (e.g. <code>mix</code>, <code>nconf_init</code>, <code>max_configs</code>)</td></tr></table><p>Output files are written under <code>outdir</code>. This step produces 2nd-4th order sTDEP IFCs.</p><h3 id="crystal_thermodynamic_properties"><a class="docs-heading-anchor" href="#crystal_thermodynamic_properties"><code>crystal_thermodynamic_properties</code></a><a id="crystal_thermodynamic_properties-1"></a><a class="docs-heading-anchor-permalink" href="#crystal_thermodynamic_properties" title="Permalink"></a></h3><p>Calculate thermodynamic properties across a temperature range using the free energy cumulant expansion.</p><pre><code class="language-julia hljs">crystal_thermodynamic_properties(
+    temperatures,
+    outpath,
+    ucposcar_path,
+    ssposcar_path,
+    ifc2_path,
+    ifc3_path,
+    ifc4_path,
+    pot_cmds;
+    quantum = false,
+    nconf = 100_000,
+    nboot = 2500,
+    size_study = false,
+    harmonic_q_mesh = [30, 30, 30],
+    free_energy_q_mesh = [25, 25, 25],
+    n_threads = Threads.nthreads(),
+)</code></pre><p>All path-like parameters may be a <code>String</code> or a function <code>(T) -&gt; path</code> for temperature-dependent inputs:</p><pre><code class="language-julia hljs">ucposcar_path = (T) -&gt; joinpath(&quot;/home/data&quot;, &quot;T$(Int(T))&quot;, &quot;infile.ucposcar&quot;)</code></pre><table><tr><th style="text-align: right">Keyword</th><th style="text-align: right">Default</th><th style="text-align: right">Description</th></tr><tr><td style="text-align: right"><code>quantum</code></td><td style="text-align: right"><code>false</code></td><td style="text-align: right">Use quantum (<code>true</code>) or classical (<code>false</code>) statistics</td></tr><tr><td style="text-align: right"><code>nconf</code></td><td style="text-align: right"><code>100_000</code></td><td style="text-align: right">Configurations sampled for the 0th-order correction</td></tr><tr><td style="text-align: right"><code>nboot</code></td><td style="text-align: right"><code>2500</code></td><td style="text-align: right">Bootstrap samples for 0th-order standard error</td></tr><tr><td style="text-align: right"><code>size_study</code></td><td style="text-align: right"><code>false</code></td><td style="text-align: right">If <code>true</code>, write 0th-order correction vs. sample count</td></tr><tr><td style="text-align: right"><code>harmonic_q_mesh</code></td><td style="text-align: right"><code>[30, 30, 30]</code></td><td style="text-align: right">q-mesh for harmonic contribution</td></tr><tr><td style="text-align: right"><code>free_energy_q_mesh</code></td><td style="text-align: right"><code>[25, 25, 25]</code></td><td style="text-align: right">q-mesh for 1st- and 2nd-order corrections</td></tr><tr><td style="text-align: right"><code>n_threads</code></td><td style="text-align: right"><code>Threads.nthreads()</code></td><td style="text-align: right">Parallel threads (set <code>JULIA_NUM_THREADS</code> in the environment)</td></tr></table><h2 id="Output-files"><a class="docs-heading-anchor" href="#Output-files">Output files</a><a id="Output-files-1"></a><a class="docs-heading-anchor-permalink" href="#Output-files" title="Permalink"></a></h2><p>For each property, the code writes <code>F_mean.txt</code>, <code>U_mean.txt</code>, <code>S_mean.txt</code>, and <code>Cv_mean.txt</code> with rows broken down into harmonic (<code>F0</code>, etc.), 0th-order offset, 1st-order, 2nd-order, and total. Only the 0th-order correction has an associated bootstrap standard error. HDF5 versions (<code>.h5</code>) are also written.</p><p>If <code>size_study = true</code>, an additional file reports the 0th-order correction as a function of sample count (useful for convergence checks).</p><h2 id="Solid-Neon-example"><a class="docs-heading-anchor" href="#Solid-Neon-example">Solid Neon example</a><a id="Solid-Neon-example-1"></a><a class="docs-heading-anchor-permalink" href="#Solid-Neon-example" title="Permalink"></a></h2><p>Clone the repository for bundled input files:</p><pre><code class="nohighlight hljs">git clone --depth 1 --branch v0.1.0 https://github.com/ejmeitz/CrystalCumulants.jl.git</code></pre><h3 id="sTDEP-IFCs"><a class="docs-heading-anchor" href="#sTDEP-IFCs">sTDEP IFCs</a><a id="sTDEP-IFCs-1"></a><a class="docs-heading-anchor-permalink" href="#sTDEP-IFCs" title="Permalink"></a></h3><p>The first step is to obtain 2nd-, 3rd-, and 4th-order force constants from sTDEP. Skip to <a href="#Thermodynamic-properties">Thermodynamic properties</a> if you already have IFCs. The method expects self-consistent phonons (sTDEP or SSCHA); MD-TDEP or finite-difference IFCs are far less accurate.</p><p>An in-depth sTDEP tutorial is <a href="https://github.com/tdep-developers/tdep-tutorials/tree/main/02_sampling">here</a>. A multi-volume, multi-temperature workflow used in the paper is in <a href="https://github.com/ejmeitz/CrystalCumulants.jl/blob/main/workflows/neon_lattice_params_stdep.jl"><code>workflows/neon_lattice_params_stdep.jl</code></a>.</p><p>Precomputed force constants are in <a href="https://github.com/ejmeitz/CrystalCumulants.jl/tree/main/data/stdep_results"><code>data/stdep_results</code></a> (<code>iter009</code> folder; ~2 minutes to reproduce).</p><pre><code class="language-julia hljs">using CrystalCumulants
+
+repo_root = &quot;&lt;path-to-repo-root&gt;&quot;  # UPDATE
+outpath = &quot;&lt;whatever-directory-you-want&gt;&quot;  # UPDATE
+
+T = 24  # Kelvin
+
+r_cut = 6.955
+rc3 = r_cut # cutoff for third-order IFCs
+rc4 = 4.0 # cutoff for fourth-order IFCs
+pot_cmds = [
+    &quot;pair_style lj/cut $(r_cut)&quot;,
+    &quot;pair_coeff * * 0.0032135 2.782&quot;,
+    &quot;pair_modify shift yes&quot;
+]
+
+n_iter = 10
+maximum_frequency = 2.5
+quantum = true
+# Other sTDEP kwargs:
+# - mix = true          — mix configs from prior step with current step
+# - nconf_init = 8      — configs for iteration 0
+# - max_configs = 512   — max configs per iteration (doubles each iter)
+
+basepath = joinpath(repo_root, &quot;data&quot;, &quot;stdep_inputs&quot;)
+ssposcar_path = joinpath(basepath, &quot;infile.ssposcar&quot;)
+ucposcar_path = joinpath(basepath, &quot;infile.ucposcar&quot;)
+
+make_stdep_ifcs(
+    ucposcar_path,
+    ssposcar_path,
+    outpath,
+    pot_cmds,
+    n_iter,
+    r_cut,
+    T,
+    maximum_frequency,
+    quantum,
+    rc3,
+    rc4,
+)</code></pre><h3 id="Thermodynamic-properties"><a class="docs-heading-anchor" href="#Thermodynamic-properties">Thermodynamic properties</a><a id="Thermodynamic-properties-1"></a><a class="docs-heading-anchor-permalink" href="#Thermodynamic-properties" title="Permalink"></a></h3><p>Use IFCs from above or the bundled set in <a href="https://github.com/ejmeitz/CrystalCumulants.jl/tree/main/data/thermo_inputs"><code>data/thermo_inputs</code></a>. Expected free energy at 24 K is roughly <strong>−0.0179270 eV/atom</strong> (stochastic; first few decimals should match). ~3 minutes on 40 cores. Reference results: <a href="https://github.com/ejmeitz/CrystalCumulants.jl/tree/main/data/thermo_results"><code>data/thermo_results</code></a> (25×25×25 free-energy mesh).</p><p>A multi-temperature workflow is in <a href="https://github.com/ejmeitz/CrystalCumulants.jl/blob/main/workflows/neon.jl"><code>workflows/neon.jl</code></a>.</p><pre><code class="language-julia hljs">using CrystalCumulants
+
+repo_root = &quot;&lt;path-to-repo-root&gt;&quot;  # UPDATE
+outpath = &quot;&lt;whatever-directory-you-want&gt;&quot;  # UPDATE
+basepath = joinpath(repo_root, &quot;data&quot;, &quot;thermo_inputs&quot;)
+
+T = 24  # Kelvin
+
+r_cut = 6.955
+pot_cmds = [
+    &quot;pair_style lj/cut $(r_cut)&quot;,
+    &quot;pair_coeff * * 0.0032135 2.782&quot;,
+    &quot;pair_modify shift yes&quot;
+]
+
+nconf = 100_000
+nboot = 5000
+size_study = true
+harmonic_q_mesh = [30, 30, 30]
+free_energy_q_mesh = [15, 15, 15]  # ~15×15×15 is often sufficient
+
+ssposcar_path = joinpath(basepath, &quot;infile.ssposcar&quot;)
+ucposcar_path = joinpath(basepath, &quot;infile.ucposcar&quot;)
+
+ifc2_path = joinpath(basepath, &quot;infile.forceconstant&quot;)
+ifc3_path = joinpath(basepath, &quot;infile.forceconstant_thirdorder&quot;)
+ifc4_path = joinpath(basepath, &quot;infile.forceconstant_fourthorder&quot;)
+
+crystal_thermodynamic_properties(
+    [T],
+    outpath,
+    ucposcar_path,
+    ssposcar_path,
+    ifc2_path,
+    ifc3_path,
+    ifc4_path,
+    pot_cmds;
+    quantum = true,
+    nconf = nconf,
+    nboot = nboot,
+    size_study = size_study,
+    harmonic_q_mesh = harmonic_q_mesh,
+    free_energy_q_mesh = free_energy_q_mesh,
+)</code></pre><h2 id="Related-workflows"><a class="docs-heading-anchor" href="#Related-workflows">Related workflows</a><a id="Related-workflows-1"></a><a class="docs-heading-anchor-permalink" href="#Related-workflows" title="Permalink"></a></h2><table><tr><th style="text-align: right">Script</th><th style="text-align: right">Description</th></tr><tr><td style="text-align: right"><a href="https://github.com/ejmeitz/CrystalCumulants.jl/blob/main/workflows/neon.jl"><code>workflows/neon.jl</code></a></td><td style="text-align: right">Multi-temperature Neon thermodynamics</td></tr><tr><td style="text-align: right"><a href="https://github.com/ejmeitz/CrystalCumulants.jl/blob/main/workflows/neon_lattice_params_stdep.jl"><code>workflows/neon_lattice_params_stdep.jl</code></a></td><td style="text-align: right">Volume/temperature sTDEP loop (paper workflow)</td></tr><tr><td style="text-align: right"><a href="https://github.com/ejmeitz/CrystalCumulants.jl/blob/main/workflows/silicon.jl"><code>workflows/silicon.jl</code></a></td><td style="text-align: right">Silicon example</td></tr><tr><td style="text-align: right"><a href="https://github.com/ejmeitz/CrystalCumulants.jl/blob/main/workflows/kmesh_studies.jl"><code>workflows/kmesh_studies.jl</code></a></td><td style="text-align: right">q-mesh convergence studies</td></tr></table><p>See also the <a href="../theory/#Theory">Theory</a> page and <a href="../python/#Python">Python</a> wrapper.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../theory/">« Theory</a><a class="docs-footer-nextpage" href="../python/">Python »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Monday 22 June 2026 20:20">Monday 22 June 2026</span>. Using Julia version 1.10.11.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
