@@ -25,13 +25,6 @@ CrystalCumulants.jl depends on [LatticeDynamicsToolkit.jl](https://github.com/ej
 
 **Requirements:** Julia 1.10+
 
-> [!TIP]
-> Set `JULIA_NUM_THREADS` in your environment **before** launching Julia. Thread count is fixed at startup and cannot be changed from within a running session.
->
-> ```bash
-> export JULIA_NUM_THREADS=40
-> ```
-
 ```julia
 using Pkg
 Pkg.add(; url = "https://github.com/ejmeitz/LatticeDynamicsToolkit.jl.git", rev = "v0.1.2")
